@@ -227,16 +227,23 @@ function TaskCard({ task, index, total, allDoers, onUpdate, onRemove }) {
                     </div>
                     <div className="col-span-2">
                         <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide flex items-center gap-1">
-                            <Clock className="w-3 h-3" /> Duration
+                            <Clock className="w-3 h-3" /> Duration <span className="text-red-500">*</span>
                         </label>
-                        <input
-                            type="text"
-                            name="duration"
-                            value={task.duration}
-                            onChange={handleInputChange}
-                            placeholder="e.g. 1 hour"
-                            className="w-full p-2.5 border border-gray-200 rounded-lg bg-gray-50 focus:ring-2 focus:ring-purple-500 outline-none transition-all text-sm"
-                        />
+                        <div className="relative">
+                            <input
+                                type="number"
+                                min="1"
+                                name="duration"
+                                value={task.duration ? task.duration.replace(' MIN', '') : ''}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    onUpdate(task.id, { duration: val ? `${val} MIN` : '' });
+                                }}
+                                placeholder="e.g. 30"
+                                className="w-full pl-3 pr-12 p-2.5 border border-gray-200 rounded-lg bg-gray-50 focus:ring-2 focus:ring-purple-500 outline-none transition-all text-sm"
+                            />
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">MIN</span>
+                        </div>
                     </div>
                 </div>
 
@@ -440,6 +447,10 @@ export default function EATask() {
             }
             if (!t.doer_name || !t.planned_date || (!t.task_description && !t.recordedAudio)) {
                 showToast(`Task ${i + 1}: Please fill in all required fields.`, 'error');
+                return;
+            }
+            if (!t.duration) {
+                showToast(`Task ${i + 1}: Please specify the task duration.`, 'error');
                 return;
             }
 

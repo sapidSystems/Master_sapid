@@ -776,6 +776,30 @@ export const sendDailyTaskSummaryNotification = async (summaryDetails) => {
     }
 };
 
+/**
+ * Send purchase delivered notification
+ * @param {Object} deliveryDetails - Delivery details
+ * @returns {Promise<boolean>} - Success status
+ */
+export const sendPurchaseDeliveredNotification = async (deliveryDetails) => {
+    try {
+        const { recipientName, transporterName, lrNo, date, productName, size1, size2 } = deliveryDetails;
+        const phoneNumber = await getUserPhoneNumber(recipientName);
+        if (!phoneNumber) return false;
+
+        // Template: purchase_delivered
+        // Variables: {{1}} TransporterName, {{2}} LRNo, {{3}} Date, {{4}} ProductName, {{5}} Size1, {{6}} Size2
+        return await sendWhatsAppTemplate(
+            phoneNumber,
+            'purchase_delivered',
+            [transporterName, lrNo, date, productName, size1, size2]
+        );
+    } catch (error) {
+        console.error('Error sending purchase delivered notification:', error);
+        return false;
+    }
+};
+
 export default {
     sendUrgentTaskNotification,
     sendTaskExtensionNotification,
@@ -791,5 +815,6 @@ export default {
     sendTaskReassignmentNotification,
     sendPasswordResetOTP,
     sendAdminExtensionRemarkNotification,
-    sendDailyTaskSummaryNotification
+    sendDailyTaskSummaryNotification,
+    sendPurchaseDeliveredNotification
 };

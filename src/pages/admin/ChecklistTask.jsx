@@ -375,14 +375,21 @@ function TaskCard({ task, index, total, department, doerName, givenBy, dispatch,
                         <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide flex items-center gap-1">
                             <Clock className="w-3 h-3" /> Duration <span className="text-red-500">*</span>
                         </label>
-                        <input
-                            type="text"
-                            name="duration"
-                            value={task.duration}
-                            onChange={handleChange}
-                            placeholder="e.g. 30 mins"
-                            className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all text-sm"
-                        />
+                        <div className="relative">
+                            <input
+                                type="number"
+                                min="1"
+                                name="duration"
+                                value={task.duration ? task.duration.replace(' MIN', '') : ''}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    onUpdate(task.id, { duration: val ? `${val} MIN` : '' });
+                                }}
+                                placeholder="e.g. 30"
+                                className="w-full pl-3 pr-12 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all text-sm"
+                            />
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">MIN</span>
+                        </div>
                     </div>
                 </div>
 
