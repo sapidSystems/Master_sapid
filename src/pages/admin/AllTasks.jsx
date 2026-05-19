@@ -1037,7 +1037,7 @@ const AllTasks = () => {
       <div className="space-y-4 sm:space-y-6">
         {/* Sticky Header Section */}
         {/* Sticky Header Section */}
-        <div className="sticky top-0 z-30 bg-white/60 backdrop-blur-xl py-2 border-b border-gray-100/50 shadow-sm transition-all duration-300">
+        <div className="sticky top-0 z-40 bg-white/60 backdrop-blur-xl py-2 border-b border-gray-100/50 shadow-sm transition-all duration-300">
           <div className="max-w-7xl mx-auto space-y-2">
             {/* Tab System & Primary Actions */}
             <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
@@ -1556,7 +1556,7 @@ const AllTasks = () => {
 
                 {/* Mobile view Toolbar */}
                 {!showHistory && (
-                  <div className="md:hidden sticky top-[header_height] z-30 transition-all duration-300">
+                  <div className="md:hidden z-30 transition-all duration-300">
                     <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between shadow-sm">
                       <div className="flex items-center gap-3">
                         <div className="relative flex items-center">

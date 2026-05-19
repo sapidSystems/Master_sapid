@@ -1991,7 +1991,7 @@ function DelegationDataPage() {
 
               {/* Mobile view Toolbar */}
               {!showHistory && (
-                <div className="md:hidden sticky top-[header_height] z-30 transition-all duration-300">
+                <div className="md:hidden z-30 transition-all duration-300">
                   <div className="bg-white border-b border-purple-100 px-4 py-3 flex items-center justify-between shadow-sm">
                     <div className="flex items-center gap-3">
                       <div className="relative flex items-center">
