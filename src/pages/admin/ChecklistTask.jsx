@@ -39,7 +39,7 @@ const defaultTask = () => ({
     duration: "",
     enableReminders: true,
     requireAttachment: false,
-    date: null,
+    date: new Date(),
     time: "09:00",
     recordedAudio: null,
     showCalendar: false,
@@ -327,30 +327,32 @@ function TaskCard({ task, index, total, department, doerName, givenBy, dispatch,
 
                 {/* Date, Time, Frequency, Duration */}
                 <div className="grid grid-cols-2 gap-3">
-                    <div className="relative">
-                        <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Planned Date <span className="text-red-500">*</span></label>
-                        <button
-                            type="button"
-                            onClick={() => !task.dateLocked && onUpdate(task.id, { showCalendar: !task.showCalendar })}
-                            className={`w-full px-3 py-2.5 text-left border border-gray-200 rounded-lg bg-gray-50 hover:bg-white focus:ring-2 focus:ring-purple-500 transition-all flex items-center justify-between text-xs ${task.dateLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
-                            disabled={task.dateLocked}
-                        >
-                            <span className={task.date ? "text-gray-800" : "text-gray-400"}>
-                                {task.date ? formatDate(task.date) : "Select"}
-                            </span>
-                            <Calendar className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                        </button>
-                        {task.showCalendar && (
-                            <div className="absolute top-full left-0 mt-1 z-50">
-                                <CalendarComponent
-                                    date={task.date}
-                                    onChange={(d) => onUpdate(task.id, { date: d, showCalendar: false })}
-                                    onClose={() => onUpdate(task.id, { showCalendar: false })}
-                                    disableBeforeMinWorkingDate={true}
-                                />
-                            </div>
-                        )}
-                    </div>
+                    {!["End of 1st week", "End of 2nd week", "End of 3rd week", "End of 4rth week"].includes(task.frequency) && (
+                        <div className="relative">
+                            <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Planned Date <span className="text-red-500">*</span></label>
+                            <button
+                                type="button"
+                                onClick={() => !task.dateLocked && onUpdate(task.id, { showCalendar: !task.showCalendar })}
+                                className={`w-full px-3 py-2.5 text-left border border-gray-200 rounded-lg bg-gray-50 hover:bg-white focus:ring-2 focus:ring-purple-500 transition-all flex items-center justify-between text-xs ${task.dateLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                disabled={task.dateLocked}
+                            >
+                                <span className={task.date ? "text-gray-800" : "text-gray-400"}>
+                                    {task.date ? formatDate(task.date) : "Select"}
+                                </span>
+                                <Calendar className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                            </button>
+                            {task.showCalendar && (
+                                <div className="absolute top-full left-0 mt-1 z-50">
+                                    <CalendarComponent
+                                        date={task.date}
+                                        onChange={(d) => onUpdate(task.id, { date: d, showCalendar: false })}
+                                        onClose={() => onUpdate(task.id, { showCalendar: false })}
+                                        disableBeforeMinWorkingDate={true}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    )}
                     <div>
                         <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Time</label>
                         <input

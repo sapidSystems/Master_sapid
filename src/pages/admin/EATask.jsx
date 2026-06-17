@@ -29,7 +29,7 @@ const defaultTask = () => ({
     doer_name: DEFAULT_DOER_NAME,
     phone_number: "",
     given_by: (localStorage.getItem("role")?.toUpperCase() === "HOD" || (localStorage.getItem("role")?.toLowerCase() === "admin" && localStorage.getItem("user-name")?.toLowerCase() !== "admin")) ? localStorage.getItem("user-name") : "",
-    planned_date: "",
+    planned_date: new Date().toISOString().split('T')[0],
     planned_time: "09:00",
     task_description: "",
     duration: "",

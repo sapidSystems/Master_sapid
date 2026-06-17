@@ -45,7 +45,7 @@ const defaultTask = () => ({
     priority: "",
     workDescription: "",
     duration: "",
-    startDate: "",
+    startDate: new Date().toISOString().split('T')[0],
     startTime: "09:00",
     frequency: "one-time",
     enableReminder: true,
@@ -428,29 +428,31 @@ const MaintenanceTaskCard = ({
 
                     {/* Date, Time, Frequency, Duration */}
                     <div className="grid grid-cols-2 gap-3">
-                        <div className="relative">
-                            <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Start Date <span className="text-red-500">*</span></label>
-                            <button
-                                type="button"
-                                onClick={() => onUpdate(task.id, { showCalendar: !task.showCalendar })}
-                                className="w-full p-2.5 text-left border border-gray-200 rounded-lg bg-gray-50 hover:bg-white focus:ring-2 focus:ring-purple-500 transition-all flex items-center justify-between text-xs"
-                            >
-                                <span className={task.startDate ? "text-gray-800" : "text-gray-400"}>
-                                    {task.startDate ? formatDateLong(new Date(task.startDate)) : "Select date"}
-                                </span>
-                                <Calendar className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                            </button>
-                            {task.showCalendar && (
-                                <div className="absolute top-full left-0 mt-1 z-50">
-                                    <CalendarComponent
-                                        date={task.startDate ? new Date(task.startDate) : null}
-                                        onChange={(date) => onUpdate(task.id, { startDate: formatDateISO(date), showCalendar: false })}
-                                        onClose={() => onUpdate(task.id, { showCalendar: false })}
-                                        disableBeforeMinWorkingDate={true}
-                                    />
-                                </div>
-                            )}
-                        </div>
+                        {!["end-of-1st-week", "end-of-2nd-week", "end-of-3rd-week", "end-of-4rth-week"].includes(task.frequency) && (
+                            <div className="relative">
+                                <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Start Date <span className="text-red-500">*</span></label>
+                                <button
+                                    type="button"
+                                    onClick={() => onUpdate(task.id, { showCalendar: !task.showCalendar })}
+                                    className="w-full p-2.5 text-left border border-gray-200 rounded-lg bg-gray-50 hover:bg-white focus:ring-2 focus:ring-purple-500 transition-all flex items-center justify-between text-xs"
+                                >
+                                    <span className={task.startDate ? "text-gray-800" : "text-gray-400"}>
+                                        {task.startDate ? formatDateLong(new Date(task.startDate)) : "Select date"}
+                                    </span>
+                                    <Calendar className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                                </button>
+                                {task.showCalendar && (
+                                    <div className="absolute top-full left-0 mt-1 z-50">
+                                        <CalendarComponent
+                                            date={task.startDate ? new Date(task.startDate) : null}
+                                            onChange={(date) => onUpdate(task.id, { startDate: formatDateISO(date), showCalendar: false })}
+                                            onClose={() => onUpdate(task.id, { showCalendar: false })}
+                                            disableBeforeMinWorkingDate={true}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         <div>
                             <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Time</label>
                             <input type="time" name="startTime" value={task.startTime} onChange={handleChange} className="w-full p-2.5 border border-gray-200 rounded-lg bg-gray-50 focus:ring-2 focus:ring-purple-500 outline-none transition-all text-sm" />
