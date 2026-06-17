@@ -281,7 +281,7 @@ export default function RepairTask() {
 
     const machineOptions = getUniqueDropdownValues("Machine Name").map(i => i.value).length > 0
         ? getUniqueDropdownValues("Machine Name").map(i => i.value)
-        : ["A", "B", "C", "D", "E", "F", "G", "H", "I", "Atlas compressor", "ELGI Compreser", "Transformers", "65/18 Pipe Extruder", "52/18 Pipe Extruder", "C/c Capping Exturder", "Polveiger machine", "Printer A", "Printer B", "Other"];
+        : []; /* ["A", "B", "C", "D", "E", "F", "G", "H", "I", "Atlas compressor", "ELGI Compreser", "Transformers", "65/18 Pipe Extruder", "52/18 Pipe Extruder", "C/c Capping Exturder", "Polveiger machine", "Printer A", "Printer B", "Other"] */
 
     const updateTask = (id, updates) => setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
     const addTask = () => setTasks(prev => {
