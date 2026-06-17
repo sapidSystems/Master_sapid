@@ -279,8 +279,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
       label: "Settings",
       icon: Settings,
       active: location.pathname.includes("/dashboard/setting"),
-      // Only show for super admin (username = 'admin')
-      showFor: isSuperAdmin ? ["admin"] : [],
+      showFor: ["admin"],
     },
   ];
 
@@ -298,9 +297,9 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
         const userRoleNormalized = (userRole || "user").toLowerCase();
         const usernameNormalized = (username || "").toLowerCase();
         
-        // If it's the Setting page, only show for super admin (admin username)
+        // If it's the Setting page, show for admin role
         if (route.label === "Settings") {
-          return usernameNormalized === "admin";
+          return userRoleNormalized === "admin";
         }
         
         // Holiday submenu logic handled by showFor in routes
