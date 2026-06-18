@@ -167,9 +167,9 @@ function App() {
                     <Route
                         path="/dashboard/holiday-list"
                         element={
-                            <SuperAdminRoute>
+                            <ProtectedRoute allowedRoles={["admin"]}>
                                 <HolidayListPage />
-                            </SuperAdminRoute>
+                            </ProtectedRoute>
                         }
                     />
 
