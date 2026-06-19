@@ -25,6 +25,7 @@ import {
   CrossIcon,
   X,
   Bell,
+  Video,
 } from "lucide-react";
 
 export default function AdminLayout({ children, darkMode, toggleDarkMode, showLayout = true }) {
@@ -265,6 +266,13 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
       icon: BookmarkCheck,
       active: location.pathname === "/dashboard/admin-approval",
       showFor: ["admin", "HOD"],
+    },
+    {
+      href: "/dashboard/training-video",
+      label: "Training Video",
+      icon: Video,
+      active: location.pathname === "/dashboard/training-video",
+      showFor: ["admin", "user", "HOD"],
     },
     // {
     //   href: "/dashboard/mis-report",
