@@ -287,6 +287,7 @@ function TaskCard({ task, index, total, department, doerName, givenBy, dispatch,
                             </div>
                         );
                     })}
+                    
                     <ReactMediaRecorder
                         audio
                         onStop={(blobUrl, blob) => onUpdate(task.id, { recordedAudio: { blobUrl, blob } })}
