@@ -8,6 +8,7 @@ import { uploadPartImageApi } from '../redux/api/settingApi';
 import supabase from '../SupabaseClient';
 import CalendarComponent from '../components/CalendarComponent';
 import { createPortal } from 'react-dom';
+import * as XLSX from 'xlsx';
 import { sendTaskReassignmentNotification } from '../services/whatsappService';
 import { useMagicToast } from '../context/MagicToastContext';
 
@@ -68,6 +69,11 @@ const Setting = () => {
   const [cleanupItems, setCleanupItems] = useState([]);
   const [cleanupLoading, setCleanupLoading] = useState(false);
   const [showDangerPopup, setShowDangerPopup] = useState(false);
+
+  // Bulk Import State
+  const [showBulkImportModal, setShowBulkImportModal] = useState(false);
+  const [bulkImportFile, setBulkImportFile] = useState(null);
+  const [bulkImportLoading, setBulkImportLoading] = useState(false);
 
   const { userData, department, departmentsOnly, givenBy, customDropdowns, loading, error } = useSelector((state) => state.setting);
   const dispatch = useDispatch();
@@ -464,6 +470,165 @@ const Setting = () => {
     } else if (tab === 'categories') {
       dispatch(customDropdownDetails());
     }
+  };
+
+  const handleDownloadTemplate = () => {
+    let ws;
+    let filename = '';
+    
+    if (activeTab === 'users') {
+      ws = XLSX.utils.json_to_sheet([
+        {
+          username: 'john_doe',
+          email: 'john@example.com',
+          password: 'password123',
+          phone: '9876543210',
+          department: 'IT',
+          role: 'user', // user, admin, HOD
+          Designation: 'Developer'
+        }
+      ]);
+      filename = 'Users_Template.xlsx';
+    } else if (activeTab === 'departments') {
+      if (activeDeptSubTab === 'departments') {
+        ws = XLSX.utils.json_to_sheet([
+          {
+            department: 'IT',
+            given_by: 'Admin'
+          }
+        ]);
+        filename = 'Departments_Template.xlsx';
+      } else {
+        ws = XLSX.utils.json_to_sheet([
+          {
+            given_by: 'Admin User'
+          }
+        ]);
+        filename = 'Assign_From_Template.xlsx';
+      }
+    } else if (activeTab === 'categories') {
+      ws = XLSX.utils.json_to_sheet([
+        {
+          machine_name: 'CNC Machine 1',
+          machine_area: 'Area A',
+          part_name: 'Motor'
+        }
+      ]);
+      filename = 'Machines_Template.xlsx';
+    } else {
+      return;
+    }
+    
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Template");
+    XLSX.writeFile(wb, filename);
+  };
+
+  const handleBulkImport = async () => {
+    if (!bulkImportFile) {
+      showToast("Please select a file to import", "warning");
+      return;
+    }
+
+    setBulkImportLoading(true);
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+        if (jsonData.length === 0) {
+          showToast("The file is empty or invalid.", "error");
+          setBulkImportLoading(false);
+          return;
+        }
+
+        let successCount = 0;
+        let failCount = 0;
+
+        if (activeTab === 'users') {
+          for (const row of jsonData) {
+            if (!row.username) continue;
+            
+            const generatedEmpId = `EMP-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 1000)}`;
+            const newUser = {
+              username: row.username,
+              email: row.email || '',
+              password: row.password || '123456',
+              phone: row.phone ? String(row.phone) : '',
+              employee_id: generatedEmpId,
+              user_access: row.department || '',
+              department: row.department || '',
+              role: row.role || 'user',
+              status: 'active',
+              Designation: row.Designation || '',
+              profile_image: '',
+              reported_by: '',
+              can_self_assign: false
+            };
+            try {
+              await dispatch(createUser(newUser)).unwrap();
+              successCount++;
+            } catch (err) {
+              failCount++;
+            }
+          }
+          dispatch(userDetails());
+        } else if (activeTab === 'departments') {
+          if (activeDeptSubTab === 'departments') {
+             for (const row of jsonData) {
+                if (!row.department) continue;
+                try {
+                  await dispatch(createDepartment({
+                    department: row.department,
+                    given_by: row.given_by || ''
+                  })).unwrap();
+                  if (row.given_by) {
+                    try { await dispatch(createAssignFrom({ given_by: row.given_by })).unwrap(); } catch(e){}
+                  }
+                  successCount++;
+                } catch (err) { failCount++; }
+             }
+             dispatch(departmentDetails());
+          } else {
+             for (const row of jsonData) {
+                if (!row.given_by) continue;
+                try {
+                  await dispatch(createAssignFrom({ given_by: row.given_by })).unwrap();
+                  successCount++;
+                } catch (err) { failCount++; }
+             }
+             dispatch(givenByDetails());
+          }
+        } else if (activeTab === 'categories') {
+          for (const row of jsonData) {
+            if (!row.machine_name) continue;
+            try {
+               await dispatch(createMachineEntries([{
+                 machine_name: row.machine_name,
+                 part_name: row.part_name || null,
+                 machine_area: row.machine_area || ''
+               }])).unwrap();
+               successCount++;
+            } catch (err) { failCount++; }
+          }
+          dispatch(customDropdownDetails());
+        }
+
+        showToast(`Import completed. ${successCount} added, ${failCount} failed.`, successCount > 0 ? "success" : "warning");
+        setShowBulkImportModal(false);
+        setBulkImportFile(null);
+      } catch (error) {
+        console.error("Bulk import error:", error);
+        showToast("Failed to parse the file. Please use the template.", "error");
+      } finally {
+        setBulkImportLoading(false);
+      }
+    };
+    reader.readAsArrayBuffer(bulkImportFile);
   };
 
   // Add to your handleAddButtonClick function
@@ -1055,11 +1220,56 @@ const Setting = () => {
   return (
     <AdminLayout>
       <div className="space-y-8">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 py-6">
-          <h1 className="text-2xl font-bold text-purple-600">User Management System</h1>
+        <div className="flex flex-col gap-5 py-4 md:py-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <h1 className="text-xl md:text-2xl font-bold text-purple-600">User Management System</h1>
+            <div className="flex flex-wrap items-center gap-2 md:ml-auto w-full md:w-auto">
+              <button
+                onClick={handleManualRefresh}
+                disabled={isRefreshing}
+                className="p-2 md:p-2.5 rounded-lg bg-green-50 text-green-600 border border-green-200 hover:bg-green-100 transition-all disabled:opacity-50"
+                title="Refresh Status"
+              >
+                <RefreshCw size={18} className={`md:w-5 md:h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </button>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex bg-gray-100/80 p-1 rounded-xl border border-gray-200/30 relative overflow-x-auto no-scrollbar max-w-max xscrol">
+              {(activeTab === 'users' || activeTab === 'departments' || activeTab === 'categories') && (
+                <div className="flex flex-1 sm:flex-none gap-2">
+                  <button
+                    onClick={() => setShowBulkImportModal(true)}
+                    className="flex-1 sm:flex-none justify-center flex items-center gap-1.5 px-3 py-2 md:px-5 md:py-2.5 bg-green-600 text-white rounded-lg font-bold shadow-md hover:bg-green-700 transition-all text-xs md:text-sm"
+                  >
+                    <span className="hidden sm:inline">Bulk Import</span>
+                    <span className="sm:hidden">Import</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                    if (activeTab === 'categories') {
+                      resetDeptForm();
+                      setShowDeptModal(true);
+                    } else {
+                      handleAddButtonClick();
+                    }
+                  }}
+                  className="flex-1 sm:flex-none justify-center flex items-center gap-1.5 px-3 py-2 md:px-5 md:py-2.5 bg-purple-600 text-white rounded-lg font-bold shadow-md hover:bg-purple-700 transition-all text-xs md:text-sm"
+                >
+                  <Plus size={16} className="md:w-[18px] md:h-[18px]" />
+                  <span className="hidden sm:inline">
+                    {activeTab === 'users' ? 'New User' :
+                      activeTab === 'departments' ?
+                        (activeDeptSubTab === 'departments' ? 'New Department' : 'New Assign From') :
+                        'New Machine'}
+                  </span>
+                  <span className="sm:hidden">Add</span>
+                </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* TABS ROW */}
+          <div className="w-full overflow-x-auto no-scrollbar pb-1">
+            <div className="flex bg-gray-100/80 p-1 rounded-xl border border-gray-200/30 relative w-max min-w-full sm:min-w-0">
               {[
                 { id: 'users', label: 'Users', icon: User },
                 { id: 'departments', label: 'Departments', icon: Building, action: () => { dispatch(departmentDetails()); dispatch(givenByDetails()); } },
@@ -1068,7 +1278,7 @@ const Setting = () => {
               ].map((tab) => (
                 <button
                   key={tab.id}
-                  className={`relative flex items-center justify-center gap-2 py-2 px-6 rounded-lg text-xs font-bold transition-all duration-500 whitespace-nowrap min-w-[110px] z-10 ${activeTab === tab.id ? 'text-white' : 'text-gray-500 hover:text-purple-600'}`}
+                  className={`flex-1 sm:flex-none relative flex items-center justify-center gap-1.5 md:gap-2 py-2 px-3 md:px-6 rounded-lg text-[11px] md:text-xs font-bold transition-all duration-500 whitespace-nowrap min-w-[85px] md:min-w-[110px] z-10 ${activeTab === tab.id ? 'text-white' : 'text-gray-500 hover:text-purple-600'}`}
                   onClick={() => {
                     handleTabChange(tab.id);
                     if (tab.id === 'users') dispatch(userDetails());
@@ -1082,44 +1292,10 @@ const Setting = () => {
                       transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                     />
                   )}
-                  <tab.icon size={15} className="relative z-10" />
+                  <tab.icon size={14} className="relative z-10 md:w-[15px] md:h-[15px]" />
                   <span className="relative z-10">{tab.label}</span>
                 </button>
               ))}
-            </div>
-
-            <div className="flex items-center gap-2 ml-auto">
-              <button
-                onClick={handleManualRefresh}
-                disabled={isRefreshing}
-                className="p-2.5 rounded-lg bg-green-50 text-green-600 border border-green-200 hover:bg-green-100 transition-all disabled:opacity-50"
-                title="Refresh Status"
-              >
-                <RefreshCw size={20} className={isRefreshing ? 'animate-spin' : ''} />
-              </button>
-
-              {(activeTab === 'users' || activeTab === 'departments' || activeTab === 'categories') && (
-                <button
-                  onClick={() => {
-                    if (activeTab === 'categories') {
-                      resetDeptForm();
-                      setShowDeptModal(true);
-                    } else {
-                      handleAddButtonClick();
-                    }
-                  }}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-purple-600 text-white rounded-lg font-bold shadow-md hover:bg-purple-700 transition-all text-sm"
-                >
-                  <Plus size={18} />
-                  <span className="hidden sm:inline">
-                    {activeTab === 'users' ? 'New User' :
-                      activeTab === 'departments' ?
-                        (activeDeptSubTab === 'departments' ? 'New Department' : 'New Assign From') :
-                        'New Machine'}
-                  </span>
-                  <span className="sm:hidden">Add</span>
-                </button>
-              )}
             </div>
           </div>
         </div>
@@ -2129,6 +2305,122 @@ const Setting = () => {
           </div>
         )}
 
+
+        {/* Bulk Import Modal */}
+        {showBulkImportModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div
+              className="absolute inset-0 bg-gray-900/40 backdrop-blur-md animate-in fade-in duration-300"
+              onClick={() => setShowBulkImportModal(false)}
+            ></div>
+            <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-300">
+              <div className="bg-gradient-to-r from-green-500 to-emerald-600 px-6 py-4 flex justify-between items-center">
+                <h3 className="text-xl font-bold text-white">Bulk Import</h3>
+                <button onClick={() => setShowBulkImportModal(false)} className="text-white hover:bg-white/20 p-1.5 rounded-full transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-6 space-y-6">
+                <div>
+                  <p className="text-sm text-gray-600 mb-3">Download the template, fill in your data, and upload the file.</p>
+                  
+                  {/* Template Preview */}
+                  <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
+                    <div className="bg-gray-50 px-3 py-2 border-b border-gray-200">
+                      <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Template Preview</span>
+                    </div>
+                    <div className="overflow-x-auto no-scrollbar">
+                      <table className="min-w-full divide-y divide-gray-200 text-[10px]">
+                        <thead className="bg-gray-100">
+                          <tr>
+                            {activeTab === 'users' && (
+                              <>
+                                <th className="px-3 py-2 text-left font-bold text-gray-600">username</th>
+                                <th className="px-3 py-2 text-left font-bold text-gray-600">email</th>
+                                <th className="px-3 py-2 text-left font-bold text-gray-600">password</th>
+                                <th className="px-3 py-2 text-left font-bold text-gray-600">phone</th>
+                                <th className="px-3 py-2 text-left font-bold text-gray-600">department</th>
+                                <th className="px-3 py-2 text-left font-bold text-gray-600">role</th>
+                                <th className="px-3 py-2 text-left font-bold text-gray-600">Designation</th>
+                              </>
+                            )}
+                            {activeTab === 'departments' && activeDeptSubTab === 'departments' && (
+                              <>
+                                <th className="px-3 py-2 text-left font-bold text-gray-600">department</th>
+                                <th className="px-3 py-2 text-left font-bold text-gray-600">given_by</th>
+                              </>
+                            )}
+                            {activeTab === 'departments' && activeDeptSubTab === 'givenBy' && (
+                              <th className="px-3 py-2 text-left font-bold text-gray-600">given_by</th>
+                            )}
+                            {activeTab === 'categories' && (
+                              <>
+                                <th className="px-3 py-2 text-left font-bold text-gray-600">machine_name</th>
+                                <th className="px-3 py-2 text-left font-bold text-gray-600">machine_area</th>
+                                <th className="px-3 py-2 text-left font-bold text-gray-600">part_name</th>
+                              </>
+                            )}
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-100">
+                          <tr>
+                            {activeTab === 'users' && (
+                              <>
+                                <td className="px-3 py-2 text-gray-500 font-medium">john_doe</td>
+                                <td className="px-3 py-2 text-gray-500 font-medium">john@example.com</td>
+                                <td className="px-3 py-2 text-gray-500 font-medium">password123</td>
+                                <td className="px-3 py-2 text-gray-500 font-medium">9876543210</td>
+                                <td className="px-3 py-2 text-gray-500 font-medium">IT</td>
+                                <td className="px-3 py-2 text-gray-500 font-medium">user</td>
+                                <td className="px-3 py-2 text-gray-500 font-medium">Developer</td>
+                              </>
+                            )}
+                            {activeTab === 'departments' && activeDeptSubTab === 'departments' && (
+                              <>
+                                <td className="px-3 py-2 text-gray-500 font-medium">IT</td>
+                                <td className="px-3 py-2 text-gray-500 font-medium">Admin</td>
+                              </>
+                            )}
+                            {activeTab === 'departments' && activeDeptSubTab === 'givenBy' && (
+                              <td className="px-3 py-2 text-gray-500 font-medium">Admin User</td>
+                            )}
+                            {activeTab === 'categories' && (
+                              <>
+                                <td className="px-3 py-2 text-gray-500 font-medium">CNC Machine 1</td>
+                                <td className="px-3 py-2 text-gray-500 font-medium">Area A</td>
+                                <td className="px-3 py-2 text-gray-500 font-medium">Motor</td>
+                              </>
+                            )}
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <button onClick={handleDownloadTemplate} className="w-full py-2 px-4 border-2 border-dashed border-green-500 text-green-600 font-semibold rounded-lg hover:bg-green-50 transition-colors flex justify-center items-center gap-2">
+                    Download Template
+                  </button>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Upload Excel/CSV File</label>
+                  <input
+                    type="file"
+                    accept=".xlsx, .xls, .csv"
+                    onChange={(e) => setBulkImportFile(e.target.files[0])}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+                  />
+                </div>
+                <button
+                  onClick={handleBulkImport}
+                  disabled={bulkImportLoading || !bulkImportFile}
+                  className="w-full py-2.5 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center"
+                >
+                  {bulkImportLoading ? "Importing..." : "Start Import"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* User Modal */}
         {showUserModal && (
