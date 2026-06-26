@@ -138,7 +138,7 @@ export const insertDelegationDoneAndUpdate = createAsyncThunk(
 
 export const fetchDelegationDataSortByDate = async () => {
   try {
-    const role = localStorage.getItem('role');
+    const role = (localStorage.getItem('role') || "").toLowerCase();
     const username = localStorage.getItem('user-name');
     const userAccess = localStorage.getItem('user_access');
 
@@ -150,17 +150,19 @@ export const fetchDelegationDataSortByDate = async () => {
 
     if (role === 'user' && username) {
       query = query.eq('name', username);
-    } else if (role === 'HOD' && username) {
+    } else if (role === 'hod' && username) {
       const { data: reports } = await supabase
         .from("users")
         .select("user_name")
         .eq("reported_by", username);
       const reportingUsers = [username, ...(reports?.map(r => r.user_name) || [])];
-      query = query.in('name', reportingUsers);
+      const userOrConditions = reportingUsers.map(u => `name.eq."${u}"`).join(',');
+      query = query.or(`${userOrConditions},given_by.eq."${username}"`);
     } else if (role === 'admin' && userAccess && userAccess !== 'all') {
       const allowedDepartments = userAccess.split(',').map(dept => dept.trim()).filter(d => d && d !== 'all');
       if (allowedDepartments.length > 0) {
-        query = query.in('department', allowedDepartments);
+        const deptOrConditions = allowedDepartments.map(d => `department.eq."${d}"`).join(',');
+        query = query.or(`${deptOrConditions},given_by.eq."${username}"`);
       }
     }
 
