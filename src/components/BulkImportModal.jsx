@@ -6,7 +6,7 @@ import Papa from "papaparse";
 import supabase from "../SupabaseClient";
 import { useDispatch } from "react-redux";
 import { assignTaskInTable } from "../redux/slice/assignTaskSlice";
-import { sendTaskAssignmentNotification } from "../services/whatsappService";
+import { sendTaskAssignmentNotification } from "../services/emailService";
 
 const FREQUENCY_OPTIONS = [
   "One Time (No Recurrence)", "Alternate Day", "Daily", "Weekly",

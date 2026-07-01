@@ -29,7 +29,8 @@ import {
 import TaskManagementTabs from "../../components/TaskManagementTabs";
 import { customDropdownDetails } from "../../redux/slice/settingSlice";
 import { updateRepairData } from "../../redux/api/repairApi";
-import { sendTaskExtensionNotification, sendUrgentTaskNotification } from "../../services/whatsappService";
+import { sendUrgentTaskNotification } from "../../services/whatsappService";
+import { sendTaskExtensionNotification } from "../../services/emailService";
 import AudioPlayer from "../../components/AudioPlayer";
 import { useMagicToast } from "../../context/MagicToastContext";
 import RenderDescription from "../../components/RenderDescription";

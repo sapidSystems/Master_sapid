@@ -40,6 +40,7 @@
     "react-speech-recognition": "^4.0.1",
     "recharts": "^2.15.1",
     "regenerator-runtime": "^0.14.0",
+    "resend": "^6.16.0",
     "shadcn-ui": "^0.9.5",
     "tailwind-variants": "^0.3.1",
     "tailwindcss-animate": "^1.0.7",

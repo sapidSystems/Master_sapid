@@ -12,7 +12,7 @@ import { assignTaskInTable, uniqueDepartmentData, uniqueDoerNameData, uniqueGive
 import { customDropdownDetails } from "../../redux/slice/settingSlice";
 import supabase from "../../SupabaseClient";
 import CalendarComponent from "../../components/CalendarComponent";
-import { sendTaskAssignmentNotification } from "../../services/whatsappService";
+import { sendTaskAssignmentNotification } from "../../services/emailService";
 import { useMagicToast } from "../../context/MagicToastContext";
 
 const formatDate = (date) => date ? date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "";

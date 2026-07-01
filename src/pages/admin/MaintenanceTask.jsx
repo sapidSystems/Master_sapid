@@ -9,7 +9,8 @@ import { customDropdownDetails } from "../../redux/slice/settingSlice";
 import { maintenanceData } from "../../redux/slice/maintenanceSlice";
 import supabase from "../../SupabaseClient";
 import CalendarComponent from "../../components/CalendarComponent";
-import { sendTaskAssignmentNotification, sendUrgentTaskNotification } from "../../services/whatsappService";
+import { sendUrgentTaskNotification } from "../../services/whatsappService";
+import { sendTaskAssignmentNotification } from "../../services/emailService";
 import AudioPlayer from "../../components/AudioPlayer";
 import { useMagicToast } from "../../context/MagicToastContext";
 

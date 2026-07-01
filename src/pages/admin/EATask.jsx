@@ -8,7 +8,7 @@ import supabase from "../../SupabaseClient";
 import { useDispatch, useSelector } from "react-redux";
 import { userDetails } from "../../redux/slice/settingSlice";
 import CalendarComponent from "../../components/CalendarComponent";
-import { sendTaskAssignmentNotification } from "../../services/whatsappService";
+import { sendTaskAssignmentNotification } from "../../services/emailService";
 import { useMagicToast } from "../../context/MagicToastContext";
 
 

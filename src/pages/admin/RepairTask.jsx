@@ -8,7 +8,7 @@ import { uniqueGivenByData } from "../../redux/slice/assignTaskSlice";
 import { customDropdownDetails, userDetails } from "../../redux/slice/settingSlice";
 import { ReactMediaRecorder } from "react-media-recorder";
 import supabase from "../../SupabaseClient";
-import { sendTaskAssignmentNotification } from "../../services/whatsappService";
+import { sendTaskAssignmentNotification } from "../../services/emailService";
 import AudioPlayer from "../../components/AudioPlayer";
 import { useMagicToast } from "../../context/MagicToastContext";
 
