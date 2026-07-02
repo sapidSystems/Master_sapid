@@ -974,10 +974,13 @@ const AllTasks = () => {
           }
         } else {
           // Original logic for other task types
+          const task = tasks.find(t => t.id === id || t.task_id === id);
+          const currentStatus = statusData[id] || ((activeTab === "checklist" || activeTab === "delegation") ? "yes" : "Done");
+
           const updates = {
             [completionField]: new Date(new Date().getTime() + (330 * 60000)).toISOString().replace('Z', '+05:30'),
             [remarksField]: remarksData[id] || null,
-            status: statusData[id] || ((activeTab === "checklist" || activeTab === "delegation") ? "yes" : "Done"),
+            status: currentStatus,
             admin_done: false
           };
           if (imageUrl) {
@@ -989,6 +992,24 @@ const AllTasks = () => {
 
           const { error: updateError } = await supabase.from(tableName).update(updates).eq(idKey, id);
           if (updateError) throw updateError;
+
+          // Send email notification for task extensions in delegation/checklist tabs
+          if ((activeTab === 'delegation' || activeTab === 'checklist') && currentStatus === 'extend' && task) {
+            const extendDate = task.next_extend_date
+              ? new Date(task.next_extend_date).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+              : 'N/A';
+            try {
+              await sendTaskExtensionNotification({
+                doerName: task.name || task.assigned_person,
+                taskId: task.task_id || task.id,
+                givenBy: task.given_by,
+                description: task.task_description,
+                nextExtendDate: extendDate,
+              });
+            } catch (emailErr) {
+              console.error("Email extension notification failed for delegation/checklist:", emailErr);
+            }
+          }
         }
 
       });

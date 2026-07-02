@@ -24,7 +24,8 @@ import {
   delegationData,
 } from "../redux/slice/delegationSlice";
 import { insertDelegationDoneAndUpdate } from "../redux/api/delegationApi";
-import { sendUrgentTaskNotification, sendTaskExtensionNotification } from "../services/whatsappService";
+import { sendUrgentTaskNotification, sendTaskExtensionNotification as sendWATaskExtensionNotification } from "../services/whatsappService";
+import { sendTaskExtensionNotification as sendEmailTaskExtensionNotification } from "../services/emailService";
 import { useMagicToast } from "../context/MagicToastContext";
 import RenderDescription, { MediaViewer } from "../components/RenderDescription";
 import logo from "../assets/nutech.jpeg";
@@ -762,19 +763,29 @@ function DelegationDataPage() {
         const results = action.payload;
         const failedTasks = results.filter(r => r.status === 'error');
 
-        // Send WhatsApp notifications for extensions
+        // Send notifications (WhatsApp + Email) for extensions
         for (const task of selectedData) {
           if (task.status === 'extend' && task.next_extend_date) {
+            const notifyPayload = {
+              doerName: task.name,
+              taskId: task.id,
+              description: task.task_description,
+              nextExtendDate: formatDateToDDMMYYYY(new Date(task.next_extend_date)),
+              givenBy: task.given_by || username
+            };
+
+            // WhatsApp notification
             try {
-              await sendTaskExtensionNotification({
-                doerName: task.name,
-                taskId: task.id,
-                description: task.task_description,
-                nextExtendDate: formatDateToDDMMYYYY(new Date(task.next_extend_date)),
-                givenBy: task.given_by || username
-              });
+              await sendWATaskExtensionNotification(notifyPayload);
             } catch (waErr) {
               console.error("WhatsApp extension notification failed:", waErr);
+            }
+
+            // Email notification
+            try {
+              await sendEmailTaskExtensionNotification(notifyPayload);
+            } catch (emailErr) {
+              console.error("Email extension notification failed:", emailErr);
             }
           }
         }

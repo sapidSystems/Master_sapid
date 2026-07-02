@@ -206,17 +206,24 @@ export const sendDelegationTaskNotification = async (taskDetails) => {
  * Send task extension notification
  */
 export const sendTaskExtensionNotification = async (taskDetails) => {
+  console.info('✉️ [emailService.sendTaskExtensionNotification] Invoked with task details:', JSON.stringify(taskDetails, null, 2));
   try {
     const { doerName } = taskDetails;
     const email = await getUserEmail(doerName);
+    console.info(`✉️ [emailService.sendTaskExtensionNotification] Resolved email for "${doerName}": "${email}"`);
     if (!email) {
-      console.warn(`No email found for user: ${doerName}`);
+      console.warn(`⚠️ [emailService.sendTaskExtensionNotification] No email found in database for user: "${doerName}"`);
       return false;
     }
-    await sendTaskExtensionEmail(email, taskDetails);
+    const result = await sendTaskExtensionEmail(email, taskDetails);
+    console.info('✉️ [emailService.sendTaskExtensionNotification] Email API invocation result:', JSON.stringify(result, null, 2));
+    if (result && result.error) {
+      console.error('❌ [emailService.sendTaskExtensionNotification] Resend API returned error:', result.error);
+      return false;
+    }
     return true;
   } catch (error) {
-    console.error('Error sending extension email:', error);
+    console.error('❌ [emailService.sendTaskExtensionNotification] Error sending extension email:', error);
     return false;
   }
 };
