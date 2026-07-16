@@ -238,28 +238,44 @@ export default function ProductionPlanning() {
   const [itemsPerPage, setItemsPerPage] = useState(15);
 
   const getStageColorClass = (plannedDate, actualDate, isHistory) => {
-    if (actualDate || isHistory) {
-      return "bg-green-200 text-green-800 font-bold";
-    }
     if (!plannedDate) return "text-gray-700";
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
     const pDate = new Date(plannedDate);
     pDate.setHours(0, 0, 0, 0);
 
-    const diffDays = Math.ceil((pDate - today) / (1000 * 60 * 60 * 24));
+    if (actualDate) {
+      const aDate = new Date(actualDate);
+      aDate.setHours(0, 0, 0, 0);
+
+      const diffTime = aDate - pDate;
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays > 0) {
+        // actual date is after plan date -> red because Delay is there
+        return "bg-red-200 text-red-800 font-bold border border-red-300";
+      } else {
+        // no delay -> green
+        return "bg-green-200 text-green-800 font-bold border border-green-300";
+      }
+    }
+
+    // If actualDate is not set, compare plannedDate with today
+    const diffTime = pDate - today;
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays < 0) {
-      return "bg-red-200 text-red-800 font-bold";
+      // plan date already passed -> Red
+      return "bg-red-200 text-red-800 font-bold border border-red-300";
     }
-    if (diffDays === 0) {
-      return "bg-green-200 text-green-800 font-bold";
+    if (diffDays >= 0 && diffDays <= 5) {
+      // plan date within 5 days from today -> orange
+      return "bg-orange-200 text-orange-800 font-bold border border-orange-300";
     }
-    if (diffDays > 0 && diffDays <= 5) {
-      return "bg-orange-200 text-orange-800 font-bold";
-    }
-    return "text-gray-700";
+    // more than 5 days -> white
+    return "bg-white text-gray-800 border border-gray-200";
   };
 
   const [formData, setFormData] = useState({
@@ -425,13 +441,38 @@ export default function ProductionPlanning() {
       setShowFollowUpModal(false);
 
       if (allStagesComplete && !selectedLead.isHistory) {
-        toast.success(`All stages complete! ${selectedLead.woNo} moved to History.`);
+        toast.success(`All stages complete! ${selectedLead.woNo} marked as Completed.`);
       } else {
         toast.success(`Update saved for ${selectedLead.woNo}.`);
       }
     } catch (err) {
       console.error('Error saving follow up:', err);
       toast.error('Failed to save update to database');
+    }
+  };
+
+  const handleDeleteLead = async (leadId) => {
+    if (!canWrite) {
+      toast.error('You do not have write permissions for this page');
+      return;
+    }
+    if (!window.confirm('Are you sure you want to delete this production plan?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('sample_system_product_planning')
+        .delete()
+        .eq('id', leadId);
+
+      if (error) throw error;
+
+      setLeads(prev => prev.filter(l => l.id !== leadId));
+      toast.success('Production Plan deleted successfully!');
+    } catch (err) {
+      console.error('Error deleting production plan:', err);
+      toast.error('Failed to delete production plan from database');
     }
   };
 
@@ -526,7 +567,7 @@ export default function ProductionPlanning() {
                 : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
               }`}
           >
-            History ({leads.filter(l => l.isHistory).length})
+            Completed ({leads.filter(l => l.isHistory).length})
           </button>
 
           {/* Search & Mobile Add & Filter */}
@@ -907,9 +948,18 @@ export default function ProductionPlanning() {
                       </div>
                       <div className="text-right flex flex-col gap-1 items-end">
                         {activeTab === 'pending' && canWrite && (
-                          <button onClick={() => handleOpenFollowUp(lead)} className="px-2 py-1 bg-indigo-50 text-indigo-600 rounded text-[10px] font-bold uppercase hover:bg-indigo-100 transition shadow-sm border border-indigo-200">
-                            Update
-                          </button>
+                          <div className="flex gap-2">
+                            <button onClick={() => handleOpenFollowUp(lead)} className="px-2 py-1 bg-indigo-50 text-indigo-600 rounded text-[10px] font-bold uppercase hover:bg-indigo-100 transition shadow-sm border border-indigo-200">
+                              Update
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteLead(lead.id)} 
+                              className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition border border-red-200 shadow-sm"
+                              title="Delete Plan"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
                         )}
                         {visibleColumns.qty && (
                           <span className="px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-blue-50 text-blue-700">
@@ -1039,9 +1089,16 @@ export default function ProductionPlanning() {
                       return (
                         <tr key={lead.id} className={`border-b border-gray-200 hover:bg-gray-50 transition-colors bg-white`}>
                           {activeTab === 'pending' && canWrite && (
-                            <td className="px-4 py-3 text-left text-sm whitespace-nowrap bg-white/50">
+                            <td className="px-4 py-3 text-left text-sm whitespace-nowrap bg-white/50 flex gap-2">
                               <button onClick={() => handleOpenFollowUp(lead)} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-md text-[11px] font-bold uppercase hover:bg-indigo-100 transition shadow-sm border border-indigo-200">
                                 Update
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteLead(lead.id)} 
+                                className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition border border-red-200 shadow-sm"
+                                title="Delete Plan"
+                              >
+                                <Trash2 size={14} />
                               </button>
                             </td>
                           )}
@@ -1058,9 +1115,9 @@ export default function ProductionPlanning() {
                             return (
                               <React.Fragment key={stage}>
                                 {visibleColumns[`${stage}_plannedDate`] && <td className={`px-4 py-3 text-left text-sm whitespace-nowrap ${getStageColorClass(stageData.plannedDate, stageData.actualDate, lead.isHistory)}`}>{formatDate(stageData.plannedDate)}</td>}
-                                {visibleColumns[`${stage}_actualDate`] && <td className="px-4 py-3 text-left text-sm text-gray-700 whitespace-nowrap">{formatDate(stageData.actualDate)}</td>}
-                                {visibleColumns[`${stage}_timeDelay`] && <td className="px-4 py-3 text-left text-sm text-gray-700 whitespace-nowrap">{getTimeDelay(stageData.plannedDate, stageData.actualDate)}</td>}
-                                {visibleColumns[`${stage}_remarks`] && <td className="px-4 py-3 text-left text-sm text-gray-500 max-w-[200px] truncate">{stageData.remarks || '-'}</td>}
+                                {visibleColumns[`${stage}_actualDate`] && <td className={`px-4 py-3 text-left text-sm whitespace-nowrap ${getStageColorClass(stageData.plannedDate, stageData.actualDate, lead.isHistory)}`}>{formatDate(stageData.actualDate)}</td>}
+                                {visibleColumns[`${stage}_timeDelay`] && <td className={`px-4 py-3 text-left text-sm whitespace-nowrap ${getStageColorClass(stageData.plannedDate, stageData.actualDate, lead.isHistory)}`}>{getTimeDelay(stageData.plannedDate, stageData.actualDate)}</td>}
+                                {visibleColumns[`${stage}_remarks`] && <td className={`px-4 py-3 text-left text-sm max-w-[200px] truncate ${getStageColorClass(stageData.plannedDate, stageData.actualDate, lead.isHistory)}`}>{stageData.remarks || '-'}</td>}
                               </React.Fragment>
                             );
                           })}
