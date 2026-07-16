@@ -152,6 +152,7 @@ export default function SampleManagement() {
   };
   const [leads, setLeads] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [canWrite, setCanWrite] = useState(true);
 
   const fetchLeads = async () => {
     try {
@@ -173,6 +174,15 @@ export default function SampleManagement() {
 
   useEffect(() => {
     fetchLeads();
+
+    const role = (localStorage.getItem("role") || "").toLowerCase();
+    if (role === "admin") {
+      setCanWrite(true);
+    } else {
+      const pageAccess = JSON.parse(localStorage.getItem("page_access") || "{}");
+      const permission = pageAccess["/dashboard/sample-management"];
+      setCanWrite(permission === "write");
+    }
   }, []);
   const [showFormModal, setShowFormModal] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
@@ -282,6 +292,10 @@ export default function SampleManagement() {
 
   const handleSaveFollowUp = async (e) => {
     e.preventDefault();
+    if (!canWrite) {
+      toast.error('You do not have write permissions for this page');
+      return;
+    }
     if (!selectedLead) return;
 
     const updatedLead = {
@@ -311,6 +325,10 @@ export default function SampleManagement() {
 
   const handleSaveLead = async (e) => {
     e.preventDefault();
+    if (!canWrite) {
+      toast.error('You do not have write permissions for this page');
+      return;
+    }
     if (!formData.sampleWONo.trim() || !formData.buyerCoder.trim() || !formData.qty.trim() || !formData.requirementDate.trim() || !formData.type) {
       toast.error('Please fill required fields (Sample W/O No, Buyer Code, Qty, Type, Requirement Date)');
       return;
@@ -406,12 +424,14 @@ export default function SampleManagement() {
               <Filter size={14} />
             </button>
             
-            <button
-               onClick={handleOpenAddModal}
-               className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center justify-center lg:hidden h-[32px] w-[32px] flex-shrink-0 shadow-sm transition"
-            >
-              <Plus size={16} />
-            </button>
+            {canWrite && (
+              <button
+                 onClick={handleOpenAddModal}
+                 className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center justify-center lg:hidden h-[32px] w-[32px] flex-shrink-0 shadow-sm transition"
+              >
+                <Plus size={16} />
+              </button>
+            )}
           </div>
 
           {/* Filters */}
@@ -479,7 +499,7 @@ export default function SampleManagement() {
           </div>
 
           {/* Desktop Add Button */}
-          {activeTab === 'pending' && (
+          {activeTab === 'pending' && canWrite && (
             <button
                onClick={handleOpenAddModal}
                className="hidden lg:flex bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 h-[38px] rounded-lg font-semibold items-center justify-center gap-2 transition shadow-sm w-full lg:w-auto flex-shrink-0 whitespace-nowrap"
@@ -639,7 +659,7 @@ export default function SampleManagement() {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center z-50 p-2 md:p-4">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[95vh] md:max-h-[90vh] flex flex-col overflow-hidden">
               <div className="p-3 md:p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 flex-shrink-0">
-                <h2 className="text-base md:text-lg font-bold text-gray-900">Update Lead {selectedLead.sampleWONo}</h2>
+                <h2 className="text-base md:text-lg font-bold text-gray-900">{canWrite ? 'Update Lead' : 'View Lead'} {selectedLead.sampleWONo}</h2>
                 <button type="button" onClick={() => setShowFollowUpModal(false)} className="text-gray-400 hover:text-red-500 transition-colors">
                   <X size={20} className="md:w-6 md:h-6" />
                 </button>
@@ -701,8 +721,9 @@ export default function SampleManagement() {
                         <input
                           type="date"
                           value={followUpFormData.sampleWOHandoverDate}
+                          disabled={!canWrite}
                           onChange={(e) => setFollowUpFormData({ ...followUpFormData, sampleWOHandoverDate: e.target.value })}
-                          className="w-full border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-[11px] md:text-xs bg-white h-[30px] md:h-[34px]"
+                          className="w-full border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-[11px] md:text-xs bg-white h-[30px] md:h-[34px] disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-200"
                         />
                       </div>
 
@@ -711,8 +732,9 @@ export default function SampleManagement() {
                         <input
                           type="date"
                           value={followUpFormData.expectedCompletionDate}
+                          disabled={!canWrite}
                           onChange={(e) => setFollowUpFormData({ ...followUpFormData, expectedCompletionDate: e.target.value })}
-                          className="w-full border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-[11px] md:text-xs bg-white h-[30px] md:h-[34px]"
+                          className="w-full border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-[11px] md:text-xs bg-white h-[30px] md:h-[34px] disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-200"
                         />
                       </div>
 
@@ -721,8 +743,9 @@ export default function SampleManagement() {
                         <input
                           type="date"
                           value={followUpFormData.actualCompletionDate}
+                          disabled={!canWrite}
                           onChange={(e) => setFollowUpFormData({ ...followUpFormData, actualCompletionDate: e.target.value })}
-                          className="w-full border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-[11px] md:text-xs bg-white h-[30px] md:h-[34px]"
+                          className="w-full border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-[11px] md:text-xs bg-white h-[30px] md:h-[34px] disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-200"
                         />
                       </div>
 
@@ -731,20 +754,29 @@ export default function SampleManagement() {
                         <input
                           type="date"
                           value={followUpFormData.dispatchSentDate}
+                          disabled={!canWrite}
                           onChange={(e) => setFollowUpFormData({ ...followUpFormData, dispatchSentDate: e.target.value })}
-                          className="w-full border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-[11px] md:text-xs bg-white h-[30px] md:h-[34px]"
+                          className="w-full border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-[11px] md:text-xs bg-white h-[30px] md:h-[34px] disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-200"
                         />
                       </div>
                     </div>
                   </div>
 
                   <div className="flex gap-2 pt-2">
-                    <button type="submit" className="flex-1 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white font-semibold py-2 px-6 rounded-lg hover:from-indigo-600 hover:to-indigo-700 transition shadow-sm text-sm flex items-center justify-center gap-2">
-                      Save Updates
-                    </button>
-                    <button type="button" onClick={() => setShowFollowUpModal(false)} className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition font-medium text-sm bg-white">
-                      Cancel
-                    </button>
+                    {canWrite ? (
+                      <>
+                        <button type="submit" className="flex-1 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white font-semibold py-2 px-6 rounded-lg hover:from-indigo-600 hover:to-indigo-700 transition shadow-sm text-sm flex items-center justify-center gap-2">
+                          Save Updates
+                        </button>
+                        <button type="button" onClick={() => setShowFollowUpModal(false)} className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition font-medium text-sm bg-white">
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <button type="button" onClick={() => setShowFollowUpModal(false)} className="flex-1 bg-gray-100 text-gray-700 font-semibold py-2 px-6 rounded-lg hover:bg-gray-200 transition shadow-sm text-sm">
+                        Close
+                      </button>
+                    )}
                   </div>
                 </form>
               </div>
@@ -855,7 +887,7 @@ export default function SampleManagement() {
                       onClick={() => handleOpenFollowUp(lead)}
                       className="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold py-1.5 rounded text-xs transition"
                     >
-                      Update
+                      {canWrite ? 'Update' : 'View Details'}
                     </button>
                   </div>
                 )}
@@ -874,7 +906,7 @@ export default function SampleManagement() {
             <table className="w-full min-w-[900px] relative">
               <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10 shadow-sm">
                 <tr>
-                  {activeTab === 'pending' && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 w-24 whitespace-nowrap">Action</th>}
+                  {activeTab === 'pending' && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 w-24 whitespace-nowrap">{canWrite ? 'Action' : 'View'}</th>}
                   {visibleColumns.buyerCoder && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Buyer Code</th>}
                   {visibleColumns.receiptDate && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Enquiry Receipt Date</th>}
                   {visibleColumns.productName && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Description of Enquiry</th>}
@@ -902,7 +934,7 @@ export default function SampleManagement() {
                           onClick={() => handleOpenFollowUp(lead)}
                           className="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 text-xs font-semibold py-1.5 px-3 rounded-md transition-colors whitespace-nowrap"
                         >
-                          Update
+                          {canWrite ? 'Update' : 'View'}
                         </button>
                       </td>
                     )}

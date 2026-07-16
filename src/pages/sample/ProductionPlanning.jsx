@@ -166,6 +166,7 @@ export default function ProductionPlanning() {
   const [activeTab, setActiveTab] = useState('pending');
   const [leads, setLeads] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [canWrite, setCanWrite] = useState(true);
 
   const fetchLeads = async () => {
     try {
@@ -187,6 +188,15 @@ export default function ProductionPlanning() {
 
   useEffect(() => {
     fetchLeads();
+
+    const role = (localStorage.getItem("role") || "").toLowerCase();
+    if (role === "admin") {
+      setCanWrite(true);
+    } else {
+      const pageAccess = JSON.parse(localStorage.getItem("page_access") || "{}");
+      const permission = pageAccess["/dashboard/bulk-order"];
+      setCanWrite(permission === "write");
+    }
   }, []);
 
   const [showFormModal, setShowFormModal] = useState(false);
@@ -308,6 +318,10 @@ export default function ProductionPlanning() {
 
   const handleSaveLead = async (e) => {
     e.preventDefault();
+    if (!canWrite) {
+      toast.error('You do not have write permissions for this page');
+      return;
+    }
     if (!formData.woNo.trim() || !formData.buyer.trim() || !formData.qty.trim()) {
       toast.error('Please fill required fields (W/O No, Buyer, Quantity)');
       return;
@@ -342,7 +356,7 @@ export default function ProductionPlanning() {
 
   const handleOpenFollowUp = (lead) => {
     setSelectedLead(lead);
-    setIsViewMode(false);
+    setIsViewMode(!canWrite);
     setIsEditingShipmentDate(false);
 
     let stages = lead.stages;
@@ -371,6 +385,10 @@ export default function ProductionPlanning() {
 
   const handleSaveFollowUp = async (e) => {
     e.preventDefault();
+    if (!canWrite) {
+      toast.error('You do not have write permissions for this page');
+      return;
+    }
     if (!selectedLead) return;
 
     const limitDate = followUpFormData.woDespatchDate || selectedLead?.woDespatchDate;
@@ -531,12 +549,14 @@ export default function ProductionPlanning() {
               <Filter size={14} />
             </button>
 
-            <button
-              onClick={handleOpenAddModal}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center justify-center lg:hidden h-[32px] w-[32px] flex-shrink-0 shadow-sm transition"
-            >
-              <Plus size={16} />
-            </button>
+            {canWrite && (
+              <button
+                onClick={handleOpenAddModal}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center justify-center lg:hidden h-[32px] w-[32px] flex-shrink-0 shadow-sm transition"
+              >
+                <Plus size={16} />
+              </button>
+            )}
           </div>
 
           {/* Filters */}
@@ -604,12 +624,14 @@ export default function ProductionPlanning() {
           </div>
 
           {/* Desktop Add Button */}
-          <button
-            onClick={handleOpenAddModal}
-            className="hidden lg:flex bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 h-[38px] rounded-lg font-semibold items-center justify-center gap-2 transition shadow-sm w-full lg:w-auto flex-shrink-0 whitespace-nowrap"
-          >
-            <Plus size={16} /> Add Order
-          </button>
+          {canWrite && (
+            <button
+              onClick={handleOpenAddModal}
+              className="hidden lg:flex bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 h-[38px] rounded-lg font-semibold items-center justify-center gap-2 transition shadow-sm w-full lg:w-auto flex-shrink-0 whitespace-nowrap"
+            >
+              <Plus size={16} /> Add Order
+            </button>
+          )}
         </div>
 
         {/* Form Section Modal */}
@@ -884,7 +906,7 @@ export default function ProductionPlanning() {
                         {visibleColumns.buyer && <h3 className="font-bold text-gray-900 text-sm leading-tight">{lead.buyer}</h3>}
                       </div>
                       <div className="text-right flex flex-col gap-1 items-end">
-                        {activeTab === 'pending' && (
+                        {activeTab === 'pending' && canWrite && (
                           <button onClick={() => handleOpenFollowUp(lead)} className="px-2 py-1 bg-indigo-50 text-indigo-600 rounded text-[10px] font-bold uppercase hover:bg-indigo-100 transition shadow-sm border border-indigo-200">
                             Update
                           </button>
@@ -985,7 +1007,7 @@ export default function ProductionPlanning() {
                 <table className="w-full min-w-[900px] relative">
                   <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10 shadow-sm">
                     <tr>
-                      {activeTab === 'pending' && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap bg-gray-50 z-20">Action</th>}
+                      {activeTab === 'pending' && canWrite && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap bg-gray-50 z-20">Action</th>}
                       {visibleColumns.woNo && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">W/O No</th>}
                       {visibleColumns.buyer && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Buyer Code</th>}
                       {visibleColumns.woDate && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">W/O Date</th>}
@@ -1016,7 +1038,7 @@ export default function ProductionPlanning() {
 
                       return (
                         <tr key={lead.id} className={`border-b border-gray-200 hover:bg-gray-50 transition-colors bg-white`}>
-                          {activeTab === 'pending' && (
+                          {activeTab === 'pending' && canWrite && (
                             <td className="px-4 py-3 text-left text-sm whitespace-nowrap bg-white/50">
                               <button onClick={() => handleOpenFollowUp(lead)} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-md text-[11px] font-bold uppercase hover:bg-indigo-100 transition shadow-sm border border-indigo-200">
                                 Update

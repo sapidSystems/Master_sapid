@@ -123,7 +123,7 @@ const Setting = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [profileFile, setProfileFile] = useState(null);
   const [profilePreview, setProfilePreview] = useState(null);
-  
+
   // Cleanup State
   const [showCleanupModal, setShowCleanupModal] = useState(false);
   const [cleanupDays, setCleanupDays] = useState(45);
@@ -180,7 +180,7 @@ const Setting = () => {
           .from('dropdown_options')
           .update({ task_status: reminderTime })
           .eq('id', existing.id);
-        
+
         if (updateError) throw updateError;
       } else {
         // Insert
@@ -190,7 +190,7 @@ const Setting = () => {
             project_type: 'daily_reminder_time',
             task_status: reminderTime
           }]);
-          
+
         if (insertError) throw insertError;
       }
 
@@ -558,7 +558,7 @@ const Setting = () => {
     try {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - days);
-      const cutoffDateString = cutoffDate.toISOString().split('T')[0]; 
+      const cutoffDateString = cutoffDate.toISOString().split('T')[0];
 
       const { data, error } = await supabase
         .from('checklist')
@@ -603,7 +603,7 @@ const Setting = () => {
   const handleDownloadTemplate = () => {
     let ws;
     let filename = '';
-    
+
     if (activeTab === 'users') {
       ws = XLSX.utils.json_to_sheet([
         {
@@ -646,7 +646,7 @@ const Setting = () => {
     } else {
       return;
     }
-    
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Template");
     XLSX.writeFile(wb, filename);
@@ -680,7 +680,7 @@ const Setting = () => {
         if (activeTab === 'users') {
           for (const row of jsonData) {
             if (!row.username) continue;
-            
+
             const generatedEmpId = `EMP-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 1000)}`;
             const newUser = {
               username: row.username,
@@ -707,40 +707,40 @@ const Setting = () => {
           dispatch(userDetails());
         } else if (activeTab === 'departments') {
           if (activeDeptSubTab === 'departments') {
-             for (const row of jsonData) {
-                if (!row.department) continue;
-                try {
-                  await dispatch(createDepartment({
-                    department: row.department,
-                    given_by: row.given_by || ''
-                  })).unwrap();
-                  if (row.given_by) {
-                    try { await dispatch(createAssignFrom({ given_by: row.given_by })).unwrap(); } catch(e){}
-                  }
-                  successCount++;
-                } catch (err) { failCount++; }
-             }
-             dispatch(departmentDetails());
+            for (const row of jsonData) {
+              if (!row.department) continue;
+              try {
+                await dispatch(createDepartment({
+                  department: row.department,
+                  given_by: row.given_by || ''
+                })).unwrap();
+                if (row.given_by) {
+                  try { await dispatch(createAssignFrom({ given_by: row.given_by })).unwrap(); } catch (e) { }
+                }
+                successCount++;
+              } catch (err) { failCount++; }
+            }
+            dispatch(departmentDetails());
           } else {
-             for (const row of jsonData) {
-                if (!row.given_by) continue;
-                try {
-                  await dispatch(createAssignFrom({ given_by: row.given_by })).unwrap();
-                  successCount++;
-                } catch (err) { failCount++; }
-             }
-             dispatch(givenByDetails());
+            for (const row of jsonData) {
+              if (!row.given_by) continue;
+              try {
+                await dispatch(createAssignFrom({ given_by: row.given_by })).unwrap();
+                successCount++;
+              } catch (err) { failCount++; }
+            }
+            dispatch(givenByDetails());
           }
         } else if (activeTab === 'categories') {
           for (const row of jsonData) {
             if (!row.machine_name) continue;
             try {
-               await dispatch(createMachineEntries([{
-                 machine_name: row.machine_name,
-                 part_name: row.part_name || null,
-                 machine_area: row.machine_area || ''
-               }])).unwrap();
-               successCount++;
+              await dispatch(createMachineEntries([{
+                machine_name: row.machine_name,
+                part_name: row.part_name || null,
+                machine_area: row.machine_area || ''
+              }])).unwrap();
+              successCount++;
             } catch (err) { failCount++; }
           }
           dispatch(customDropdownDetails());
@@ -1388,24 +1388,24 @@ const Setting = () => {
                   </button>
                   <button
                     onClick={() => {
-                    if (activeTab === 'categories') {
-                      resetDeptForm();
-                      setShowDeptModal(true);
-                    } else {
-                      handleAddButtonClick();
-                    }
-                  }}
-                  className="flex-1 sm:flex-none justify-center flex items-center gap-1.5 px-3 py-2 md:px-5 md:py-2.5 bg-purple-600 text-white rounded-lg font-bold shadow-md hover:bg-purple-700 transition-all text-xs md:text-sm"
-                >
-                  <Plus size={16} className="md:w-[18px] md:h-[18px]" />
-                  <span className="hidden sm:inline">
-                    {activeTab === 'users' ? 'New User' :
-                      activeTab === 'departments' ?
-                        (activeDeptSubTab === 'departments' ? 'New Department' : 'New Assign From') :
-                        'New Machine'}
-                  </span>
-                  <span className="sm:hidden">Add</span>
-                </button>
+                      if (activeTab === 'categories') {
+                        resetDeptForm();
+                        setShowDeptModal(true);
+                      } else {
+                        handleAddButtonClick();
+                      }
+                    }}
+                    className="flex-1 sm:flex-none justify-center flex items-center gap-1.5 px-3 py-2 md:px-5 md:py-2.5 bg-purple-600 text-white rounded-lg font-bold shadow-md hover:bg-purple-700 transition-all text-xs md:text-sm"
+                  >
+                    <Plus size={16} className="md:w-[18px] md:h-[18px]" />
+                    <span className="hidden sm:inline">
+                      {activeTab === 'users' ? 'New User' :
+                        activeTab === 'departments' ?
+                          (activeDeptSubTab === 'departments' ? 'New Department' : 'New Assign From') :
+                          'New Machine'}
+                    </span>
+                    <span className="sm:hidden">Add</span>
+                  </button>
                 </div>
               )}
             </div>
@@ -2309,15 +2309,15 @@ const Setting = () => {
                                                 <div className="flex gap-1.5 ml-1 opacity-100 lg:opacity-0 group-hover/part:opacity-100 transition-opacity">
                                                   <label className="text-blue-400 hover:text-blue-600 cursor-pointer flex items-center justify-center p-0.5" title="Edit part image">
                                                     <Edit size={12} />
-                                                    <input 
-                                                      type="file" 
-                                                      accept="image/*" 
-                                                      className="hidden" 
+                                                    <input
+                                                      type="file"
+                                                      accept="image/*"
+                                                      className="hidden"
                                                       onChange={(e) => {
                                                         const file = e.target.files[0];
-                                                        if(file) handleUpdatePartImage(file, part);
+                                                        if (file) handleUpdatePartImage(file, part);
                                                         e.target.value = null;
-                                                      }} 
+                                                      }}
                                                     />
                                                   </label>
                                                   <button
@@ -2407,15 +2407,15 @@ const Setting = () => {
                                           <div className="flex gap-1.5 ml-1">
                                             <label className="text-blue-400 hover:text-blue-600 cursor-pointer p-0.5 flex items-center justify-center">
                                               <Edit size={12} />
-                                              <input 
-                                                type="file" 
-                                                accept="image/*" 
-                                                className="hidden" 
+                                              <input
+                                                type="file"
+                                                accept="image/*"
+                                                className="hidden"
                                                 onChange={(e) => {
                                                   const file = e.target.files[0];
-                                                  if(file) handleUpdatePartImage(file, part);
+                                                  if (file) handleUpdatePartImage(file, part);
                                                   e.target.value = null;
-                                                }} 
+                                                }}
                                               />
                                             </label>
                                             <button
@@ -2517,7 +2517,7 @@ const Setting = () => {
               <div className="p-6 space-y-6">
                 <div>
                   <p className="text-sm text-gray-600 mb-3">Download the template, fill in your data, and upload the file.</p>
-                  
+
                   {/* Template Preview */}
                   <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
                     <div className="bg-gray-50 px-3 py-2 border-b border-gray-200">
@@ -2883,11 +2883,11 @@ const Setting = () => {
                     )}
 
                   </div>
-                  
+
                   {/* Page Access & Permissions Section */}
                   <div className="md:col-span-2 border-t border-gray-100 pt-6 mt-4">
                     <h4 className="text-sm font-black text-indigo-900 uppercase tracking-widest mb-4 px-1">Page Access & Permissions</h4>
-                    
+
                     <div className="overflow-x-auto border border-gray-100 rounded-2xl shadow-sm bg-white">
                       <table className="w-full text-left text-xs whitespace-nowrap border-collapse">
                         <thead className="bg-gray-50 border-b border-gray-100 text-gray-700 font-bold uppercase tracking-wider">
@@ -2960,7 +2960,7 @@ const Setting = () => {
                       </table>
                     </div>
                   </div>
-                  
+
                   <div className="mt-8 bg-gradient-to-br from-purple-50 to-indigo-50 p-6 rounded-[2rem] border border-purple-100/50 flex items-center justify-between group transition-all hover:shadow-xl hover:shadow-purple-100/30">
                     <div className="flex items-center gap-4">
                       <div className="h-12 w-12 rounded-2xl bg-white flex items-center justify-center text-purple-600 shadow-sm border border-purple-100 group-hover:scale-110 transition-transform">
@@ -2972,12 +2972,12 @@ const Setting = () => {
                       </div>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer scale-110">
-                      <input 
-                        type="checkbox" 
+                      <input
+                        type="checkbox"
                         name="can_self_assign"
                         checked={userForm.can_self_assign}
                         onChange={(e) => setUserForm(prev => ({ ...prev, can_self_assign: e.target.checked }))}
-                        className="sr-only peer" 
+                        className="sr-only peer"
                       />
                       <div className="w-12 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-purple-600 peer-checked:to-indigo-600"></div>
                     </label>
@@ -3432,7 +3432,7 @@ const Setting = () => {
                         showToast(`Successfully purged ${count} old checklist records.`, "success");
                         setShowDangerPopup(false);
                         // Refresh data if needed or stay on settings
-                        dispatch(userDetails()); 
+                        dispatch(userDetails());
                       } catch (err) {
                         console.error('Purge operation failed:', err);
                         showToast("Failed to purge records. Database error.", "error");
@@ -3459,7 +3459,7 @@ const Setting = () => {
 
                 <div className="mt-6 pt-4 border-t border-slate-100 text-center">
                   <p className="text-[9px] text-slate-400 font-medium italic">
-                    Note: This is a system-level administrative action. <br/>
+                    Note: This is a system-level administrative action. <br />
                     <span className="font-bold text-slate-500">Currently executing in Test Mode.</span>
                   </p>
                 </div>
