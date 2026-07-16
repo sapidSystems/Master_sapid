@@ -740,7 +740,7 @@ function DelegationDataPage() {
           task_start_date: ensureISO(item.task_start_date),
           planned_date: ensureISO(item.planned_date),
           status: dbStatus,
-          next_extend_date: statusData[id] === "Extend date" ? ensureISO(nextTargetDate[id] ? nextTargetDate[id] + "T23:00:00" : null) : null,
+          next_extend_date: statusData[id] === "Extend date" ? ensureISO(nextTargetDate[id] || null) : null,
           reason: remarksData[id] || "",
           duration: item.duration || "",
           image_url: uploadedImages[id] ? null : item.image,
@@ -1796,8 +1796,8 @@ function DelegationDataPage() {
                                   <td colSpan={13} className="px-6 py-2">
                                     <div className="flex items-center gap-2">
                                       <div className={`w-2 h-2 rounded-full ${task.timeStatus === "Overdue" ? "bg-red-500" :
-                                          task.timeStatus === "Today" ? "bg-amber-500" :
-                                            "bg-blue-500"
+                                        task.timeStatus === "Today" ? "bg-amber-500" :
+                                          "bg-blue-500"
                                         }`} />
                                       <span className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-500">
                                         {task.timeStatus} Tasks
@@ -1888,7 +1888,7 @@ function DelegationDataPage() {
                                 </td>
                                 <td className="px-2 sm:px-6 py-2 sm:py-4 bg-indigo-50">
                                   <input
-                                    type="date"
+                                    type="datetime-local"
                                     disabled={
                                       !isSelected ||
                                       statusData[task.id] !== "Extend date"
@@ -2047,12 +2047,12 @@ function DelegationDataPage() {
                         <Fragment key={index}>
                           {showHeader && (
                             <div className={`mt-4 mb-2 px-3 py-1 rounded-full w-fit text-[10px] font-black uppercase tracking-widest flex items-center gap-2 ${task.timeStatus === "Overdue" ? "bg-red-50 text-red-600 border border-red-100" :
-                                task.timeStatus === "Today" ? "bg-amber-50 text-amber-600 border border-amber-100" :
-                                  "bg-blue-50 text-blue-600 border border-blue-100"
+                              task.timeStatus === "Today" ? "bg-amber-50 text-amber-600 border border-amber-100" :
+                                "bg-blue-50 text-blue-600 border border-blue-100"
                               }`}>
                               <div className={`w-1.5 h-1.5 rounded-full ${task.timeStatus === "Overdue" ? "bg-red-500" :
-                                  task.timeStatus === "Today" ? "bg-amber-500" :
-                                    "bg-blue-500"
+                                task.timeStatus === "Today" ? "bg-amber-500" :
+                                  "bg-blue-500"
                                 }`} />
                               {task.timeStatus} Tasks
                             </div>
@@ -2124,7 +2124,7 @@ function DelegationDataPage() {
                                   <div className="space-y-1">
                                     <p className="text-[10px] text-gray-400 uppercase font-semibold">Next Target</p>
                                     <input
-                                      type="date"
+                                      type="datetime-local"
                                       disabled={!isSelected || statusData[task.id] !== "Extend date"}
                                       value={nextTargetDate[task.id] || ""}
                                       onChange={(e) => handleNextTargetDateChange(task.id, e.target.value)}

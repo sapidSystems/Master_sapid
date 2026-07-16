@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useMagicToast } from '../../context/MagicToastContext';
 import { Plus, Search, ChevronLeft, ChevronRight, X, Calendar, Edit2, Trash2, Filter } from 'lucide-react';
 import DraggableScroll from '../../components/DraggableScroll';
@@ -76,7 +76,7 @@ const generateDummyLeads = () => {
       currentStage: stg,
       isHistory: leadCounter % 2 === 0
     };
-
+    
     const stages = [
       'HANDOVER',
       'LEATHER IN-HOUSE',
@@ -236,6 +236,15 @@ export default function ProductionPlanning() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(15);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
 
   const getStageColorClass = (plannedDate, actualDate, isHistory) => {
     if (!plannedDate) return "text-gray-700";
@@ -312,7 +321,78 @@ export default function ProductionPlanning() {
     return true;
   });
 
-  const sortedLeads = [...filteredLeads].reverse();
+  const sortedLeads = useMemo(() => {
+    const list = [...filteredLeads];
+    if (sortConfig.key) {
+      list.sort((a, b) => {
+        let valA = a[sortConfig.key];
+        let valB = b[sortConfig.key];
+
+        // Resolve stage values
+        if (sortConfig.key.includes('_plannedDate')) {
+          const stageName = sortConfig.key.replace('_plannedDate', '');
+          const stageA = a.stages?.find(s => s.name === stageName);
+          const stageB = b.stages?.find(s => s.name === stageName);
+          valA = stageA ? stageA.plannedDate : '';
+          valB = stageB ? stageB.plannedDate : '';
+        } else if (sortConfig.key.includes('_actualDate')) {
+          const stageName = sortConfig.key.replace('_actualDate', '');
+          const stageA = a.stages?.find(s => s.name === stageName);
+          const stageB = b.stages?.find(s => s.name === stageName);
+          valA = stageA ? stageA.actualDate : '';
+          valB = stageB ? stageB.actualDate : '';
+        } else if (sortConfig.key.includes('_timeDelay')) {
+          const stageName = sortConfig.key.replace('_timeDelay', '');
+          const stageA = a.stages?.find(s => s.name === stageName);
+          const stageB = b.stages?.find(s => s.name === stageName);
+          const getDelay = (stage) => {
+            if (!stage || !stage.plannedDate) return 0;
+            const planned = new Date(stage.plannedDate).getTime();
+            const actual = stage.actualDate ? new Date(stage.actualDate).getTime() : new Date().getTime();
+            const diffTime = actual - planned;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            return diffDays > 0 ? diffDays : 0;
+          };
+          const delayA = getDelay(stageA);
+          const delayB = getDelay(stageB);
+          return sortConfig.direction === 'asc' ? delayA - delayB : delayB - delayA;
+        } else if (sortConfig.key.includes('_remarks')) {
+          const stageName = sortConfig.key.replace('_remarks', '');
+          const stageA = a.stages?.find(s => s.name === stageName);
+          const stageB = b.stages?.find(s => s.name === stageName);
+          valA = stageA ? stageA.remarks : '';
+          valB = stageB ? stageB.remarks : '';
+        }
+
+        // Handle numeric fields like qty
+        if (sortConfig.key === 'qty') {
+          const numA = Number(valA) || 0;
+          const numB = Number(valB) || 0;
+          return sortConfig.direction === 'asc' ? numA - numB : numB - numA;
+        }
+
+        // Handle date fields
+        const dateFields = [
+          'woDate', 'wResDate', 'woDespatchDate',
+          'plannedDate', 'actualDate'
+        ];
+        if (dateFields.includes(sortConfig.key) || sortConfig.key.includes('_plannedDate') || sortConfig.key.includes('_actualDate')) {
+          const dateA = valA ? new Date(valA).getTime() : 0;
+          const dateB = valB ? new Date(valB).getTime() : 0;
+          return sortConfig.direction === 'asc' ? dateA - dateB : dateB - dateA;
+        }
+
+        // Default string comparison
+        const strA = String(valA || '').toLowerCase();
+        const strB = String(valB || '').toLowerCase();
+        if (strA < strB) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (strA > strB) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+      return list;
+    }
+    return list.reverse(); // default behavior: reverse order (latest first)
+  }, [filteredLeads, sortConfig]);
   const totalPages = Math.ceil(sortedLeads.length / itemsPerPage);
   const paginatedLeads = sortedLeads.slice(
     (currentPage - 1) * itemsPerPage,
@@ -678,7 +758,7 @@ export default function ProductionPlanning() {
         {/* Form Section Modal */}
         {showFormModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center z-50 p-2 md:p-4">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[95vh] md:max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="bg-white  shadow-2xl w-full max-w-2xl max-h-[95vh] md:max-h-[90vh] flex flex-col overflow-hidden">
               <div className="p-3 md:p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 flex-shrink-0">
                 <h2 className="text-base md:text-lg font-bold text-gray-900">Add Order Entry</h2>
                 <button type="button" onClick={() => setShowFormModal(false)} className="text-gray-400 hover:text-red-500 transition-colors">
@@ -1057,26 +1137,170 @@ export default function ProductionPlanning() {
                 <table className="w-full min-w-[900px] relative">
                   <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10 shadow-sm">
                     <tr>
-                      {activeTab === 'pending' && canWrite && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap bg-gray-50 z-20">Action</th>}
-                      {visibleColumns.woNo && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">W/O No</th>}
-                      {visibleColumns.buyer && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Buyer Code</th>}
-                      {visibleColumns.woDate && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">W/O Date</th>}
-                      {visibleColumns.wResDate && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">W/O Received Date</th>}
-                      {visibleColumns.woDespatchDate && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">W/O Shipment Date</th>}
-                      {visibleColumns.qty && <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900 whitespace-nowrap">Qty</th>}
-                      {visibleColumns.remarks && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Remarks</th>}
+                      {activeTab === 'pending' && canWrite && <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 whitespace-nowrap bg-gray-50 z-20">Action</th>}
+                      {visibleColumns.woNo && (
+                        <th
+                          className="px-4 py-3 text-left text-xs font-semibold text-gray-900 whitespace-normal min-w-[90px] max-w-[120px] cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                          onClick={() => handleSort('woNo')}
+                        >
+                          <div className="flex items-center gap-1">
+                            W/O No
+                            <span className="text-[10px] text-gray-400">
+                              {sortConfig.key === 'woNo' ? (sortConfig.direction === 'asc' ? ' ▲' : ' ▼') : ' ↕'}
+                            </span>
+                          </div>
+                        </th>
+                      )}
+                      {visibleColumns.buyer && (
+                        <th
+                          className="px-4 py-3 text-left text-xs font-semibold text-gray-900 whitespace-normal min-w-[90px] max-w-[120px] cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                          onClick={() => handleSort('buyer')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Buyer Code
+                            <span className="text-[10px] text-gray-400">
+                              {sortConfig.key === 'buyer' ? (sortConfig.direction === 'asc' ? ' ▲' : ' ▼') : ' ↕'}
+                            </span>
+                          </div>
+                        </th>
+                      )}
+                      {visibleColumns.woDate && (
+                        <th
+                          className="px-4 py-3 text-left text-xs font-semibold text-gray-900 whitespace-normal min-w-[90px] max-w-[120px] cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                          onClick={() => handleSort('woDate')}
+                        >
+                          <div className="flex items-center gap-1">
+                            W/O Date
+                            <span className="text-[10px] text-gray-400">
+                              {sortConfig.key === 'woDate' ? (sortConfig.direction === 'asc' ? ' ▲' : ' ▼') : ' ↕'}
+                            </span>
+                          </div>
+                        </th>
+                      )}
+                      {visibleColumns.wResDate && (
+                        <th
+                          className="px-4 py-3 text-left text-xs font-semibold text-gray-900 whitespace-normal min-w-[110px] max-w-[150px] cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                          onClick={() => handleSort('wResDate')}
+                        >
+                          <div className="flex items-center gap-1">
+                            W/O Received Date
+                            <span className="text-[10px] text-gray-400">
+                              {sortConfig.key === 'wResDate' ? (sortConfig.direction === 'asc' ? ' ▲' : ' ▼') : ' ↕'}
+                            </span>
+                          </div>
+                        </th>
+                      )}
+                      {visibleColumns.woDespatchDate && (
+                        <th
+                          className="px-4 py-3 text-left text-xs font-semibold text-gray-900 whitespace-normal min-w-[110px] max-w-[150px] cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                          onClick={() => handleSort('woDespatchDate')}
+                        >
+                          <div className="flex items-center gap-1">
+                            W/O Shipment Date
+                            <span className="text-[10px] text-gray-400">
+                              {sortConfig.key === 'woDespatchDate' ? (sortConfig.direction === 'asc' ? ' ▲' : ' ▼') : ' ↕'}
+                            </span>
+                          </div>
+                        </th>
+                      )}
+                      {visibleColumns.qty && (
+                        <th
+                          className="px-4 py-3 text-center text-xs font-semibold text-gray-900 whitespace-normal cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                          onClick={() => handleSort('qty')}
+                        >
+                          <div className="flex items-center justify-center gap-1">
+                            Qty
+                            <span className="text-[10px] text-gray-400">
+                              {sortConfig.key === 'qty' ? (sortConfig.direction === 'asc' ? ' ▲' : ' ▼') : ' ↕'}
+                            </span>
+                          </div>
+                        </th>
+                      )}
+                      {visibleColumns.remarks && (
+                        <th
+                          className="px-4 py-3 text-left text-xs font-semibold text-gray-900 whitespace-normal min-w-[120px] max-w-[180px] cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                          onClick={() => handleSort('remarks')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Remarks
+                            <span className="text-[10px] text-gray-400">
+                              {sortConfig.key === 'remarks' ? (sortConfig.direction === 'asc' ? ' ▲' : ' ▼') : ' ↕'}
+                            </span>
+                          </div>
+                        </th>
+                      )}
 
                       {STAGES_LIST.map(stage => (
                         <React.Fragment key={stage}>
-                          {visibleColumns[`${stage}_plannedDate`] && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap bg-indigo-50/30">{stage} Planned Date</th>}
-                          {visibleColumns[`${stage}_actualDate`] && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap bg-indigo-50/30">{stage} Actual Date</th>}
-                          {visibleColumns[`${stage}_timeDelay`] && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap bg-indigo-50/30">{stage} Time Delay</th>}
-                          {visibleColumns[`${stage}_remarks`] && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap bg-indigo-50/30">{stage} Remarks</th>}
+                          {visibleColumns[`${stage}_plannedDate`] && (
+                            <th
+                              className="px-4 py-3 text-left text-xs font-semibold text-gray-900 whitespace-normal bg-indigo-50/30 min-w-[130px] max-w-[160px] cursor-pointer select-none hover:bg-indigo-100/50 transition-colors"
+                              onClick={() => handleSort(`${stage}_plannedDate`)}
+                            >
+                              <div className="flex items-center gap-1">
+                                {stage} Planned Date
+                                <span className="text-[10px] text-gray-400">
+                                  {sortConfig.key === `${stage}_plannedDate` ? (sortConfig.direction === 'asc' ? ' ▲' : ' ▼') : ' ↕'}
+                                </span>
+                              </div>
+                            </th>
+                          )}
+                          {visibleColumns[`${stage}_actualDate`] && (
+                            <th
+                              className="px-4 py-3 text-left text-xs font-semibold text-gray-900 whitespace-normal bg-indigo-50/30 min-w-[130px] max-w-[160px] cursor-pointer select-none hover:bg-indigo-100/50 transition-colors"
+                              onClick={() => handleSort(`${stage}_actualDate`)}
+                            >
+                              <div className="flex items-center gap-1">
+                                {stage} Actual Date
+                                <span className="text-[10px] text-gray-400">
+                                  {sortConfig.key === `${stage}_actualDate` ? (sortConfig.direction === 'asc' ? ' ▲' : ' ▼') : ' ↕'}
+                                </span>
+                              </div>
+                            </th>
+                          )}
+                          {visibleColumns[`${stage}_timeDelay`] && (
+                            <th
+                              className="px-4 py-3 text-left text-xs font-semibold text-gray-900 whitespace-normal bg-indigo-50/30 min-w-[100px] max-w-[130px] cursor-pointer select-none hover:bg-indigo-100/50 transition-colors"
+                              onClick={() => handleSort(`${stage}_timeDelay`)}
+                            >
+                              <div className="flex items-center gap-1">
+                                {stage} Time Delay
+                                <span className="text-[10px] text-gray-400">
+                                  {sortConfig.key === `${stage}_timeDelay` ? (sortConfig.direction === 'asc' ? ' ▲' : ' ▼') : ' ↕'}
+                                </span>
+                              </div>
+                            </th>
+                          )}
+                          {visibleColumns[`${stage}_remarks`] && (
+                            <th
+                              className="px-4 py-3 text-left text-xs font-semibold text-gray-900 whitespace-normal bg-indigo-50/30 min-w-[130px] max-w-[160px] cursor-pointer select-none hover:bg-indigo-100/50 transition-colors"
+                              onClick={() => handleSort(`${stage}_remarks`)}
+                            >
+                              <div className="flex items-center gap-1">
+                                {stage} Remarks
+                                <span className="text-[10px] text-gray-400">
+                                  {sortConfig.key === `${stage}_remarks` ? (sortConfig.direction === 'asc' ? ' ▲' : ' ▼') : ' ↕'}
+                                </span>
+                              </div>
+                            </th>
+                          )}
                         </React.Fragment>
                       ))}
 
-                      {visibleColumns.addedBy && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Added By</th>}
-                      <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900 whitespace-nowrap">View</th>
+                      {visibleColumns.addedBy && (
+                        <th
+                          className="px-4 py-3 text-left text-xs font-semibold text-gray-900 whitespace-normal min-w-[90px] max-w-[120px] cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                          onClick={() => handleSort('addedBy')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Added By
+                            <span className="text-[10px] text-gray-400">
+                              {sortConfig.key === 'addedBy' ? (sortConfig.direction === 'asc' ? ' ▲' : ' ▼') : ' ↕'}
+                            </span>
+                          </div>
+                        </th>
+                      )}
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900 whitespace-normal">View</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1089,7 +1313,7 @@ export default function ProductionPlanning() {
                       return (
                         <tr key={lead.id} className={`border-b border-gray-200 hover:bg-gray-50 transition-colors bg-white`}>
                           {activeTab === 'pending' && canWrite && (
-                            <td className="px-4 py-3 text-left text-sm whitespace-nowrap bg-white/50 flex gap-2">
+                            <td className="px-4 py-3 text-left text-xs whitespace-nowrap bg-white/50 flex gap-2">
                               <button onClick={() => handleOpenFollowUp(lead)} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-md text-[11px] font-bold uppercase hover:bg-indigo-100 transition shadow-sm border border-indigo-200">
                                 Update
                               </button>
@@ -1102,28 +1326,28 @@ export default function ProductionPlanning() {
                               </button>
                             </td>
                           )}
-                          {visibleColumns.woNo && <td className="px-4 py-3 text-left text-sm text-indigo-600 font-bold whitespace-nowrap">{lead.woNo}</td>}
-                          {visibleColumns.buyer && <td className="px-4 py-3 text-left text-sm text-gray-900 font-medium whitespace-nowrap">{lead.buyer}</td>}
-                          {visibleColumns.woDate && <td className="px-4 py-3 text-left text-sm text-gray-700 whitespace-nowrap">{formatDate(lead.woDate)}</td>}
-                          {visibleColumns.wResDate && <td className="px-4 py-3 text-left text-sm text-gray-700 whitespace-nowrap">{formatDate(lead.wResDate)}</td>}
-                          {visibleColumns.woDespatchDate && <td className={`px-4 py-3 text-left text-sm whitespace-nowrap ${getShipmentDisplay(lead).colorClass}`}>{formatDate(getShipmentDisplay(lead).date)}</td>}
-                          {visibleColumns.qty && <td className="px-4 py-3 text-center text-sm font-semibold text-sky-700 bg-sky-50 whitespace-nowrap">{lead.qty}</td>}
-                          {visibleColumns.remarks && <td className="px-4 py-3 text-left text-sm text-gray-500 max-w-[200px] truncate">{lead.remarks || '-'}</td>}
+                          {visibleColumns.woNo && <td className="px-4 py-3 text-left text-xs text-indigo-600 font-bold whitespace-normal">{lead.woNo}</td>}
+                          {visibleColumns.buyer && <td className="px-4 py-3 text-left text-xs text-gray-900 font-medium whitespace-normal">{lead.buyer}</td>}
+                          {visibleColumns.woDate && <td className="px-4 py-3 text-left text-xs text-gray-700 whitespace-normal">{formatDate(lead.woDate)}</td>}
+                          {visibleColumns.wResDate && <td className="px-4 py-3 text-left text-xs text-gray-700 whitespace-normal">{formatDate(lead.wResDate)}</td>}
+                          {visibleColumns.woDespatchDate && <td className={`px-4 py-3 text-left text-xs whitespace-normal ${getShipmentDisplay(lead).colorClass}`}>{formatDate(getShipmentDisplay(lead).date)}</td>}
+                          {visibleColumns.qty && <td className="px-4 py-3 text-center text-xs font-semibold text-sky-700 bg-sky-50 whitespace-normal">{lead.qty}</td>}
+                          {visibleColumns.remarks && <td className="px-4 py-3 text-left text-xs text-gray-500 max-w-[200px] whitespace-normal break-words">{lead.remarks || '-'}</td>}
 
                           {STAGES_LIST.map(stage => {
                             const stageData = getStageData(stage);
                             return (
                               <React.Fragment key={stage}>
-                                {visibleColumns[`${stage}_plannedDate`] && <td className={`px-4 py-3 text-left text-sm whitespace-nowrap ${getStageColorClass(stageData.plannedDate, stageData.actualDate, lead.isHistory)}`}>{formatDate(stageData.plannedDate)}</td>}
-                                {visibleColumns[`${stage}_actualDate`] && <td className={`px-4 py-3 text-left text-sm whitespace-nowrap ${getStageColorClass(stageData.plannedDate, stageData.actualDate, lead.isHistory)}`}>{formatDate(stageData.actualDate)}</td>}
-                                {visibleColumns[`${stage}_timeDelay`] && <td className={`px-4 py-3 text-left text-sm whitespace-nowrap ${getStageColorClass(stageData.plannedDate, stageData.actualDate, lead.isHistory)}`}>{getTimeDelay(stageData.plannedDate, stageData.actualDate)}</td>}
-                                {visibleColumns[`${stage}_remarks`] && <td className={`px-4 py-3 text-left text-sm max-w-[200px] truncate ${getStageColorClass(stageData.plannedDate, stageData.actualDate, lead.isHistory)}`}>{stageData.remarks || '-'}</td>}
+                                {visibleColumns[`${stage}_plannedDate`] && <td className={`px-4 py-3 text-left text-xs whitespace-normal ${getStageColorClass(stageData.plannedDate, stageData.actualDate, lead.isHistory)}`}>{formatDate(stageData.plannedDate)}</td>}
+                                {visibleColumns[`${stage}_actualDate`] && <td className={`px-4 py-3 text-left text-xs whitespace-normal ${getStageColorClass(stageData.plannedDate, stageData.actualDate, lead.isHistory)}`}>{formatDate(stageData.actualDate)}</td>}
+                                {visibleColumns[`${stage}_timeDelay`] && <td className={`px-4 py-3 text-left text-xs whitespace-normal ${getStageColorClass(stageData.plannedDate, stageData.actualDate, lead.isHistory)}`}>{getTimeDelay(stageData.plannedDate, stageData.actualDate)}</td>}
+                                {visibleColumns[`${stage}_remarks`] && <td className={`px-4 py-3 text-left text-xs max-w-[200px] whitespace-normal break-words ${getStageColorClass(stageData.plannedDate, stageData.actualDate, lead.isHistory)}`}>{stageData.remarks || '-'}</td>}
                               </React.Fragment>
                             );
                           })}
 
-                          {visibleColumns.addedBy && <td className="px-4 py-3 text-left text-sm text-gray-700 font-semibold whitespace-nowrap">{lead.addedBy || '-'}</td>}
-                          <td className="px-4 py-3 text-center text-sm whitespace-nowrap bg-white/50">
+                          {visibleColumns.addedBy && <td className="px-4 py-3 text-left text-xs text-gray-700 font-semibold whitespace-normal">{lead.addedBy || '-'}</td>}
+                          <td className="px-4 py-3 text-center text-xs whitespace-normal bg-white/50">
                             <button onClick={() => handleOpenView(lead)} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-md text-[11px] font-bold uppercase hover:bg-indigo-100 transition shadow-sm border border-indigo-200">
                               {activeTab === 'pending' ? 'View' : 'View Data'}
                             </button>

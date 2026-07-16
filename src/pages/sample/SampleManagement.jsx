@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useMagicToast } from '../../context/MagicToastContext';
 import { Plus, Search, ChevronLeft, ChevronRight, X, Calendar, Edit2, Trash2, Filter } from 'lucide-react';
 import DraggableScroll from '../../components/DraggableScroll';
@@ -214,6 +214,15 @@ export default function SampleManagement() {
   
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(15);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
 
   const [formData, setFormData] = useState({
     receiptDate: getTodayDate(),
@@ -256,7 +265,42 @@ export default function SampleManagement() {
     return true;
   });
 
-  const sortedLeads = [...filteredLeads].reverse();
+  const sortedLeads = useMemo(() => {
+    const list = [...filteredLeads];
+    if (sortConfig.key) {
+      list.sort((a, b) => {
+        let valA = a[sortConfig.key];
+        let valB = b[sortConfig.key];
+
+        // Handle numeric fields like qty
+        if (sortConfig.key === 'qty') {
+          const numA = Number(valA) || 0;
+          const numB = Number(valB) || 0;
+          return sortConfig.direction === 'asc' ? numA - numB : numB - numA;
+        }
+
+        // Handle date fields
+        const dateFields = [
+          'receiptDate', 'requirementDate', 'sampleWODate',
+          'sampleWOHandoverDate', 'expectedCompletionDate', 'actualCompletionDate', 'dispatchSentDate'
+        ];
+        if (dateFields.includes(sortConfig.key)) {
+          const dateA = valA ? new Date(valA).getTime() : 0;
+          const dateB = valB ? new Date(valB).getTime() : 0;
+          return sortConfig.direction === 'asc' ? dateA - dateB : dateB - dateA;
+        }
+
+        // Default string comparison
+        const strA = String(valA || '').toLowerCase();
+        const strB = String(valB || '').toLowerCase();
+        if (strA < strB) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (strA > strB) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+      return list;
+    }
+    return list.reverse(); // default behavior: reverse order (latest first)
+  }, [filteredLeads, sortConfig]);
   const totalPages = Math.ceil(sortedLeads.length / itemsPerPage);
   const paginatedLeads = sortedLeads.slice(
     (currentPage - 1) * itemsPerPage,
@@ -907,22 +951,190 @@ export default function SampleManagement() {
               <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10 shadow-sm">
                 <tr>
                   {activeTab === 'pending' && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 w-24 whitespace-nowrap">{canWrite ? 'Action' : 'View'}</th>}
-                  {visibleColumns.buyerCoder && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Buyer Code</th>}
-                  {visibleColumns.receiptDate && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Enquiry Receipt Date</th>}
-                  {visibleColumns.productName && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Description of Enquiry</th>}
-                  {visibleColumns.type && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Type</th>}
-                  {visibleColumns.requirementDate && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Requirement Date</th>}
-                  {visibleColumns.sampleWONo && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Sample W/O No</th>}
-                  {visibleColumns.sampleWODate && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Sample W/O Date</th>}
-                  {visibleColumns.qty && <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900 whitespace-nowrap">Qty</th>}
+                  {visibleColumns.buyerCoder && (
+                    <th
+                      className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('buyerCoder')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Buyer Code
+                        <span className="text-[10px] text-gray-400">
+                          {sortConfig.key === 'buyerCoder' ? (sortConfig.direction === 'asc' ? ' ▲' : ' ▼') : ' ↕'}
+                        </span>
+                      </div>
+                    </th>
+                  )}
+                  {visibleColumns.receiptDate && (
+                    <th
+                      className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('receiptDate')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Enquiry Receipt Date
+                        <span className="text-[10px] text-gray-400">
+                          {sortConfig.key === 'receiptDate' ? (sortConfig.direction === 'asc' ? ' ▲' : ' ▼') : ' ↕'}
+                        </span>
+                      </div>
+                    </th>
+                  )}
+                  {visibleColumns.productName && (
+                    <th
+                      className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('productName')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Description of Enquiry
+                        <span className="text-[10px] text-gray-400">
+                          {sortConfig.key === 'productName' ? (sortConfig.direction === 'asc' ? ' ▲' : ' ▼') : ' ↕'}
+                        </span>
+                      </div>
+                    </th>
+                  )}
+                  {visibleColumns.type && (
+                    <th
+                      className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('type')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Type
+                        <span className="text-[10px] text-gray-400">
+                          {sortConfig.key === 'type' ? (sortConfig.direction === 'asc' ? ' ▲' : ' ▼') : ' ↕'}
+                        </span>
+                      </div>
+                    </th>
+                  )}
+                  {visibleColumns.requirementDate && (
+                    <th
+                      className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('requirementDate')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Requirement Date
+                        <span className="text-[10px] text-gray-400">
+                          {sortConfig.key === 'requirementDate' ? (sortConfig.direction === 'asc' ? ' ▲' : ' ▼') : ' ↕'}
+                        </span>
+                      </div>
+                    </th>
+                  )}
+                  {visibleColumns.sampleWONo && (
+                    <th
+                      className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('sampleWONo')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Sample W/O No
+                        <span className="text-[10px] text-gray-400">
+                          {sortConfig.key === 'sampleWONo' ? (sortConfig.direction === 'asc' ? ' ▲' : ' ▼') : ' ↕'}
+                        </span>
+                      </div>
+                    </th>
+                  )}
+                  {visibleColumns.sampleWODate && (
+                    <th
+                      className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('sampleWODate')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Sample W/O Date
+                        <span className="text-[10px] text-gray-400">
+                          {sortConfig.key === 'sampleWODate' ? (sortConfig.direction === 'asc' ? ' ▲' : ' ▼') : ' ↕'}
+                        </span>
+                      </div>
+                    </th>
+                  )}
+                  {visibleColumns.qty && (
+                    <th
+                      className="px-4 py-3 text-center text-sm font-semibold text-gray-900 whitespace-nowrap cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('qty')}
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        Qty
+                        <span className="text-[10px] text-gray-400">
+                          {sortConfig.key === 'qty' ? (sortConfig.direction === 'asc' ? ' ▲' : ' ▼') : ' ↕'}
+                        </span>
+                      </div>
+                    </th>
+                  )}
 
-                  {visibleColumns.sampleWOHandoverDate && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Handover Date (NPD)</th>}
-                  {visibleColumns.expectedCompletionDate && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Expected Completion Date</th>}
-                  {visibleColumns.actualCompletionDate && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Actual Completion Date</th>}
-                  {visibleColumns.dispatchSentDate && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Dispatch/Sent/Close Date</th>}
+                  {visibleColumns.sampleWOHandoverDate && (
+                    <th
+                      className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('sampleWOHandoverDate')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Handover Date (NPD)
+                        <span className="text-[10px] text-gray-400">
+                          {sortConfig.key === 'sampleWOHandoverDate' ? (sortConfig.direction === 'asc' ? ' ▲' : ' ▼') : ' ↕'}
+                        </span>
+                      </div>
+                    </th>
+                  )}
+                  {visibleColumns.expectedCompletionDate && (
+                    <th
+                      className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('expectedCompletionDate')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Expected Completion Date
+                        <span className="text-[10px] text-gray-400">
+                          {sortConfig.key === 'expectedCompletionDate' ? (sortConfig.direction === 'asc' ? ' ▲' : ' ▼') : ' ↕'}
+                        </span>
+                      </div>
+                    </th>
+                  )}
+                  {visibleColumns.actualCompletionDate && (
+                    <th
+                      className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('actualCompletionDate')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Actual Completion Date
+                        <span className="text-[10px] text-gray-400">
+                          {sortConfig.key === 'actualCompletionDate' ? (sortConfig.direction === 'asc' ? ' ▲' : ' ▼') : ' ↕'}
+                        </span>
+                      </div>
+                    </th>
+                  )}
+                  {visibleColumns.dispatchSentDate && (
+                    <th
+                      className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('dispatchSentDate')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Dispatch/Sent/Close Date
+                        <span className="text-[10px] text-gray-400">
+                          {sortConfig.key === 'dispatchSentDate' ? (sortConfig.direction === 'asc' ? ' ▲' : ' ▼') : ' ↕'}
+                        </span>
+                      </div>
+                    </th>
+                  )}
                   
-                  {visibleColumns.remarks && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 max-w-[200px]">Remarks</th>}
-                  {visibleColumns.addedBy && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Added By</th>}
+                  {visibleColumns.remarks && (
+                    <th
+                      className="px-4 py-3 text-left text-sm font-semibold text-gray-900 max-w-[200px] cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('remarks')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Remarks
+                        <span className="text-[10px] text-gray-400">
+                          {sortConfig.key === 'remarks' ? (sortConfig.direction === 'asc' ? ' ▲' : ' ▼') : ' ↕'}
+                        </span>
+                      </div>
+                    </th>
+                  )}
+                  {visibleColumns.addedBy && (
+                    <th
+                      className="px-4 py-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('addedBy')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Added By
+                        <span className="text-[10px] text-gray-400">
+                          {sortConfig.key === 'addedBy' ? (sortConfig.direction === 'asc' ? ' ▲' : ' ▼') : ' ↕'}
+                        </span>
+                      </div>
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody>
