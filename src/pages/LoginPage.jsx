@@ -65,7 +65,6 @@ const LoginPage = () => {
           }
         }
 
-        // Store all user data in localStorage
         localStorage.setItem('user-name', userData.user_name || userData.username || "");
         localStorage.setItem('user-id', userData.id || "");
         localStorage.setItem('role', userData.role || "");
@@ -74,6 +73,7 @@ const LoginPage = () => {
         localStorage.setItem('profile_image', userData.profile_image || "");
         localStorage.setItem('can_self_assign', userData.can_self_assign === true ? "true" : "false");
         localStorage.setItem('designation', designation);
+        localStorage.setItem('page_access', userData.page_access || "{}");
 
         console.log("Stored email:", userData.email_id || userData.email); // Debug log
 

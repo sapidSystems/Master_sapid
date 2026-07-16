@@ -26,6 +26,7 @@ import {
   X,
   Bell,
   Video,
+  TrendingUp,
 } from "lucide-react";
 
 export default function AdminLayout({ children, darkMode, toggleDarkMode, showLayout = true }) {
@@ -33,16 +34,27 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { list: notifications } = useSelector((state) => state.notifications);
-  
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isHolidaySubmenuOpen, setIsHolidaySubmenuOpen] = useState(false);
+  const [isChecklistSubmenuOpen, setIsChecklistSubmenuOpen] = useState(true);
+  const [isSampleSubmenuOpen, setIsSampleSubmenuOpen] = useState(false);
+  const [isBulkSubmenuOpen, setIsBulkSubmenuOpen] = useState(false);
   const [username, setUsername] = useState("");
   const [userRole, setUserRole] = useState("");
   const [userEmail, setUserEmail] = useState("");
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [profileImage, setProfileImage] = useState("");
+  const [pageAccess, setPageAccess] = useState({});
 
   const [isUserPopupOpen, setIsUserPopupOpen] = useState(false);
+
+  const handleToggleSubmenu = (clickedRoute) => {
+    const nextState = !clickedRoute.isOpen;
+    setIsChecklistSubmenuOpen(false);
+    setIsSampleSubmenuOpen(false);
+    setIsBulkSubmenuOpen(false);
+    clickedRoute.setIsOpen(nextState);
+  };
 
   // Check authentication on component mount
   useEffect(() => {
@@ -61,48 +73,54 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
     setUserEmail(storedEmail);
     setIsSuperAdmin(storedUsername.toLowerCase() === "admin");
 
-    // Centralized Security Guard for User Role
-    const path = location.pathname;
-    const restrictedPages = [
-      "/dashboard/assign-task",
-      "/dashboard/admin-approval",
-      "/dashboard/checklist",
-      "/dashboard/maintenance",
-      "/dashboard/repair",
-      "/dashboard/ea-task",
-      "/dashboard/quick-task",
-      "/dashboard/holiday-list",
-      "/dashboard/working-day-calendar",
-      "/dashboard/setting"
-    ];
+    const cachedPageAccess = JSON.parse(localStorage.getItem("page_access") || "{}");
+    setPageAccess(cachedPageAccess);
 
+    // Sync user permissions in the background
+    const syncUserPermissions = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("users")
+          .select("page_access, role")
+          .eq("user_name", storedUsername)
+          .maybeSingle();
+
+        if (data) {
+          const freshAccess = typeof data.page_access === 'object' ? data.page_access : JSON.parse(data.page_access || "{}");
+          const freshAccessStr = typeof data.page_access === 'object' ? JSON.stringify(data.page_access) : (data.page_access || "{}");
+          localStorage.setItem("page_access", freshAccessStr);
+          localStorage.setItem("role", data.role || "");
+          setPageAccess(freshAccess);
+          setUserRole(data.role || "user");
+        }
+      } catch (err) {
+        console.error("Error syncing permissions:", err);
+      }
+    };
+    syncUserPermissions();
+
+    // Centralized Security Guard using page_access permissions
+    const path = location.pathname;
     const storedRoleLower = (storedRole || "user").toLowerCase();
 
-    if (storedRoleLower === "user" && restrictedPages.some(p => path.startsWith(p))) {
-      navigate("/dashboard/admin");
-      return;
-    }
-
-    if (storedRoleLower === "hod") {
-      const designation = (localStorage.getItem("designation") || "").toLowerCase();
-      const isMachineOperator = designation.includes("machin") || designation.includes("operat") || designation.includes("oprat");
+    if (storedRoleLower !== "admin") {
+      const activeAccess = JSON.parse(localStorage.getItem("page_access") || "{}");
       
-      const hodRestrictedPages = [
-        "/dashboard/maintenance",
-        "/dashboard/ea-task",
-        "/dashboard/quick-task",
-        "/dashboard/holiday-list",
-        "/dashboard/working-day-calendar",
-        "/dashboard/setting"
+      const exceptionPaths = [
+        "/dashboard/admin",
+        "/dashboard/notifications",
+        "/dashboard/training-video"
       ];
       
-      if (!isMachineOperator) {
-        hodRestrictedPages.push("/dashboard/repair");
-      }
-
-      if (hodRestrictedPages.some(p => path.startsWith(p))) {
-        navigate("/dashboard/admin");
-        return;
+      const isException = exceptionPaths.some(p => path === p || path.startsWith(p + "/"));
+      
+      if (!isException) {
+        // Also check if any parent route path exists in pageAccess as a fallback
+        const currentPermission = activeAccess[path];
+        if (!currentPermission || currentPermission === "none") {
+          navigate("/dashboard/admin");
+          return;
+        }
       }
     }
 
@@ -110,21 +128,21 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
     const cachedImage = localStorage.getItem("profile_image");
     setProfileImage(cachedImage || "");
 
-      // Fetch reporting users for HOD role check
-      let reportingUsers = [storedUsername?.toLowerCase()];
-      const currentUserRole = (localStorage.getItem("role") || "").toLowerCase();
-      if (currentUserRole === "hod") {
-          const fetchReportingUsers = async () => {
-              const { data: reports } = await supabase
-                  .from("users")
-                  .select("user_name")
-                  .eq("reported_by", storedUsername);
-              if (reports) {
-                  reportingUsers = [storedUsername.toLowerCase(), ...reports.map(r => (r.user_name || "").toLowerCase())];
-              }
-          };
-          fetchReportingUsers();
-      }
+    // Fetch reporting users for HOD role check
+    let reportingUsers = [storedUsername?.toLowerCase()];
+    const currentUserRole = (localStorage.getItem("role") || "").toLowerCase();
+    if (currentUserRole === "hod") {
+      const fetchReportingUsers = async () => {
+        const { data: reports } = await supabase
+          .from("users")
+          .select("user_name")
+          .eq("reported_by", storedUsername);
+        if (reports) {
+          reportingUsers = [storedUsername.toLowerCase(), ...reports.map(r => (r.user_name || "").toLowerCase())];
+        }
+      };
+      fetchReportingUsers();
+    }
 
     // Sync with database to get the latest image
     const syncProfileImage = async () => {
@@ -165,11 +183,38 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
     }
   }, [dispatch, location.pathname]);
 
-  // Set initial submenu state based on current location
+  // Set initial submenu states based on current location
   useEffect(() => {
-    if (location.pathname.includes("/dashboard/holiday") || location.pathname.includes("/dashboard/working-day")) {
-      setIsHolidaySubmenuOpen(true);
-    }
+    const path = location.pathname;
+    const checklistPaths = [
+      "/dashboard/admin",
+      "/dashboard/notifications",
+      "/dashboard/quick-task",
+      "/dashboard/assign-task",
+      "/dashboard/delegation",
+      "/dashboard/task",
+      "/dashboard/calendar",
+      "/dashboard/holiday-list",
+      "/dashboard/working-day-calendar",
+      "/dashboard/admin-approval",
+      "/dashboard/training-video"
+    ];
+    const samplePaths = [
+      "/dashboard/sample-dashboard",
+      "/dashboard/sample-management"
+    ];
+    const bulkPaths = [
+      "/dashboard/bulk-dashboard",
+      "/dashboard/bulk-order"
+    ];
+
+    const isChecklist = checklistPaths.some(p => path === p || path.startsWith(p + "/"));
+    const isSample = samplePaths.some(p => path === p || path.startsWith(p + "/"));
+    const isBulk = bulkPaths.some(p => path === p || path.startsWith(p + "/"));
+
+    setIsChecklistSubmenuOpen(isChecklist);
+    setIsSampleSubmenuOpen(isSample);
+    setIsBulkSubmenuOpen(isBulk);
   }, [location.pathname]);
 
   // Handle logout
@@ -187,65 +232,67 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
   // Update the routes array based on user role and super admin status
   const routes = [
     {
-      href: "/dashboard/admin",
-      label: "Dashboard",
-      icon: Database,
-      active: location.pathname === "/dashboard/admin",
-      showFor: ["admin", "user", "HOD"],
-    },
-    {
-      href: "/dashboard/notifications",
-      label: "Notifications",
-      icon: Bell,
-      active: location.pathname === "/dashboard/notifications",
-      showFor: ["admin", "user", "hod"],
-      badge: notifications.filter(n => !n.isRead).length || null,
-    },
-    {
-      href: "/dashboard/quick-task",
-      label: "Quick Task",
-      icon: Zap,
-      active: location.pathname === "/dashboard/quick-task",
-      // Show for super admin OR anyone with 'admin' role
-      showFor: (isSuperAdmin || userRole.toLowerCase() === "admin") ? ["admin"] : [],
-    },
-    {
-      href: "/dashboard/assign-task",
-      label: "Assign Task",
-      icon: CheckSquare,
-      active: location.pathname === "/dashboard/assign-task",
-      showFor: ["admin", "HOD"],
-    },
-    {
-      href: "/dashboard/delegation",
-      label: "Delegation",
+      label: "Checklist",
       icon: ClipboardList,
-      active: location.pathname === "/dashboard/delegation",
       showFor: ["admin", "user", "HOD"],
-    },
-    {
-      href: "/dashboard/task",
-      label: "Task",
-      icon: CalendarCheck,
-      active: location.pathname === "/dashboard/task",
-      showFor: ["admin", "HOD", "user"],
-    },
-    {
-      href: "/dashboard/calendar",
-      label: "Calendar",
-      icon: CalendarIcon,
-      active: location.pathname === "/dashboard/calendar",
-      showFor: ["admin", "user", "HOD"],
-    },
-    {
-      label: "Holiday",
-      icon: CalendarIcon, // Or a specific holiday icon
-      showFor: (isSuperAdmin || userRole.toLowerCase() === "admin") ? ["admin"] : [], 
       isSubmenu: true,
-      isOpen: isHolidaySubmenuOpen,
-      setIsOpen: setIsHolidaySubmenuOpen,
-      active: location.pathname.includes("/dashboard/holiday") || location.pathname.includes("/dashboard/working-day"),
+      isOpen: isChecklistSubmenuOpen,
+      setIsOpen: setIsChecklistSubmenuOpen,
+      active: location.pathname === "/dashboard/admin" ||
+        location.pathname === "/dashboard/notifications" ||
+        location.pathname === "/dashboard/quick-task" ||
+        location.pathname === "/dashboard/assign-task" ||
+        location.pathname === "/dashboard/delegation" ||
+        location.pathname === "/dashboard/task" ||
+        location.pathname === "/dashboard/calendar" ||
+        location.pathname === "/dashboard/holiday-list" ||
+        location.pathname === "/dashboard/working-day-calendar" ||
+        location.pathname === "/dashboard/admin-approval" ||
+        location.pathname === "/dashboard/training-video",
       subItems: [
+        {
+          href: "/dashboard/admin",
+          label: "Dashboard",
+          active: location.pathname === "/dashboard/admin",
+          showFor: ["admin", "user", "HOD"],
+        },
+        {
+          href: "/dashboard/notifications",
+          label: "Notifications",
+          active: location.pathname === "/dashboard/notifications",
+          showFor: ["admin", "user", "hod"],
+          badge: notifications.filter(n => !n.isRead).length || null,
+        },
+        {
+          href: "/dashboard/quick-task",
+          label: "Quick Task",
+          active: location.pathname === "/dashboard/quick-task",
+          showFor: (isSuperAdmin || userRole.toLowerCase() === "admin") ? ["admin"] : [],
+        },
+        {
+          href: "/dashboard/assign-task",
+          label: "Assign Task",
+          active: location.pathname === "/dashboard/assign-task",
+          showFor: ["admin", "HOD"],
+        },
+        {
+          href: "/dashboard/delegation",
+          label: "Delegation",
+          active: location.pathname === "/dashboard/delegation",
+          showFor: ["admin", "user", "HOD"],
+        },
+        {
+          href: "/dashboard/task",
+          label: "Task",
+          active: location.pathname === "/dashboard/task",
+          showFor: ["admin", "HOD", "user"],
+        },
+        {
+          href: "/dashboard/calendar",
+          label: "Calendar",
+          active: location.pathname === "/dashboard/calendar",
+          showFor: ["admin", "user", "HOD"],
+        },
         {
           href: "/dashboard/holiday-list",
           label: "Holiday List",
@@ -257,76 +304,120 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
           label: "Working Day Calendar",
           active: location.pathname === "/dashboard/working-day-calendar",
           showFor: ["admin"],
+        },
+        {
+          href: "/dashboard/admin-approval",
+          label: "Admin Approval",
+          active: location.pathname === "/dashboard/admin-approval",
+          showFor: ["admin", "HOD"],
+        },
+        {
+          href: "/dashboard/training-video",
+          label: "Training Video",
+          active: location.pathname === "/dashboard/training-video",
+          showFor: ["admin", "user", "HOD"],
         }
       ]
     },
     {
-      href: "/dashboard/admin-approval",
-      label: "Admin Approval",
-      icon: BookmarkCheck,
-      active: location.pathname === "/dashboard/admin-approval",
-      showFor: ["admin", "HOD"],
+      label: "Sample System",
+      icon: Database,
+      showFor: ["admin", "user", "HOD"],
+      isSubmenu: true,
+      isOpen: isSampleSubmenuOpen,
+      setIsOpen: setIsSampleSubmenuOpen,
+      active: location.pathname === "/dashboard/sample-dashboard" ||
+        location.pathname === "/dashboard/sample-management",
+      subItems: [
+        {
+          href: "/dashboard/sample-dashboard",
+          label: "Dashboard",
+          active: location.pathname === "/dashboard/sample-dashboard",
+          showFor: ["admin", "user", "HOD"],
+        },
+        {
+          href: "/dashboard/sample-management",
+          label: "Sample Management",
+          active: location.pathname === "/dashboard/sample-management",
+          showFor: ["admin", "user", "HOD"],
+        }
+      ]
     },
     {
-      href: "/dashboard/training-video",
-      label: "Training Video",
-      icon: Video,
-      active: location.pathname === "/dashboard/training-video",
+      label: "Production Planning and Monitoring",
+      icon: TrendingUp,
       showFor: ["admin", "user", "HOD"],
+      isSubmenu: true,
+      isOpen: isBulkSubmenuOpen,
+      setIsOpen: setIsBulkSubmenuOpen,
+      active: location.pathname === "/dashboard/bulk-dashboard" ||
+        location.pathname === "/dashboard/bulk-order",
+      subItems: [
+        {
+          href: "/dashboard/bulk-dashboard",
+          label: "Dashboard",
+          active: location.pathname === "/dashboard/bulk-dashboard",
+          showFor: ["admin", "user", "HOD"],
+        },
+        {
+          href: "/dashboard/bulk-order",
+          label: "Production Planning and Monitoring",
+          active: location.pathname === "/dashboard/bulk-order",
+          showFor: ["admin", "user", "HOD"],
+        }
+      ]
     },
-    // {
-    //   href: "/dashboard/mis-report",
-    //   label: "MIS Report",
-    //   icon: CheckSquare,
-    //   active: location.pathname.includes("/dashboard/mis-report"),
-    //   // Only show for super admin (username = 'admin')
-    //   showFor: isSuperAdmin ? ["admin"] : [],
-    // },
     {
       href: "/dashboard/setting",
       label: "Settings",
       icon: Settings,
-      active: location.pathname.includes("/dashboard/setting"),
+      active: location.pathname === "/dashboard/setting",
       showFor: ["admin"],
-    },
+    }
   ];
 
   const getAccessibleDepartments = () => {
     return [];
   };
 
-  // Filter routes based on user role and super admin status
+  // Filter routes based on page_access permissions state
   const getAccessibleRoutes = () => {
-    const userRole = localStorage.getItem("role") || "user";
-    const username = localStorage.getItem("user-name");
-    
+    const userRole = (localStorage.getItem("role") || "user").toLowerCase();
+
+    // Admins bypass all restrictions
+    if (userRole === "admin") {
+      return routes;
+    }
+
+    // Standard exceptions that are visible to any authenticated user
+    const exceptionPaths = [
+      "/dashboard/admin",
+      "/dashboard/notifications",
+      "/dashboard/training-video"
+    ];
+
+    const hasAccess = (href) => {
+      if (exceptionPaths.includes(href)) return true;
+      const perm = pageAccess[href];
+      return perm && perm !== "none";
+    };
+
     return routes
-      .filter((route) => {
-        const userRoleNormalized = (userRole || "user").toLowerCase();
-        const usernameNormalized = (username || "").toLowerCase();
-        
-        // If it's the Setting page, show for admin role
-        if (route.label === "Settings") {
-          return userRoleNormalized === "admin";
-        }
-        
-        // Holiday submenu logic handled by showFor in routes
-        if (route.label === "Holiday") {
-            return isSuperAdmin || userRoleNormalized === "admin";
-        }
-        return route.showFor.some(role => role.toLowerCase() === userRoleNormalized);
-      })
       .map(route => {
         if (route.subItems) {
-          const userRoleNormalized = (userRole || "user").toLowerCase();
           return {
             ...route,
-            subItems: route.subItems.filter(sub => sub.showFor.some(role => role.toLowerCase() === userRoleNormalized))
+            subItems: route.subItems.filter(sub => hasAccess(sub.href))
           };
         }
         return route;
       })
-      .filter(route => !route.isSubmenu || (route.subItems && route.subItems.length > 0));
+      .filter(route => {
+        if (route.isSubmenu) {
+          return route.subItems && route.subItems.length > 0;
+        }
+        return hasAccess(route.href);
+      });
   };
 
   // Submenu logic removed
@@ -353,15 +444,15 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
             <span>TaskDesk</span>
           </Link>
         </div>
-        <nav className="flex-1 overflow-y-auto p-2">
+        <nav className="flex-1 overflow-y-auto thin-scrollbar p-2">
           <ul className="space-y-1">
             {accessibleRoutes.map((route) => (
               <li key={route.label}>
                 {route.isSubmenu ? (
                   <div className="flex flex-col">
                     <button
-                      onClick={() => route.setIsOpen(!route.isOpen)}
-                      className={`flex items-center justify-between w-full rounded-md px-3 py-2 text-sm font-medium transition-colors ${route.active
+                      onClick={() => handleToggleSubmenu(route)}
+                      className={`flex items-center justify-between w-full rounded-md px-3 py-2 text-sm font-medium text-left transition-colors ${route.active
                         ? "bg-gradient-to-r from-blue-100 to-purple-100 text-blue-700"
                         : "text-gray-700 hover:bg-blue-50"
                         }`}
@@ -391,12 +482,17 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
                           <li key={sub.label}>
                             <Link
                               to={sub.href}
-                              className={`flex items-center gap-3 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${sub.active
-                                ? "text-blue-700 bg-blue-50"
+                              className={`flex items-center justify-between rounded-md px-3 py-1.5 text-xs font-medium text-left transition-colors ${sub.active
+                                ? "text-blue-700 bg-blue-50 font-semibold"
                                 : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
                                 }`}
                             >
-                              {sub.label}
+                              <span className="text-left">{sub.label}</span>
+                              {sub.badge && (
+                                <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                                  {sub.badge}
+                                </span>
+                              )}
                             </Link>
                           </li>
                         ))}
@@ -544,15 +640,15 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
                 <span>TaskDesk</span>
               </Link>
             </div>
-            <nav className="flex-1 overflow-y-auto p-2 bg-white">
+            <nav className="flex-1 overflow-y-auto thin-scrollbar p-2 bg-white">
               <ul className="space-y-1">
                 {accessibleRoutes.map((route) => (
                   <li key={route.label}>
                     {route.isSubmenu ? (
                       <div className="flex flex-col">
                         <button
-                          onClick={() => route.setIsOpen(!route.isOpen)}
-                          className={`flex items-center justify-between w-full rounded-md px-3 py-2 text-sm font-medium transition-colors ${route.active
+                          onClick={() => handleToggleSubmenu(route)}
+                          className={`flex items-center justify-between w-full rounded-md px-3 py-2 text-sm font-medium text-left transition-colors ${route.active
                             ? "bg-gradient-to-r from-blue-100 to-purple-100 text-blue-700"
                             : "text-gray-700 hover:bg-blue-50"
                             }`}
@@ -575,13 +671,18 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
                               <li key={sub.label}>
                                 <Link
                                   to={sub.href}
-                                  className={`flex items-center gap-3 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${sub.active
-                                    ? "text-blue-700 bg-blue-50"
+                                  className={`flex items-center justify-between rounded-md px-3 py-1.5 text-xs font-medium text-left transition-colors ${sub.active
+                                    ? "text-blue-700 bg-blue-50 font-semibold"
                                     : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
                                     }`}
                                   onClick={() => setIsMobileMenuOpen(false)}
                                 >
-                                  {sub.label}
+                                  <span className="text-left">{sub.label}</span>
+                                  {sub.badge && (
+                                    <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                                      {sub.badge}
+                                    </span>
+                                  )}
                                 </Link>
                               </li>
                             ))}
@@ -737,7 +838,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 md:px-6 md:pb-6 bg-gradient-to-br from-blue-50/50 to-purple-50/50 pb-24 md:pb-6">
+        <main className="flex-1 overflow-y-auto thin-scrollbar overflow-x-hidden px-4 pb-4 md:px-6 md:pb-6 bg-gradient-to-br from-blue-50/50 to-purple-50/50 pb-24 md:pb-6">
           {children}
         </main>
 

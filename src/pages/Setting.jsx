@@ -21,6 +21,67 @@ const formatDateISO = (date) => {
   return `${year}-${month}-${day}`;
 };
 
+const SYSTEM_PAGE_GROUPS = [
+  {
+    title: "Checklist System",
+    pages: [
+      { path: "/dashboard/admin", label: "Checklist Dashboard" },
+      { path: "/dashboard/notifications", label: "Notifications" },
+      { path: "/dashboard/quick-task", label: "Quick Task" },
+      { path: "/dashboard/assign-task", label: "Assign Task" },
+      { path: "/dashboard/delegation", label: "Delegation" },
+      { path: "/dashboard/task", label: "Task" },
+      { path: "/dashboard/calendar", label: "Calendar" },
+      { path: "/dashboard/holiday-list", label: "Holiday List" },
+      { path: "/dashboard/working-day-calendar", label: "Working Day Calendar" },
+      { path: "/dashboard/admin-approval", label: "Admin Approval" },
+      { path: "/dashboard/training-video", label: "Training Video" }
+    ]
+  },
+  {
+    title: "Sample System",
+    pages: [
+      { path: "/dashboard/sample-dashboard", label: "Sample Dashboard" },
+      { path: "/dashboard/sample-management", label: "Sample Management" }
+    ]
+  },
+  {
+    title: "Production Planning and Monitoring",
+    pages: [
+      { path: "/dashboard/bulk-dashboard", label: "Production Planning Dashboard" },
+      { path: "/dashboard/bulk-order", label: "Production Planning and Monitoring" }
+    ]
+  },
+  {
+    title: "Other Settings",
+    pages: [
+      { path: "/dashboard/setting", label: "Settings" }
+    ]
+  }
+];
+
+const SYSTEM_PAGES = SYSTEM_PAGE_GROUPS.flatMap(group => group.pages);
+
+const DEFAULT_USER_PERMISSIONS = {
+  "/dashboard/admin": "write",
+  "/dashboard/notifications": "write",
+  "/dashboard/delegation": "write",
+  "/dashboard/task": "write",
+  "/dashboard/calendar": "write",
+  "/dashboard/training-video": "write"
+};
+
+const parsePageAccess = (accessStr) => {
+  if (!accessStr) return {};
+  try {
+    if (typeof accessStr === 'object') return accessStr;
+    return JSON.parse(accessStr);
+  } catch (e) {
+    console.error("Error parsing page_access:", e);
+    return {};
+  }
+};
+
 const Setting = () => {
   const { showToast } = useMagicToast();
   const [activeTab, setActiveTab] = useState('users');
@@ -750,7 +811,8 @@ const Setting = () => {
     Designation: '',
     profile_image: '',
     reported_by: '',
-    can_self_assign: false
+    can_self_assign: false,
+    page_access: { ...DEFAULT_USER_PERMISSIONS }
   });
 
   const [deptForm, setDeptForm] = useState({
@@ -817,7 +879,8 @@ const Setting = () => {
       department: userForm.department,
       profile_image: imageUrl,
       reported_by: userForm.reported_by,
-      can_self_assign: userForm.can_self_assign
+      can_self_assign: userForm.can_self_assign,
+      page_access: JSON.stringify(userForm.page_access || {})
     };
 
     try {
@@ -868,7 +931,8 @@ const Setting = () => {
       leave_end_date: userForm.leave_end_date || null,
       remark: userForm.remark || null,
       reported_by: userForm.reported_by,
-      can_self_assign: userForm.can_self_assign
+      can_self_assign: userForm.can_self_assign,
+      page_access: JSON.stringify(userForm.page_access || {})
     };
 
     try {
@@ -1090,6 +1154,17 @@ const Setting = () => {
       if (name === 'department') {
         updated.user_access = value;
       }
+      if (name === 'role') {
+        if (value === 'admin') {
+          const adminAccess = {};
+          SYSTEM_PAGES.forEach(page => {
+            adminAccess[page.path] = 'write';
+          });
+          updated.page_access = adminAccess;
+        } else {
+          updated.page_access = { ...DEFAULT_USER_PERMISSIONS };
+        }
+      }
       return updated;
     });
   };
@@ -1126,7 +1201,8 @@ const Setting = () => {
       leave_end_date: user.leave_end_date ? user.leave_end_date.split('T')[0] : '',
       remark: user.remark || '',
       reported_by: user.reported_by || '',
-      can_self_assign: user.can_self_assign || false
+      can_self_assign: user.can_self_assign || false,
+      page_access: parsePageAccess(user.page_access)
     });
     setProfilePreview(user.profile_image || null);
     setProfileFile(null);
@@ -1194,7 +1270,8 @@ const Setting = () => {
       leave_end_date: '',
       remark: '',
       reported_by: '',
-      can_self_assign: false
+      can_self_assign: false,
+      page_access: { ...DEFAULT_USER_PERMISSIONS }
     });
     setProfileFile(null);
     setProfilePreview(null);
@@ -1730,11 +1807,11 @@ const Setting = () => {
               </div>
             </div>
 
-            <div className="max-h-[calc(100vh-250px)] overflow-auto scrollbar-thin">
+            <div className="max-h-[calc(100vh-250px)] thin-scrollbar overflow-auto scrollbar-thin">
               <div className="inline-block min-w-full align-middle">
                 {/* Desktop View */}
                 <div className="hidden md:block">
-                  <table className="min-w-full divide-y divide-gray-200">
+                  <table className="min-w-full divide-y  divide-gray-200">
                     <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
                       <tr>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -2805,6 +2882,83 @@ const Setting = () => {
                       </>
                     )}
 
+                  </div>
+                  
+                  {/* Page Access & Permissions Section */}
+                  <div className="md:col-span-2 border-t border-gray-100 pt-6 mt-4">
+                    <h4 className="text-sm font-black text-indigo-900 uppercase tracking-widest mb-4 px-1">Page Access & Permissions</h4>
+                    
+                    <div className="overflow-x-auto border border-gray-100 rounded-2xl shadow-sm bg-white">
+                      <table className="w-full text-left text-xs whitespace-nowrap border-collapse">
+                        <thead className="bg-gray-50 border-b border-gray-100 text-gray-700 font-bold uppercase tracking-wider">
+                          <tr>
+                            <th className="px-4 py-3">Page Name</th>
+                            <th className="px-4 py-3 text-center">None</th>
+                            <th className="px-4 py-3 text-center">Read Only</th>
+                            <th className="px-4 py-3 text-center">Read / Write</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 font-semibold text-gray-700">
+                          {SYSTEM_PAGE_GROUPS.map((group) => (
+                            <React.Fragment key={group.title}>
+                              {/* Group Header Row */}
+                              <tr className="bg-purple-50/40">
+                                <td colSpan="4" className="px-4 py-2.5 text-[10px] font-black text-purple-900 uppercase tracking-widest bg-gradient-to-r from-purple-100/50 via-purple-50/10 to-transparent border-y border-purple-100/30">
+                                  {group.title}
+                                </td>
+                              </tr>
+                              {group.pages.map((page) => {
+                                const currentVal = userForm.page_access?.[page.path] || 'none';
+                                return (
+                                  <tr key={page.path} className="hover:bg-purple-50/20 transition-colors">
+                                    <td className="px-6 py-3 text-[11px] font-bold text-gray-900">{page.label}</td>
+                                    <td className="px-4 py-3 text-center">
+                                      <input
+                                        type="radio"
+                                        name={`perm-${page.path}`}
+                                        value="none"
+                                        checked={currentVal === 'none'}
+                                        onChange={() => {
+                                          const newAccess = { ...userForm.page_access, [page.path]: 'none' };
+                                          setUserForm(prev => ({ ...prev, page_access: newAccess }));
+                                        }}
+                                        className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 cursor-pointer"
+                                      />
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                      <input
+                                        type="radio"
+                                        name={`perm-${page.path}`}
+                                        value="read"
+                                        checked={currentVal === 'read'}
+                                        onChange={() => {
+                                          const newAccess = { ...userForm.page_access, [page.path]: 'read' };
+                                          setUserForm(prev => ({ ...prev, page_access: newAccess }));
+                                        }}
+                                        className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 cursor-pointer"
+                                      />
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                      <input
+                                        type="radio"
+                                        name={`perm-${page.path}`}
+                                        value="write"
+                                        checked={currentVal === 'write'}
+                                        onChange={() => {
+                                          const newAccess = { ...userForm.page_access, [page.path]: 'write' };
+                                          setUserForm(prev => ({ ...prev, page_access: newAccess }));
+                                        }}
+                                        className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 cursor-pointer"
+                                      />
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </React.Fragment>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                   
                   <div className="mt-8 bg-gradient-to-br from-purple-50 to-indigo-50 p-6 rounded-[2rem] border border-purple-100/50 flex items-center justify-between group transition-all hover:shadow-xl hover:shadow-purple-100/30">

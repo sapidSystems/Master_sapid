@@ -1,6 +1,4 @@
-
-
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom"
 import "./index.css"
 
 // --- Page Imports ---
@@ -16,6 +14,12 @@ import QuickTask from "./pages/QuickTask"
 import Demo from "./pages/user/Demo"
 import Setting from "./pages/Setting"
 import MisReport from "./pages/MisReport"
+
+// --- Sample System Imports ---
+import SampleDashboard from "./pages/sample/SampleDashboard"
+import SampleManagement from "./pages/sample/SampleManagement"
+import ProductionPlanning from "./pages/sample/ProductionPlanning"
+import BulkDashboard from "./pages/sample/BulkDashboard"
 
 // --- Data & Delegation Imports ---
 import DataPage from "./pages/admin/DataPage"
@@ -34,19 +38,39 @@ import RealtimeLogoutListener from "./components/RealtimeLogoutListener"
 import { MagicToastProvider } from "./context/MagicToastContext"
 
 // --- Auth Wrapper ---
-const ProtectedRoute = ({ children, allowedRoles = [] }) => {
+const ProtectedRoute = ({ children }) => {
     const username = (localStorage.getItem("user-name") || "").toLowerCase();
     const role = (localStorage.getItem("role") || "").toLowerCase();
+    const location = useLocation();
 
     if (!username) {
         return <Navigate to="/login" replace />
     }
 
-    if (allowedRoles.length > 0 && !allowedRoles.map(r => r.toLowerCase()).includes(role)) {
+    if (role === "admin") {
+        return children;
+    }
+
+    const pageAccess = JSON.parse(localStorage.getItem("page_access") || "{}");
+    const path = location.pathname;
+
+    const exceptionPaths = [
+        "/dashboard/admin",
+        "/dashboard/notifications",
+        "/dashboard/training-video"
+    ];
+      
+    const isException = exceptionPaths.some(p => path === p || path.startsWith(p + "/"));
+    if (isException) {
+        return children;
+    }
+
+    const currentPermission = pageAccess[path];
+    if (!currentPermission || currentPermission === "none") {
         return <Navigate to="/dashboard/admin" replace />
     }
 
-    return children
+    return children;
 }
 
 const SuperAdminRoute = ({ children }) => {
@@ -266,6 +290,41 @@ function App() {
                             </ProtectedRoute>
                         }
                     />
+
+                    {/* --- Sample System Routes --- */}
+                    <Route
+                        path="/dashboard/sample-dashboard"
+                        element={
+                            <ProtectedRoute allowedRoles={["admin", "HOD", "user"]}>
+                                <SampleDashboard />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/dashboard/sample-management"
+                        element={
+                            <ProtectedRoute allowedRoles={["admin", "HOD", "user"]}>
+                                <SampleManagement />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/dashboard/bulk-dashboard"
+                        element={
+                            <ProtectedRoute allowedRoles={["admin", "HOD", "user"]}>
+                                <BulkDashboard />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/dashboard/bulk-order"
+                        element={
+                            <ProtectedRoute allowedRoles={["admin", "HOD", "user"]}>
+                                <ProductionPlanning />
+                            </ProtectedRoute>
+                        }
+                    />
+
 
                     {/* --- Backward Compatibility Redirects (From Snippet 1) --- */}
                     {/* These catch old URLs and forward them to the new structure */}
