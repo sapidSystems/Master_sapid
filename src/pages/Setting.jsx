@@ -1188,7 +1188,7 @@ const Setting = () => {
     setUserForm({
       username: user.user_name || '',
       email: user.email_id || '',
-      password: '', // Leave empty when editing to keep current password
+      password: user.password || '',
       phone: user.number || '',
       employee_id: user.employee_id || '',
       department: user.department || '',
@@ -2712,20 +2712,18 @@ const Setting = () => {
                       />
                     </div>
 
-                    {!isEditing && (
-                      <div className="space-y-2">
-                        <label htmlFor="password" className="block text-sm font-bold text-gray-700 ml-1">Password</label>
-                        <input
-                          type="password"
-                          name="password"
-                          id="password"
-                          value={userForm.password}
-                          onChange={handleUserInputChange}
-                          className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
-                          placeholder="••••••••"
-                        />
-                      </div>
-                    )}
+                    <div className="space-y-2">
+                      <label htmlFor="password" className="block text-sm font-bold text-gray-700 ml-1">Password</label>
+                      <input
+                        type="text"
+                        name="password"
+                        id="password"
+                        value={userForm.password}
+                        onChange={handleUserInputChange}
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
+                        placeholder="Enter password"
+                      />
+                    </div>
 
                     <div className="space-y-2">
                       <label htmlFor="phone" className="block text-sm font-bold text-gray-700 ml-1">Phone Number</label>

@@ -178,13 +178,7 @@ const LoginPage = () => {
               >
                 Forgot Password?
               </button>
-              <button
-                type="button"
-                onClick={() => setShowChangeModal(true)}
-                className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors"
-              >
-                Change Password
-              </button>
+              
             </div>
           </div>
         </form>
