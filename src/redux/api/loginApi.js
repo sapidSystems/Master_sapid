@@ -23,16 +23,16 @@ import supabase from "../../SupabaseClient";
 
 export const LoginCredentialsApi = async (formData) => {
   try {
-    // 🔒 Use RPC to verify hashed password securely on the server side
+    // Query users table directly with plaintext username and password
     const { data, error } = await supabase
-      .rpc('secure_login', {
-        input_username: formData.username,
-        input_password: formData.password
-      });
+      .from('users')
+      .select('*')
+      .eq('user_name', formData.username)
+      .eq('password', formData.password);
 
     // Handle error or no data
     if (error) {
-      console.error("❌ Login RPC Error Full Object:", error);
+      console.error("❌ Login Database Error Full Object:", error);
 
       // 🌐 Handle DNS/ISP Blocks specifically for India users (inside the error object)
       if (error.message?.includes('Failed to fetch') || error.message?.includes('Network Error')) {

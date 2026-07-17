@@ -36,6 +36,16 @@ const LoginPage = () => {
   })
   const [isForgotLoading, setIsForgotLoading] = useState(false)
 
+  // Change Password State
+  const [showChangeModal, setShowChangeModal] = useState(false)
+  const [changeData, setChangeData] = useState({
+    username: "",
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: ""
+  })
+  const [isChangeLoading, setIsChangeLoading] = useState(false)
+
   const handleSubmit = (e) => {
     e.preventDefault();
     setIsLoginLoading(true);
@@ -160,13 +170,22 @@ const LoginPage = () => {
             >
               {isLoginLoading ? "Logging in..." : "Login"}
             </button>
-            <button
-              type="button"
-              onClick={() => setShowForgotModal(true)}
-              className="text-sm font-bold text-blue-600 hover:text-blue-800 transition-colors text-center"
-            >
-              Forgot Password?
-            </button>
+            <div className="flex justify-between items-center px-1">
+              <button
+                type="button"
+                onClick={() => setShowForgotModal(true)}
+                className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors"
+              >
+                Forgot Password?
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowChangeModal(true)}
+                className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors"
+              >
+                Change Password
+              </button>
+            </div>
           </div>
         </form>
 
@@ -315,6 +334,132 @@ const LoginPage = () => {
                   </form>
                 )}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Change Password Modal */}
+        {showChangeModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => !isChangeLoading && setShowChangeModal(false)}></div>
+            <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 border border-blue-50">
+              <div className="bg-gradient-to-br from-blue-50 to-white px-6 py-6 text-center">
+                <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                  <KeyRound className="text-blue-600" size={32} />
+                </div>
+                <h3 className="text-xl font-black text-gray-900 leading-tight">
+                  Change Password
+                </h3>
+              </div>
+
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                if (changeData.newPassword !== changeData.confirmPassword) {
+                  return showToast("New passwords do not match", "error");
+                }
+                if (changeData.newPassword.length < 4) {
+                  return showToast("Password too short (min 4 characters)", "error");
+                }
+
+                setIsChangeLoading(true);
+                try {
+                  // Step 1: Verify current credentials
+                  const { data: user, error: fetchError } = await supabase
+                    .from('users')
+                    .select('id')
+                    .eq('user_name', changeData.username)
+                    .eq('password', changeData.currentPassword)
+                    .maybeSingle();
+
+                  if (fetchError || !user) {
+                    showToast("Invalid username or current password", "error");
+                    setIsChangeLoading(false);
+                    return;
+                  }
+
+                  // Step 2: Update the password directly (raw text) in the users table
+                  const { error: updateError } = await supabase
+                    .from('users')
+                    .update({ password: changeData.newPassword })
+                    .eq('id', user.id);
+
+                  if (updateError) throw updateError;
+
+                  showToast("Password changed successfully!", "success");
+                  setShowChangeModal(false);
+                  setChangeData({ username: "", currentPassword: "", newPassword: "", confirmPassword: "" });
+                } catch (err) {
+                  console.error("Change Password Error:", err);
+                  showToast("Error changing password", "error");
+                } finally {
+                  setIsChangeLoading(false);
+                }
+              }} className="px-6 pb-8 space-y-4">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Username"
+                    required
+                    value={changeData.username}
+                    onChange={(e) => setChangeData({ ...changeData, username: e.target.value })}
+                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all"
+                  />
+                  <UserIcon className="absolute left-3 top-3.5 text-gray-400" size={18} />
+                </div>
+                <div className="relative">
+                  <input
+                    type="password"
+                    placeholder="Current Password"
+                    required
+                    value={changeData.currentPassword}
+                    onChange={(e) => setChangeData({ ...changeData, currentPassword: e.target.value })}
+                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all"
+                  />
+                  <KeyRound className="absolute left-3 top-3.5 text-gray-400" size={18} />
+                </div>
+                <div className="relative">
+                  <input
+                    type="password"
+                    placeholder="New Password"
+                    required
+                    value={changeData.newPassword}
+                    onChange={(e) => setChangeData({ ...changeData, newPassword: e.target.value })}
+                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all"
+                  />
+                  <ShieldCheck className="absolute left-3 top-3.5 text-gray-400" size={18} />
+                </div>
+                <div className="relative">
+                  <input
+                    type="password"
+                    placeholder="Confirm New Password"
+                    required
+                    value={changeData.confirmPassword}
+                    onChange={(e) => setChangeData({ ...changeData, confirmPassword: e.target.value })}
+                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all"
+                  />
+                  <ShieldCheck className="absolute left-3 top-3.5 text-gray-400" size={18} />
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    disabled={isChangeLoading}
+                    onClick={() => {
+                      setShowChangeModal(false);
+                      setChangeData({ username: "", currentPassword: "", newPassword: "", confirmPassword: "" });
+                    }}
+                    className="w-1/2 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200 transition-all text-center text-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isChangeLoading}
+                    className="w-1/2 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all flex items-center justify-center gap-2 text-sm"
+                  >
+                    {isChangeLoading ? <RefreshCw className="animate-spin" size={18} /> : "Update"}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}
