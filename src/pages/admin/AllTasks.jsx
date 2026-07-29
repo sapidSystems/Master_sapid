@@ -1349,8 +1349,7 @@ const AllTasks = () => {
                                   type="checkbox"
                                   checked={selectedItems.has(task.id)}
                                   onChange={(e) => handleSelectItem(task.id, e.target.checked)}
-                                  disabled={getTimeStatus(task[statusDateColumn], task.status) === "Upcoming"}
-                                  className="h-4 w-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 disabled:opacity-30 disabled:cursor-not-allowed"
+                                  className="h-4 w-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                                 />
                               </td>
                             )}
@@ -1702,7 +1701,6 @@ const AllTasks = () => {
                                 type="checkbox"
                                 checked={selectedItems.has(task.id)}
                                 onChange={(e) => handleSelectItem(task.id, e.target.checked)}
-                                disabled={getTimeStatus(task[statusDateColumn], task.status) === "Upcoming"}
                                 className="h-4 w-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                               />
                             )}
