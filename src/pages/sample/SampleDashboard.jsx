@@ -115,6 +115,27 @@ export default function SampleDashboard() {
 
   const [enquiries, setEnquiries] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [sampleTypes, setSampleTypes] = useState([]);
+
+  const fetchSampleTypes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('sample_type')
+        .select('*')
+        .order('id', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching sample_type from database:', error);
+        return;
+      }
+
+      if (data) {
+        setSampleTypes(data.map(item => item.name).filter(Boolean));
+      }
+    } catch (err) {
+      console.error('Error fetching sample types:', err);
+    }
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -134,6 +155,7 @@ export default function SampleDashboard() {
 
   useEffect(() => {
     fetchDashboardData();
+    fetchSampleTypes();
   }, []);
 
   const bulkOrders = [];
@@ -423,12 +445,9 @@ export default function SampleDashboard() {
                       className="w-full bg-white border border-gray-300 rounded-lg lg:rounded px-2 py-1.5 focus:outline-none focus:border-indigo-500 text-[11px] md:text-sm h-[32px] md:h-[38px]"
                     >
                       <option value="">All Types</option>
-                      <option value="Only Sample">Only Sample</option>
-                      <option value="Only Costing">Only Costing</option>
-                      <option value="Sample with Costing">Sample with Costing</option>
-                      <option value="Leather Development">Leather Development</option>
-                      <option value="Material Development">Material Development</option>
-                      <option value="General Info">General Info</option>
+                      {sampleTypes.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
                     </select>
                   )}
                 </div>

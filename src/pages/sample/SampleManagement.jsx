@@ -153,6 +153,70 @@ export default function SampleManagement() {
   const [leads, setLeads] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [canWrite, setCanWrite] = useState(true);
+  const [sampleTypes, setSampleTypes] = useState([]);
+  const [showAddTypeModal, setShowAddTypeModal] = useState(false);
+  const [newTypeName, setNewTypeName] = useState('');
+  const [isAddingType, setIsAddingType] = useState(false);
+
+  const fetchSampleTypes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('sample_type')
+        .select('*')
+        .order('id', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching sample_type from database:', error);
+        toast.error('Failed to load sample types');
+        return;
+      }
+
+      if (data) {
+        const typeNames = data.map(item => item.name).filter(Boolean);
+        setSampleTypes(typeNames);
+      }
+    } catch (err) {
+      console.error('Error fetching sample types:', err);
+    }
+  };
+
+  const handleAddType = async (e) => {
+    e.preventDefault();
+    const trimmed = newTypeName.trim();
+    if (!trimmed) {
+      toast.error('Please enter a type name');
+      return;
+    }
+
+    if (sampleTypes.some(t => t.toLowerCase() === trimmed.toLowerCase())) {
+      toast.error('This type already exists');
+      return;
+    }
+
+    try {
+      setIsAddingType(true);
+      const { error } = await supabase
+        .from('sample_type')
+        .insert([{ name: trimmed }]);
+
+      if (error) {
+        console.error('DB insert error:', error.message);
+        toast.error('Failed to add sample type to database');
+        return;
+      }
+
+      toast.success(`Sample type "${trimmed}" created successfully!`);
+      await fetchSampleTypes();
+      setFormData(prev => ({ ...prev, type: trimmed }));
+      setNewTypeName('');
+      setShowAddTypeModal(false);
+    } catch (err) {
+      console.error('Error adding sample type:', err);
+      toast.error('Failed to save new sample type');
+    } finally {
+      setIsAddingType(false);
+    }
+  };
 
   const fetchLeads = async () => {
     try {
@@ -174,6 +238,7 @@ export default function SampleManagement() {
 
   useEffect(() => {
     fetchLeads();
+    fetchSampleTypes();
 
     const role = (localStorage.getItem("role") || "").toLowerCase();
     if (role === "admin") {
@@ -643,7 +708,16 @@ export default function SampleManagement() {
 
                     {/* Type */}
                     <div>
-                      <label className="block text-[11px] md:text-sm font-medium text-gray-700 mb-0.5 md:mb-1">Type *</label>
+                      <div className="flex justify-between items-center mb-0.5 md:mb-1">
+                        <label className="block text-[11px] md:text-sm font-medium text-gray-700">Type *</label>
+                        <button
+                          type="button"
+                          onClick={() => setShowAddTypeModal(true)}
+                          className="text-[11px] md:text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-0.5 hover:underline"
+                        >
+                          <Plus size={13} /> Add New Type
+                        </button>
+                      </div>
                       <select
                         value={formData.type}
                         onChange={(e) => setFormData({ ...formData, type: e.target.value })}
@@ -651,12 +725,9 @@ export default function SampleManagement() {
                         required
                       >
                         <option value="" disabled>Select Type</option>
-                        <option value="Only Sample">Only Sample</option>
-                        <option value="Only Costing">Only Costing</option>
-                        <option value="Sample with Costing">Sample with Costing</option>
-                        <option value="Leather Development">Leather Development</option>
-                        <option value="Material Development">Material Development</option>
-                        <option value="General Info">General Info</option>
+                        {sampleTypes.map((t) => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
                       </select>
                     </div>
 
@@ -1225,6 +1296,62 @@ export default function SampleManagement() {
 
         </div>
       </div>
+
+      {/* Modal to Add New Sample Type */}
+      {showAddTypeModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-fadeIn">
+            <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+              <h3 className="text-base md:text-lg font-bold text-gray-900">Add New Sample Type</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddTypeModal(false);
+                  setNewTypeName('');
+                }}
+                className="text-gray-400 hover:text-red-500 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleAddType} className="p-4 md:p-6 space-y-4">
+              <div>
+                <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">
+                  Type Name *
+                </label>
+                <input
+                  type="text"
+                  value={newTypeName}
+                  onChange={(e) => setNewTypeName(e.target.value)}
+                  placeholder="e.g. 3D Prototype"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-xs md:text-sm"
+                  autoFocus
+                  required
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddTypeModal(false);
+                    setNewTypeName('');
+                  }}
+                  className="px-4 py-2 text-xs md:text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isAddingType}
+                  className="px-4 py-2 text-xs md:text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {isAddingType ? 'Saving...' : 'Add Type'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }
