@@ -77,7 +77,7 @@ const mapLeadToDb = (lead) => {
 const generateDummyLeads = () => {
   const dummyLeads = [];
   const baseDate = new Date();
-  const types = ['Select','Only Sample', 'Only Costing', 'Leather Development', 'Material Development', 'General Info'];
+  const types = ['Select','Only Sample', 'Only Costing', 'Leather Development', 'Material Development', 'General Info','Sample with Costing'];
   const buyers = ['BUYER-01', 'BUYER-02', 'BUYER-03', 'BUYER-04'];
   
   for (let i = 0; i < 10; i++) {
@@ -653,6 +653,7 @@ export default function SampleManagement() {
                         <option value="" disabled>Select Type</option>
                         <option value="Only Sample">Only Sample</option>
                         <option value="Only Costing">Only Costing</option>
+                        <option value="Sample with Costing">Sample with Costing</option>
                         <option value="Leather Development">Leather Development</option>
                         <option value="Material Development">Material Development</option>
                         <option value="General Info">General Info</option>

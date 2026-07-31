@@ -425,6 +425,7 @@ export default function SampleDashboard() {
                       <option value="">All Types</option>
                       <option value="Only Sample">Only Sample</option>
                       <option value="Only Costing">Only Costing</option>
+                      <option value="Sample with Costing">Sample with Costing</option>
                       <option value="Leather Development">Leather Development</option>
                       <option value="Material Development">Material Development</option>
                       <option value="General Info">General Info</option>
