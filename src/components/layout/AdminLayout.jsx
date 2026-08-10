@@ -50,9 +50,35 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
 
   const handleToggleSubmenu = (clickedRoute) => {
     const nextState = !clickedRoute.isOpen;
-    setIsChecklistSubmenuOpen(false);
-    setIsSampleSubmenuOpen(false);
-    setIsBulkSubmenuOpen(false);
+    
+    const path = location.pathname;
+    const isChecklist = [
+      "/dashboard/admin", "/dashboard/notifications", "/dashboard/quick-task",
+      "/dashboard/assign-task", "/dashboard/delegation", "/dashboard/task",
+      "/dashboard/calendar", "/dashboard/holiday-list", "/dashboard/working-day-calendar",
+      "/dashboard/admin-approval", "/dashboard/training-video"
+    ].some(p => path === p || path.startsWith(p + "/"));
+    
+    const isSample = [
+      "/dashboard/sample-dashboard", "/dashboard/sample-management"
+    ].some(p => path === p || path.startsWith(p + "/"));
+    
+    const isBulk = [
+      "/dashboard/bulk-dashboard", "/dashboard/bulk-order"
+    ].some(p => path === p || path.startsWith(p + "/"));
+
+    // Only close others if they are NOT the active route's submenu
+    if (clickedRoute.setIsOpen === setIsChecklistSubmenuOpen) {
+      if (!isSample) setIsSampleSubmenuOpen(false);
+      if (!isBulk) setIsBulkSubmenuOpen(false);
+    } else if (clickedRoute.setIsOpen === setIsSampleSubmenuOpen) {
+      if (!isChecklist) setIsChecklistSubmenuOpen(false);
+      if (!isBulk) setIsBulkSubmenuOpen(false);
+    } else if (clickedRoute.setIsOpen === setIsBulkSubmenuOpen) {
+      if (!isChecklist) setIsChecklistSubmenuOpen(false);
+      if (!isSample) setIsSampleSubmenuOpen(false);
+    }
+
     clickedRoute.setIsOpen(nextState);
   };
 
@@ -212,9 +238,9 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
     const isSample = samplePaths.some(p => path === p || path.startsWith(p + "/"));
     const isBulk = bulkPaths.some(p => path === p || path.startsWith(p + "/"));
 
-    setIsChecklistSubmenuOpen(isChecklist);
-    setIsSampleSubmenuOpen(isSample);
-    setIsBulkSubmenuOpen(isBulk);
+    if (isChecklist) setIsChecklistSubmenuOpen(true);
+    if (isSample) setIsSampleSubmenuOpen(true);
+    if (isBulk) setIsBulkSubmenuOpen(true);
   }, [location.pathname]);
 
   // Handle logout

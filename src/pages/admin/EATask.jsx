@@ -69,14 +69,14 @@ function TaskCard({ task, index, total, allDoers, onUpdate, onRemove }) {
             // HOD Restriction & Reporting Group Filter
             const currentU = (localStorage.getItem("user-name") || "").toLowerCase().trim();
             const currentR = (localStorage.getItem("role") || "").toLowerCase().trim();
-            
+
             if (currentR === "hod") {
                 const dName = (d.user_name || d.name || "").toLowerCase().trim();
                 const reportedBy = (d.reported_by || "").toLowerCase().trim();
-                
+
                 // Only show themselves OR their direct reports
                 if (dName !== currentU && reportedBy !== currentU) return false;
-                
+
                 // If it's themselves, check for explicit self-assign rights
                 if (dName === currentU && !d.can_self_assign) return false;
             }

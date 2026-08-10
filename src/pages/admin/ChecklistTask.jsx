@@ -26,7 +26,7 @@ const formatDateISO = (date) => {
 
 const FREQUENCY_OPTIONS = [
     "One Time (No Recurrence)", "Alternate Day", "Daily", "Weekly",
-    "Fortnight", "Monthly", "Quarterly", "Half Yearly", "Yearly",
+    "Fortnight", "Half Month", "Monthly", "Quarterly", "Half Yearly", "Yearly",
     "End of 1st week", "End of 2nd week", "End of 3rd week", "End of 4rth week"
 ];
 
@@ -287,7 +287,7 @@ function TaskCard({ task, index, total, department, doerName, givenBy, dispatch,
                             </div>
                         );
                     })}
-                    
+
                     <ReactMediaRecorder
                         audio
                         onStop={(blobUrl, blob) => onUpdate(task.id, { recordedAudio: { blobUrl, blob } })}
@@ -340,29 +340,29 @@ function TaskCard({ task, index, total, department, doerName, givenBy, dispatch,
                 {/* Date, Time, Frequency, Duration */}
                 <div className="grid grid-cols-2 gap-3">
                     <div className="relative">
-                            <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Planned Date <span className="text-red-500">*</span></label>
-                            <button
-                                type="button"
-                                onClick={() => !task.dateLocked && onUpdate(task.id, { showCalendar: !task.showCalendar })}
-                                className={`w-full px-3 py-2.5 text-left border border-gray-200 rounded-lg bg-gray-50 hover:bg-white focus:ring-2 focus:ring-purple-500 transition-all flex items-center justify-between text-xs ${task.dateLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
-                                disabled={task.dateLocked}
-                            >
-                                <span className={task.date ? "text-gray-800" : "text-gray-400"}>
-                                    {task.date ? formatDate(task.date) : "Select"}
-                                </span>
-                                <Calendar className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                            </button>
-                            {task.showCalendar && (
-                                <div className="absolute top-full left-0 mt-1 z-50">
-                                    <CalendarComponent
-                                        date={task.date}
-                                        onChange={(d) => onUpdate(task.id, { date: d, showCalendar: false })}
-                                        onClose={() => onUpdate(task.id, { showCalendar: false })}
-                                        disableBeforeMinWorkingDate={true}
-                                    />
-                                </div>
-                            )}
-                        </div>
+                        <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Planned Date <span className="text-red-500">*</span></label>
+                        <button
+                            type="button"
+                            onClick={() => !task.dateLocked && onUpdate(task.id, { showCalendar: !task.showCalendar })}
+                            className={`w-full px-3 py-2.5 text-left border border-gray-200 rounded-lg bg-gray-50 hover:bg-white focus:ring-2 focus:ring-purple-500 transition-all flex items-center justify-between text-xs ${task.dateLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
+                            disabled={task.dateLocked}
+                        >
+                            <span className={task.date ? "text-gray-800" : "text-gray-400"}>
+                                {task.date ? formatDate(task.date) : "Select"}
+                            </span>
+                            <Calendar className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                        </button>
+                        {task.showCalendar && (
+                            <div className="absolute top-full left-0 mt-1 z-50">
+                                <CalendarComponent
+                                    date={task.date}
+                                    onChange={(d) => onUpdate(task.id, { date: d, showCalendar: false })}
+                                    onClose={() => onUpdate(task.id, { showCalendar: false })}
+                                    disableBeforeMinWorkingDate={true}
+                                />
+                            </div>
+                        )}
+                    </div>
                     <div>
                         <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Time</label>
                         <input
@@ -372,7 +372,8 @@ function TaskCard({ task, index, total, department, doerName, givenBy, dispatch,
                             onChange={handleChange}
                             className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-50 focus:ring-2 focus:ring-purple-500 outline-none transition-all text-sm"
                         />
-                    </div>                    <div>
+                    </div>
+                    <div>
                         <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Frequency</label>
                         <select
                             name="frequency"
@@ -517,6 +518,7 @@ export default function ChecklistTask() {
         "Daily": "daily",
         "Weekly": "weekly",
         "Fortnight": "fortnight",
+        "Half Month": "half-month",
         "Monthly": "monthly",
         "Quarterly": "quarterly",
         "Half Yearly": "half-yearly",
@@ -548,10 +550,12 @@ export default function ChecklistTask() {
             endDate.setFullYear(endDate.getFullYear() + 1);
         }
 
+        const fetchStart = new Date(startDate);
+        fetchStart.setMonth(fetchStart.getMonth() - 1);
         const { data: workingData } = await supabase
             .from('working_day_calender')
             .select('working_date')
-            .gte('working_date', getLocalDateString(startDate))
+            .gte('working_date', getLocalDateString(fetchStart))
             .lte('working_date', getLocalDateString(endDate));
 
         const workingDaySet = new Set(workingData?.map(d => d.working_date) || []);
@@ -602,14 +606,14 @@ export default function ChecklistTask() {
             if (!isHoliday(startDate) && isWorkingDay(startDate) && !shouldSkip(startDate)) {
                 dates.push(toLocalISO(startDate));
             } else {
-                // Shift to next working day if the planned date itself is not a working day
+                // Shift backwards if the planned date itself is not a working day
                 let shifted = new Date(startDate);
-                while (shifted <= endDate && (isHoliday(shifted) || !isWorkingDay(shifted) || shouldSkip(shifted))) {
-                    shifted.setDate(shifted.getDate() + 1);
+                let shiftAttempts = 0;
+                while (shiftAttempts < 30 && (isHoliday(shifted) || !isWorkingDay(shifted) || shouldSkip(shifted))) {
+                    shifted.setDate(shifted.getDate() - 1);
+                    shiftAttempts++;
                 }
-                if (shifted <= endDate) {
-                    dates.push(toLocalISO(shifted));
-                }
+                dates.push(toLocalISO(shifted));
             }
 
             // Generate for subsequent months
@@ -620,9 +624,11 @@ export default function ChecklistTask() {
                 let target = getNthDayOfWeekInMonth(currentMonth.getFullYear(), currentMonth.getMonth(), plannedDayOfWeek, targetWeekNum);
 
                 if (target && target <= endDate) {
-                    // Shift to next working day if target falls on holiday/non-working day
-                    while (target <= endDate && (isHoliday(target) || !isWorkingDay(target) || shouldSkip(target))) {
-                        target.setDate(target.getDate() + 1);
+                    // Shift backwards if target falls on holiday/non-working day
+                    let shiftAttempts = 0;
+                    while (shiftAttempts < 30 && (isHoliday(target) || !isWorkingDay(target) || shouldSkip(target))) {
+                        target.setDate(target.getDate() - 1);
+                        shiftAttempts++;
                     }
                     if (target <= endDate) {
                         dates.push(toLocalISO(target));
@@ -643,21 +649,57 @@ export default function ChecklistTask() {
             }
             if (freqKey === 'daily') validDays.forEach(day => dates.push(toLocalISO(day)));
             else validDays.forEach((day, i) => { if (i % 2 === 0) dates.push(toLocalISO(day)); });
+        } else if (freqKey === 'half-month') {
+            let currentMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+            let attempts = 0;
+            while (currentMonth <= endDate && attempts < 24) {
+                attempts++;
+
+                // 1st half: 14th for Feb, 15th for others
+                let midDay = currentMonth.getMonth() === 1 ? 14 : 15;
+                let midDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), midDay);
+
+                if (midDate >= startDate && midDate <= endDate) {
+                    let target = new Date(midDate);
+                    let shiftAttempts = 0;
+                    while (shiftAttempts < 30 && (isHoliday(target) || !isWorkingDay(target) || shouldSkip(target))) {
+                        target.setDate(target.getDate() - 1);
+                        shiftAttempts++;
+                    }
+                    dates.push(toLocalISO(target));
+                }
+
+                // 2nd half: Target 30th (or end of Feb)
+                let lastDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
+                let targetDay = Math.min(30, lastDay);
+                let endDateOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), targetDay);
+                if (endDateOfMonth >= startDate && endDateOfMonth <= endDate) {
+                    let target = new Date(endDateOfMonth);
+                    let shiftAttempts = 0;
+                    while (shiftAttempts < 30 && (isHoliday(target) || !isWorkingDay(target) || shouldSkip(target))) {
+                        target.setDate(target.getDate() - 1);
+                        shiftAttempts++;
+                    }
+                    dates.push(toLocalISO(target));
+                }
+
+                currentMonth.setMonth(currentMonth.getMonth() + 1);
+            }
         } else {
             let current = new Date(startDate);
             let attempts = 0;
             while (current <= endDate && attempts < 1000) {
                 attempts++;
 
-                // For other frequencies, shift to next working day if current is bad
+                // For other frequencies, shift backwards if current is bad
                 let target = new Date(current);
-                while (target <= endDate && (isHoliday(target) || !isWorkingDay(target) || shouldSkip(target))) {
-                    target.setDate(target.getDate() + 1);
+                let shiftAttempts = 0;
+                while (shiftAttempts < 30 && (isHoliday(target) || !isWorkingDay(target) || shouldSkip(target))) {
+                    target.setDate(target.getDate() - 1);
+                    shiftAttempts++;
                 }
 
-                if (target <= endDate) {
-                    dates.push(toLocalISO(target));
-                }
+                dates.push(toLocalISO(target));
 
                 if (freqKey === 'weekly') current = addDays(current, 7);
                 else if (freqKey === 'fortnight') current = addDays(current, 14);
@@ -1001,8 +1043,8 @@ export default function ChecklistTask() {
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        <button 
-                            type="button" 
+                        <button
+                            type="button"
                             onClick={() => setIsImportModalOpen(true)}
                             className="flex items-center gap-1.5 px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold rounded-xl text-xs border border-purple-200 transition-all shadow-sm cursor-pointer"
                         >
@@ -1161,9 +1203,9 @@ export default function ChecklistTask() {
                     </div>
                 </div>
             )}
-            <BulkImportModal 
-                isOpen={isImportModalOpen} 
-                onClose={() => setIsImportModalOpen(false)} 
+            <BulkImportModal
+                isOpen={isImportModalOpen}
+                onClose={() => setIsImportModalOpen(false)}
                 onImportSuccess={(msg) => {
                     setSuccessMessage(msg);
                     showToast(msg, 'success');
