@@ -267,8 +267,12 @@ export default function SampleManagement() {
     sampleWOHandoverDate: '',
     expectedCompletionDate: '',
     actualCompletionDate: '',
-    dispatchSentDate: ''
+    dispatchSentDate: '',
+    qty: '',
+    remarks: ''
   });
+  const [isEditingQty, setIsEditingQty] = useState(false);
+  const [isEditingRemarks, setIsEditingRemarks] = useState(false);
 
   const currentUser = {
     name: localStorage.getItem('user-name') || 'Unknown User',
@@ -390,11 +394,15 @@ export default function SampleManagement() {
 
   const handleOpenFollowUp = (lead) => {
     setSelectedLead(lead);
+    setIsEditingQty(false);
+    setIsEditingRemarks(false);
     setFollowUpFormData({
       sampleWOHandoverDate: lead.sampleWOHandoverDate || '',
       expectedCompletionDate: lead.expectedCompletionDate || '',
       actualCompletionDate: lead.actualCompletionDate || '',
-      dispatchSentDate: lead.dispatchSentDate || ''
+      dispatchSentDate: lead.dispatchSentDate || '',
+      qty: lead.qty || '',
+      remarks: lead.remarks || ''
     });
     setShowFollowUpModal(true);
   };
@@ -410,6 +418,8 @@ export default function SampleManagement() {
     const updatedLead = {
       ...selectedLead,
       ...followUpFormData,
+      qty: followUpFormData.qty || selectedLead.qty,
+      remarks: followUpFormData.remarks || selectedLead.remarks,
       isFollowedUp: true,
       followUpTimestamp: new Date().toISOString()
     };
@@ -803,9 +813,31 @@ export default function SampleManagement() {
                         <span className="block text-gray-400 mb-0.5 text-[9px] uppercase">Description of Enquiry</span>
                         <span className="font-medium text-gray-900">{selectedLead.productName || '-'}</span>
                       </div>
+                      {/* Qty - Editable */}
                       <div>
-                        <span className="block text-gray-400 mb-0.5 text-[9px] uppercase">Qty</span>
-                        <span className="font-medium text-sky-700 bg-sky-50 px-1 py-0.5 rounded">{selectedLead.qty}</span>
+                        <span className="flex items-center gap-1.5 text-gray-400 mb-0.5 text-[9px] uppercase">
+                          Qty
+                          {canWrite && !isEditingQty && (
+                            <button
+                              type="button"
+                              onClick={() => setIsEditingQty(true)}
+                              className="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200 px-1 py-0.5 rounded flex items-center gap-0.5 text-[8px] font-bold lowercase transition-colors"
+                            >
+                              <Edit2 size={8} /> edit
+                            </button>
+                          )}
+                        </span>
+                        {canWrite && isEditingQty ? (
+                          <input
+                            type="text"
+                            value={followUpFormData.qty}
+                            onChange={(e) => setFollowUpFormData({ ...followUpFormData, qty: e.target.value })}
+                            className="border border-indigo-300 rounded px-1.5 py-0.5 text-xs focus:ring-1 focus:ring-indigo-400 focus:outline-none w-[90px] font-medium text-gray-800"
+                            placeholder="Enter qty"
+                          />
+                        ) : (
+                          <span className="font-medium text-sky-700 bg-sky-50 px-1 py-0.5 rounded">{followUpFormData.qty || selectedLead.qty}</span>
+                        )}
                       </div>
                       <div>
                         <span className="block text-gray-400 mb-0.5 text-[9px] uppercase">Type</span>
@@ -820,9 +852,31 @@ export default function SampleManagement() {
                         <span className="font-medium text-gray-900">{formatDate(selectedLead.sampleWODate)}</span>
                       </div>
 
+                      {/* Remarks - Editable */}
                       <div className="col-span-3 md:col-span-4 border-t border-gray-100 pt-2 mt-1">
-                        <span className="block text-gray-400 mb-0.5 text-[9px] uppercase">Remarks</span>
-                        <span className="font-medium text-gray-700">{selectedLead.remarks || '-'}</span>
+                        <span className="flex items-center gap-1.5 text-gray-400 mb-0.5 text-[9px] uppercase">
+                          Remarks
+                          {canWrite && !isEditingRemarks && (
+                            <button
+                              type="button"
+                              onClick={() => setIsEditingRemarks(true)}
+                              className="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200 px-1 py-0.5 rounded flex items-center gap-0.5 text-[8px] font-bold lowercase transition-colors"
+                            >
+                              <Edit2 size={8} /> edit
+                            </button>
+                          )}
+                        </span>
+                        {canWrite && isEditingRemarks ? (
+                          <textarea
+                            value={followUpFormData.remarks}
+                            onChange={(e) => setFollowUpFormData({ ...followUpFormData, remarks: e.target.value })}
+                            rows={2}
+                            className="border border-indigo-300 rounded px-1.5 py-0.5 text-xs focus:ring-1 focus:ring-indigo-400 focus:outline-none w-full font-medium text-gray-800 resize-none"
+                            placeholder="Enter remarks..."
+                          />
+                        ) : (
+                          <span className="font-medium text-gray-700">{followUpFormData.remarks || selectedLead.remarks || '-'}</span>
+                        )}
                       </div>
                     </div>
                   </div>

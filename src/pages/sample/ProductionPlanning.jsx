@@ -76,7 +76,7 @@ const generateDummyLeads = () => {
       currentStage: stg,
       isHistory: leadCounter % 2 === 0
     };
-    
+
     const stages = [
       'HANDOVER',
       'LEATHER IN-HOUSE',
@@ -87,11 +87,11 @@ const generateDummyLeads = () => {
       'QA COMPLETED',
       'Planned Shipment'
     ];
-    
+
     lead.stages = stages.map((stageName, idx) => {
       const s = idx + 1;
       const isCompleted = lead.isHistory || s < stg;
-      
+
       const pDate = new Date(dateObj.getTime() + (s * 86400000 * 2));
       const aDate = new Date(pDate.getTime() + (leadCounter % 3 === 0 ? 86400000 : 0));
 
@@ -472,7 +472,7 @@ export default function ProductionPlanning() {
   const handleOpenView = (lead) => {
     setSelectedLead(lead);
     setIsViewMode(true);
-    setFollowUpFormData({ 
+    setFollowUpFormData({
       stages: lead.stages || STAGES_LIST.map(name => ({ name, plannedDate: '', actualDate: '', remarks: '' })),
       woDespatchDate: lead.woDespatchDate || ''
     });
@@ -634,8 +634,8 @@ export default function ProductionPlanning() {
           <button
             onClick={() => { setActiveTab('pending'); setCurrentPage(1); }}
             className={`w-full lg:w-auto px-6 py-1.5 rounded-lg text-sm font-semibold transition-all h-[32px] md:h-[38px] ${activeTab === 'pending'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+              ? 'bg-indigo-600 text-white shadow-sm'
+              : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
               }`}
           >
             Pending ({leads.filter(l => !l.isHistory).length})
@@ -643,8 +643,8 @@ export default function ProductionPlanning() {
           <button
             onClick={() => { setActiveTab('history'); setCurrentPage(1); }}
             className={`w-full lg:w-auto px-6 py-1.5 rounded-lg text-sm font-semibold transition-all h-[32px] md:h-[38px] ${activeTab === 'history'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+              ? 'bg-indigo-600 text-white shadow-sm'
+              : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
               }`}
           >
             Completed ({leads.filter(l => l.isHistory).length})
@@ -896,8 +896,8 @@ export default function ProductionPlanning() {
                       <span className="text-gray-500 flex items-center gap-2 text-[10px] uppercase h-[20px]">
                         W/O Shipment
                         {!isViewMode && currentUser?.role === 'ADMIN' && !isEditingShipmentDate && (
-                          <button 
-                            type="button" 
+                          <button
+                            type="button"
                             onClick={() => setIsEditingShipmentDate(true)}
                             className="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200 px-1.5 py-0.5 rounded flex items-center gap-1 text-[9px] font-bold lowercase transition-colors"
                           >
@@ -906,7 +906,7 @@ export default function ProductionPlanning() {
                         )}
                       </span>
                       {!isViewMode && currentUser?.role === 'ADMIN' && isEditingShipmentDate ? (
-                        <input 
+                        <input
                           type="date"
                           value={followUpFormData.woDespatchDate || ''}
                           onChange={(e) => setFollowUpFormData({ ...followUpFormData, woDespatchDate: e.target.value })}
@@ -983,7 +983,7 @@ export default function ProductionPlanning() {
                                   const newStages = [...followUpFormData.stages];
                                   newStages[index].remarks = e.target.value;
                                   setFollowUpFormData({ ...followUpFormData, stages: newStages });
-                                }} 
+                                }}
                                 className="border border-gray-300 rounded px-1.5 py-0.5 text-[11px] focus:ring-1 focus:ring-indigo-400 focus:outline-none w-full disabled:bg-transparent disabled:border-transparent disabled:text-gray-700 disabled:px-0 disabled:py-0"
                               />
                             </td>
@@ -1032,8 +1032,8 @@ export default function ProductionPlanning() {
                             <button onClick={() => handleOpenFollowUp(lead)} className="px-2 py-1 bg-indigo-50 text-indigo-600 rounded text-[10px] font-bold uppercase hover:bg-indigo-100 transition shadow-sm border border-indigo-200">
                               Update
                             </button>
-                            <button 
-                              onClick={() => handleDeleteLead(lead.id)} 
+                            <button
+                              onClick={() => handleDeleteLead(lead.id)}
                               className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition border border-red-200 shadow-sm"
                               title="Delete Plan"
                             >
@@ -1317,8 +1317,8 @@ export default function ProductionPlanning() {
                               <button onClick={() => handleOpenFollowUp(lead)} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-md text-[11px] font-bold uppercase hover:bg-indigo-100 transition shadow-sm border border-indigo-200">
                                 Update
                               </button>
-                              <button 
-                                onClick={() => handleDeleteLead(lead.id)} 
+                              <button
+                                onClick={() => handleDeleteLead(lead.id)}
                                 className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition border border-red-200 shadow-sm"
                                 title="Delete Plan"
                               >
