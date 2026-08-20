@@ -754,9 +754,10 @@ export default function TaskNavigationTabs({
                               className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                             >
                               <option value="">Select Name</option>
-                              {doersList.map(name => (
-                                <option key={name} value={name}>{name}</option>
-                              ))}
+                              {doersList.map(item => {
+                                const name = item && typeof item === 'object' ? item.user_name : item;
+                                return <option key={name} value={name}>{name}</option>;
+                              })}
                             </select>
                           ) : (
                             task.assignedTo

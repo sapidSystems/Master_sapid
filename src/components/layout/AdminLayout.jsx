@@ -47,10 +47,17 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
   const [pageAccess, setPageAccess] = useState({});
 
   const [isUserPopupOpen, setIsUserPopupOpen] = useState(false);
+  const [menuCounts, setMenuCounts] = useState({
+
+    quickTask: null,
+    delegation: null,
+    task: null,
+    adminApproval: null
+  });
 
   const handleToggleSubmenu = (clickedRoute) => {
     const nextState = !clickedRoute.isOpen;
-    
+
     const path = location.pathname;
     const isChecklist = [
       "/dashboard/admin", "/dashboard/notifications", "/dashboard/quick-task",
@@ -58,11 +65,11 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
       "/dashboard/calendar", "/dashboard/holiday-list", "/dashboard/working-day-calendar",
       "/dashboard/admin-approval", "/dashboard/training-video"
     ].some(p => path === p || path.startsWith(p + "/"));
-    
+
     const isSample = [
       "/dashboard/sample-dashboard", "/dashboard/sample-management"
     ].some(p => path === p || path.startsWith(p + "/"));
-    
+
     const isBulk = [
       "/dashboard/bulk-dashboard", "/dashboard/bulk-order"
     ].some(p => path === p || path.startsWith(p + "/"));
@@ -131,15 +138,15 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
 
     if (storedRoleLower !== "admin") {
       const activeAccess = JSON.parse(localStorage.getItem("page_access") || "{}");
-      
+
       const exceptionPaths = [
         "/dashboard/admin",
         "/dashboard/notifications",
         "/dashboard/training-video"
       ];
-      
+
       const isException = exceptionPaths.some(p => path === p || path.startsWith(p + "/"));
-      
+
       if (!isException) {
         // Also check if any parent route path exists in pageAccess as a fallback
         const currentPermission = activeAccess[path];
@@ -199,6 +206,310 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
     const normalizedUsername = (storedUsername || "").toLowerCase();
     setIsSuperAdmin(normalizedUsername === "admin");
   }, [navigate, location.pathname]);
+
+  const fetchSidebarCounts = async (currentUser, currentRole) => {
+    if (!currentUser) return;
+    try {
+      const roleLower = (currentRole || "user").toLowerCase();
+      const userAccess = localStorage.getItem("user_access");
+
+      // 1. Checklist Pending Tasks count (Deduplicated like Quick Task page checklist tab)
+      const pastDate = new Date();
+      pastDate.setFullYear(pastDate.getFullYear() - 1);
+      pastDate.setMonth(pastDate.getMonth() - 6);
+
+      const futureDate = new Date();
+      futureDate.setMonth(futureDate.getMonth() + 6);
+
+      const pastDateStr = pastDate.toISOString().split('T')[0] + 'T00:00:00';
+      const futureDateStr = futureDate.toISOString().split('T')[0] + 'T23:59:59';
+
+      let checklistQuery = supabase
+        .from('checklist')
+        .select('department, task_description, name, planned_date, task_start_date, status')
+        .is('submission_date', null)
+        .gte('planned_date', pastDateStr)
+        .lte('planned_date', futureDateStr)
+        .order('planned_date', { ascending: true });
+
+      if (roleLower === 'user') {
+        checklistQuery = checklistQuery.eq('name', currentUser);
+      } else if (roleLower === 'hod') {
+        const { data: reports } = await supabase
+          .from("users")
+          .select("user_name")
+          .eq("reported_by", currentUser);
+        const reportingUsers = [currentUser, ...(reports?.map(r => r.user_name) || [])];
+        checklistQuery = checklistQuery.in('name', reportingUsers);
+      }
+      const { data: checklistTasks, error: checklistErr } = await checklistQuery;
+
+      let pendingChecklistCount = 0;
+      if (!checklistErr && checklistTasks) {
+        const seen = new Set();
+        const uniqueRows = checklistTasks.filter(row => {
+          const key = `${(row.department || '').trim()}::${(row.task_description || '').trim()}::${(row.name || '').trim()}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        pendingChecklistCount = uniqueRows.length;
+      }
+
+      // 2. Delegation Pending count (matching Delegation page fetchDelegationDataSortByDate)
+      let delegationQuery = supabase
+        .from('delegation')
+        .select('planned_date, status')
+        .or('submission_date.is.null,status.neq.done');
+
+      if (roleLower === 'user') {
+        delegationQuery = delegationQuery.eq('name', currentUser);
+      } else if (roleLower === 'hod') {
+        const { data: reports } = await supabase
+          .from("users")
+          .select("user_name")
+          .eq("reported_by", currentUser);
+        const reportingUsers = [currentUser, ...(reports?.map(r => r.user_name) || [])];
+        const userOrConditions = reportingUsers.map(u => `name.eq."${u}"`).join(',');
+        delegationQuery = delegationQuery.or(`${userOrConditions},given_by.eq."${currentUser}"`);
+      } else if (roleLower === 'admin' && userAccess && userAccess !== 'all') {
+        const allowedDepartments = userAccess.split(',').map(dept => dept.trim()).filter(d => d && d !== 'all');
+        if (allowedDepartments.length > 0) {
+          const deptOrConditions = allowedDepartments.map(d => `department.eq."${d}"`).join(',');
+          delegationQuery = delegationQuery.or(`${deptOrConditions},given_by.eq."${currentUser}"`);
+        }
+      }
+      const { data: delegationTasksForCount } = await delegationQuery;
+      let delegationCount = 0;
+      if (delegationTasksForCount) {
+        const todayLocal = new Date();
+        todayLocal.setHours(0, 0, 0, 0);
+        delegationCount = delegationTasksForCount.filter(task => {
+          if (!task.planned_date) return true;
+          const plannedDate = new Date(task.planned_date);
+          plannedDate.setHours(0, 0, 0, 0);
+          if (task.status === "extend" || task.status === "extended") {
+            return true;
+          }
+          return plannedDate <= todayLocal;
+        }).length;
+      }
+
+      // 3. Task Pending count (sum of all pending & overdue tasks across Checklist, Maintenance, Repair, and EA)
+      let taskCount = 0;
+      try {
+        const { data: holidaysRes } = await supabase.from('holidays').select('holiday_date');
+        const holidays = (holidaysRes || []).map(h => h.holiday_date);
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const getTimeStatusLocal = (dateString, taskStatus) => {
+          if (!dateString) return "—";
+          const date = new Date(dateString);
+          if (isNaN(date.getTime())) return "—";
+          const taskDate = new Date(date);
+          taskDate.setHours(0, 0, 0, 0);
+          const isExtended = taskStatus?.toLowerCase() === "extended" || taskStatus?.toLowerCase() === "extend";
+          if (isExtended) {
+            if (taskDate < today) return "Overdue";
+            return "Today";
+          }
+          if (taskDate < today) return "Overdue";
+          if (taskDate.getTime() === today.getTime()) return "Today";
+          return "Upcoming";
+        };
+
+        const processTaskGroup = (tasksList, nameField, isRepair = false) => {
+          if (!tasksList) return 0;
+
+          const filtered = tasksList.filter(item => {
+            if (isRepair) return true;
+            const taskDate = (item.planned_date || item.task_start_date || item.created_at)?.split('T')[0];
+            if (!taskDate) return true;
+            return !holidays.includes(taskDate);
+          });
+
+          const seen = new Set();
+          const deduplicated = filtered.filter(task => {
+            const taskDateValue = isRepair ? task.created_at : (task.planned_date || task.task_start_date || task.created_at);
+            const status = taskDateValue ? getTimeStatusLocal(taskDateValue, task.status) : null;
+            if (status === "Upcoming") {
+              return false;
+            } else {
+              const taskDate = taskDateValue ? new Date(taskDateValue).toDateString() : "";
+              const descKey = task.task_description || task.issue_description || "";
+              const nameKey = task[nameField] || "";
+              const key = `${descKey}::${nameKey}::${taskDate}`;
+              if (seen.has(key)) return false;
+              seen.add(key);
+            }
+            return true;
+          });
+
+          return deduplicated.length;
+        };
+
+        let currentChecklistTasks = checklistTasks;
+        if (checklistErr || !currentChecklistTasks) {
+          const { data } = await checklistQuery;
+          currentChecklistTasks = data;
+        }
+
+        // Fetch Maintenance tasks
+        let maintQuery = supabase
+          .from('maintenance_tasks')
+          .select('*')
+          .is('submission_date', null)
+          .gte('planned_date', pastDateStr)
+          .lte('planned_date', futureDateStr)
+          .order('planned_date', { ascending: true });
+        if (roleLower === 'user') {
+          maintQuery = maintQuery.eq('name', currentUser);
+        } else if (roleLower === 'hod') {
+          const { data: reports } = await supabase
+            .from("users")
+            .select("user_name")
+            .eq("reported_by", currentUser);
+          const reportingUsers = [currentUser, ...(reports?.map(r => r.user_name) || [])];
+          maintQuery = maintQuery.in('name', reportingUsers);
+        }
+        const { data: maintTasks } = await maintQuery;
+
+        // Fetch Repair tasks
+        let repairQuery = supabase
+          .from('repair_tasks')
+          .select('*')
+          .is('submission_date', null)
+          .order('created_at', { ascending: false });
+        if (roleLower === 'user') {
+          repairQuery = repairQuery.eq('assigned_person', currentUser);
+        } else if (roleLower === 'hod') {
+          const { data: reports } = await supabase
+            .from("users")
+            .select("user_name")
+            .eq("reported_by", currentUser);
+          const reportingUsers = [currentUser, ...(reports?.map(r => r.user_name) || [])];
+          repairQuery = repairQuery.in('assigned_person', reportingUsers);
+        }
+        const { data: repairTasks } = await repairQuery;
+
+        // Fetch EA tasks
+        let eaQuery = supabase
+          .from('ea_tasks')
+          .select('*')
+          .in('status', ['pending', 'extend', 'extended'])
+          .order('task_start_date', { ascending: true });
+        if (roleLower === 'user') {
+          eaQuery = eaQuery.eq('doer_name', currentUser);
+        } else if (roleLower === 'hod') {
+          const { data: reports } = await supabase
+            .from("users")
+            .select("user_name")
+            .eq("reported_by", currentUser);
+          const reportingUsers = [currentUser, ...(reports?.map(r => r.user_name) || [])];
+          eaQuery = eaQuery.in('doer_name', reportingUsers);
+        }
+        const { data: eaTasks } = await eaQuery;
+
+        const checklistCount = processTaskGroup(currentChecklistTasks, 'name', false);
+        const maintCount = processTaskGroup(maintTasks, 'name', false);
+        const repairCount = processTaskGroup(repairTasks, 'assigned_person', true);
+        const eaCount = processTaskGroup(eaTasks, 'doer_name', false);
+
+        taskCount = checklistCount + maintCount + repairCount + eaCount;
+      } catch (err) {
+        console.error("Error calculating total task count:", err);
+      }
+
+      // 4. Admin Approval count
+      let approvalCount = 0;
+      if (roleLower === 'admin' || roleLower === 'hod') {
+        const usernameLower = currentUser.toLowerCase();
+        const isSystemAdmin = roleLower === 'admin' || usernameLower === 'admin';
+
+        let reportingUsers = [];
+        if (!isSystemAdmin && roleLower === 'hod') {
+          const { data: reports } = await supabase
+            .from("users")
+            .select("user_name")
+            .eq("reported_by", currentUser);
+          if (reports) {
+            reportingUsers = reports.map(r => (r.user_name || "").toLowerCase());
+          }
+        }
+
+        const filterApprovals = (items, idKey) => {
+          if (!items) return [];
+          const seenIds = new Set();
+          const unique = items.filter(task => {
+            const baseId = task[idKey] || task.task_id || task.original_task_id || task.id;
+            if (!baseId || seenIds.has(baseId)) return false;
+            seenIds.add(baseId);
+            return true;
+          });
+
+          if (isSystemAdmin) {
+            return unique;
+          }
+
+          return unique.filter(task => {
+            const doerName = (task.doer_name || task.name || task.filled_by || "").toLowerCase();
+            return doerName !== usernameLower && reportingUsers.includes(doerName);
+          });
+        };
+
+        const { data: checklistApp } = await supabase
+          .from('checklist')
+          .select('*')
+          .not('submission_date', 'is', null)
+          .or('admin_done.is.null,admin_done.eq.false');
+        const checklistFiltered = filterApprovals(checklistApp, 'task_id');
+
+        const { data: delegationApp } = await supabase
+          .from('delegation_done')
+          .select('*')
+          .eq('status', 'pending');
+        const delegationFiltered = filterApprovals(delegationApp, 'id');
+
+        const { data: maintApp } = await supabase
+          .from('maintenance_tasks')
+          .select('*')
+          .not('submission_date', 'is', null)
+          .or('admin_done.is.null,admin_done.eq.false');
+        const maintFiltered = filterApprovals(maintApp, 'id');
+
+        const { data: repairApp } = await supabase
+          .from('repair_tasks')
+          .select('*')
+          .eq('status', 'Pending Approval');
+        const repairFiltered = filterApprovals(repairApp, 'id');
+
+        const { data: eaApp } = await supabase
+          .from('ea_tasks_done')
+          .select('*')
+          .eq('status', 'pending');
+        const eaFiltered = filterApprovals(eaApp, 'id');
+
+        approvalCount = checklistFiltered.length + delegationFiltered.length + maintFiltered.length + repairFiltered.length + eaFiltered.length;
+      }
+
+      setMenuCounts({
+        quickTask: pendingChecklistCount,
+        delegation: delegationCount || 0,
+        task: taskCount,
+        adminApproval: approvalCount
+      });
+    } catch (err) {
+      console.error("Error fetching sidebar counts:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (username) {
+      fetchSidebarCounts(username, userRole);
+    }
+  }, [username, userRole, location.pathname]);
 
   // Fetch notifications globally for badge count
   useEffect(() => {
@@ -294,6 +605,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
           label: "Quick Task",
           active: location.pathname === "/dashboard/quick-task",
           showFor: (isSuperAdmin || userRole.toLowerCase() === "admin") ? ["admin"] : [],
+          badge: null,
         },
         {
           href: "/dashboard/assign-task",
@@ -306,12 +618,14 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
           label: "Delegation",
           active: location.pathname === "/dashboard/delegation",
           showFor: ["admin", "user", "HOD"],
+          badge: menuCounts.delegation || null,
         },
         {
           href: "/dashboard/task",
           label: "Task",
           active: location.pathname === "/dashboard/task",
           showFor: ["admin", "HOD", "user"],
+          badge: menuCounts.task || null,
         },
         {
           href: "/dashboard/calendar",
@@ -336,6 +650,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
           label: "Admin Approval",
           active: location.pathname === "/dashboard/admin-approval",
           showFor: ["admin", "HOD"],
+          badge: menuCounts.adminApproval || null,
         },
         {
           href: "/dashboard/training-video",

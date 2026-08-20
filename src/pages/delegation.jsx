@@ -1814,7 +1814,7 @@ function DelegationDataPage() {
                                     type="checkbox"
                                     className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
                                     checked={isSelected}
-                                    disabled={task.timeStatus === "Upcoming"}
+                                    // disabled={task.timeStatus === "Upcoming"}
                                     title={task.timeStatus === "Upcoming" ? "Cannot submit upcoming tasks" : ""}
                                     onChange={(e) =>
                                       handleCheckboxClick(e, task.id)
