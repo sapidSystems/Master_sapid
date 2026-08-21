@@ -48,11 +48,12 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
 
   const [isUserPopupOpen, setIsUserPopupOpen] = useState(false);
   const [menuCounts, setMenuCounts] = useState({
-
     quickTask: null,
     delegation: null,
     task: null,
-    adminApproval: null
+    adminApproval: null,
+    sampleManagement: null,
+    productionPlanning: null
   });
 
   const handleToggleSubmenu = (clickedRoute) => {
@@ -494,11 +495,41 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
         approvalCount = checklistFiltered.length + delegationFiltered.length + maintFiltered.length + repairFiltered.length + eaFiltered.length;
       }
 
+      // 5. Sample Management pending count (dispatch_sent_date IS NULL)
+      let sampleManagementCount = 0;
+      try {
+        const { count: sampleCount, error: sampleErr } = await supabase
+          .from('sample_system_sample_management')
+          .select('*', { count: 'exact', head: true })
+          .is('dispatch_sent_date', null);
+        if (!sampleErr) {
+          sampleManagementCount = sampleCount ?? 0;
+        }
+      } catch (err) {
+        console.error('Error fetching sample management count:', err);
+      }
+
+      // 6. Production Planning pending count (is_history = false)
+      let productionPlanningCount = 0;
+      try {
+        const { count: ppCount, error: ppErr } = await supabase
+          .from('sample_system_product_planning')
+          .select('*', { count: 'exact', head: true })
+          .eq('is_history', false);
+        if (!ppErr) {
+          productionPlanningCount = ppCount ?? 0;
+        }
+      } catch (err) {
+        console.error('Error fetching production planning count:', err);
+      }
+
       setMenuCounts({
         quickTask: pendingChecklistCount,
         delegation: delegationCount || 0,
         task: taskCount,
-        adminApproval: approvalCount
+        adminApproval: approvalCount,
+        sampleManagement: sampleManagementCount || 0,
+        productionPlanning: productionPlanningCount || 0
       });
     } catch (err) {
       console.error("Error fetching sidebar counts:", err);
@@ -575,6 +606,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
       isSubmenu: true,
       isOpen: isChecklistSubmenuOpen,
       setIsOpen: setIsChecklistSubmenuOpen,
+      badge: ((menuCounts.delegation || 0) + (menuCounts.task || 0) + (menuCounts.adminApproval || 0)) || null,
       active: location.pathname === "/dashboard/admin" ||
         location.pathname === "/dashboard/notifications" ||
         location.pathname === "/dashboard/quick-task" ||
@@ -667,6 +699,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
       isSubmenu: true,
       isOpen: isSampleSubmenuOpen,
       setIsOpen: setIsSampleSubmenuOpen,
+      badge: menuCounts.sampleManagement || null,
       active: location.pathname === "/dashboard/sample-dashboard" ||
         location.pathname === "/dashboard/sample-management",
       subItems: [
@@ -681,6 +714,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
           label: "Sample Management",
           active: location.pathname === "/dashboard/sample-management",
           showFor: ["admin", "user", "HOD"],
+          badge: menuCounts.sampleManagement || null,
         }
       ]
     },
@@ -691,6 +725,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
       isSubmenu: true,
       isOpen: isBulkSubmenuOpen,
       setIsOpen: setIsBulkSubmenuOpen,
+      badge: menuCounts.productionPlanning || null,
       active: location.pathname === "/dashboard/bulk-dashboard" ||
         location.pathname === "/dashboard/bulk-order",
       subItems: [
@@ -705,6 +740,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
           label: "Production Planning and Monitoring",
           active: location.pathname === "/dashboard/bulk-order",
           showFor: ["admin", "user", "HOD"],
+          badge: menuCounts.productionPlanning || null,
         }
       ]
     },
@@ -805,7 +841,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
                         <div className="flex items-center justify-between w-full">
                           <span>{route.label}</span>
                           {route.badge && (
-                            <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                            <span className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
                               {route.badge}
                             </span>
                           )}
@@ -830,7 +866,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
                             >
                               <span className="text-left">{sub.label}</span>
                               {sub.badge && (
-                                <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                                <span className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
                                   {sub.badge}
                                 </span>
                               )}
@@ -854,7 +890,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
                     <div className="flex items-center justify-between w-full">
                       <span>{route.label}</span>
                       {route.badge && (
-                        <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                        <span className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
                           {route.badge}
                         </span>
                       )}
@@ -1020,7 +1056,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
                                 >
                                   <span className="text-left">{sub.label}</span>
                                   {sub.badge && (
-                                    <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                                    <span className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
                                       {sub.badge}
                                     </span>
                                   )}
@@ -1046,7 +1082,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
                         <div className="flex items-center justify-between w-full">
                           <span>{route.label}</span>
                           {route.badge && (
-                            <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                            <span className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
                               {route.badge}
                             </span>
                           )}
