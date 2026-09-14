@@ -39,6 +39,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
   const [isChecklistSubmenuOpen, setIsChecklistSubmenuOpen] = useState(true);
   const [isSampleSubmenuOpen, setIsSampleSubmenuOpen] = useState(false);
   const [isBulkSubmenuOpen, setIsBulkSubmenuOpen] = useState(false);
+  const [isProcurementSubmenuOpen, setIsProcurementSubmenuOpen] = useState(false);
   const [username, setUsername] = useState("");
   const [userRole, setUserRole] = useState("");
   const [userEmail, setUserEmail] = useState("");
@@ -75,20 +76,30 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
       "/dashboard/bulk-dashboard", "/dashboard/bulk-order"
     ].some(p => path === p || path.startsWith(p + "/"));
 
+    const isProcurement = path.startsWith("/dashboard/procurement");
+
     // Only close others if they are NOT the active route's submenu
     if (clickedRoute.setIsOpen === setIsChecklistSubmenuOpen) {
       if (!isSample) setIsSampleSubmenuOpen(false);
       if (!isBulk) setIsBulkSubmenuOpen(false);
+      if (!isProcurement) setIsProcurementSubmenuOpen(false);
     } else if (clickedRoute.setIsOpen === setIsSampleSubmenuOpen) {
       if (!isChecklist) setIsChecklistSubmenuOpen(false);
       if (!isBulk) setIsBulkSubmenuOpen(false);
+      if (!isProcurement) setIsProcurementSubmenuOpen(false);
     } else if (clickedRoute.setIsOpen === setIsBulkSubmenuOpen) {
       if (!isChecklist) setIsChecklistSubmenuOpen(false);
       if (!isSample) setIsSampleSubmenuOpen(false);
+      if (!isProcurement) setIsProcurementSubmenuOpen(false);
+    } else if (clickedRoute.setIsOpen === setIsProcurementSubmenuOpen) {
+      if (!isChecklist) setIsChecklistSubmenuOpen(false);
+      if (!isSample) setIsSampleSubmenuOpen(false);
+      if (!isBulk) setIsBulkSubmenuOpen(false);
     }
 
     clickedRoute.setIsOpen(nextState);
   };
+
 
   // Check authentication on component mount
   useEffect(() => {
@@ -143,7 +154,8 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
       const exceptionPaths = [
         "/dashboard/admin",
         "/dashboard/notifications",
-        "/dashboard/training-video"
+        "/dashboard/training-video",
+        "/dashboard/procurement"
       ];
 
       const isException = exceptionPaths.some(p => path === p || path.startsWith(p + "/"));
@@ -579,10 +591,12 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
     const isChecklist = checklistPaths.some(p => path === p || path.startsWith(p + "/"));
     const isSample = samplePaths.some(p => path === p || path.startsWith(p + "/"));
     const isBulk = bulkPaths.some(p => path === p || path.startsWith(p + "/"));
+    const isProcurement = path.startsWith("/dashboard/procurement");
 
     if (isChecklist) setIsChecklistSubmenuOpen(true);
     if (isSample) setIsSampleSubmenuOpen(true);
     if (isBulk) setIsBulkSubmenuOpen(true);
+    if (isProcurement) setIsProcurementSubmenuOpen(true);
   }, [location.pathname]);
 
   // Handle logout
@@ -745,6 +759,54 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
       ]
     },
     {
+      label: "Procurement System",
+      icon: Zap,
+      showFor: ["admin", "user", "HOD"],
+      isSubmenu: true,
+      isOpen: isProcurementSubmenuOpen,
+      setIsOpen: setIsProcurementSubmenuOpen,
+      badge: null,
+      active: location.pathname.startsWith("/dashboard/procurement"),
+      subItems: [
+        {
+          href: "/dashboard/procurement",
+          label: "Dashboard",
+          active: location.pathname === "/dashboard/procurement",
+          showFor: ["admin", "user", "HOD"],
+        },
+        {
+          href: "/dashboard/procurement/new-leather",
+          label: "New Leather Dev",
+          active: location.pathname === "/dashboard/procurement/new-leather",
+          showFor: ["admin", "user", "HOD"],
+        },
+        {
+          href: "/dashboard/procurement/daily-leather",
+          label: "Daily Leather Proc",
+          active: location.pathname === "/dashboard/procurement/daily-leather",
+          showFor: ["admin", "user", "HOD"],
+        },
+        {
+          href: "/dashboard/procurement/material",
+          label: "Daily Material Proc",
+          active: location.pathname === "/dashboard/procurement/material",
+          showFor: ["admin", "user", "HOD"],
+        },
+        {
+          href: "/dashboard/procurement/packaging",
+          label: "Daily Packaging Proc",
+          active: location.pathname === "/dashboard/procurement/packaging",
+          showFor: ["admin", "user", "HOD"],
+        },
+        {
+          href: "/dashboard/procurement/activity",
+          label: "Activity Log",
+          active: location.pathname === "/dashboard/procurement/activity",
+          showFor: ["admin", "user", "HOD"],
+        }
+      ]
+    },
+    {
       href: "/dashboard/setting",
       label: "Settings",
       icon: Settings,
@@ -770,7 +832,8 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
     const exceptionPaths = [
       "/dashboard/admin",
       "/dashboard/notifications",
-      "/dashboard/training-video"
+      "/dashboard/training-video",
+      "/dashboard/procurement"
     ];
 
     const hasAccess = (href) => {
