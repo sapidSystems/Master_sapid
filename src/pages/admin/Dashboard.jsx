@@ -29,8 +29,8 @@ import { fetchRepairDataSortByDate, fetchAllRepairTasks } from "../../redux/api/
 import DefaultView from "./dashboard/views/DefaultView.jsx"
 import MaintenanceView from "./dashboard/views/MaintenanceView.jsx"
 import RepairView from "./dashboard/views/RepairView.jsx"
-import EAView from "./dashboard/views/EAView.jsx"
 import TaskManagementTabs from "../../components/TaskManagementTabs.jsx"
+import MobileSystemLauncher from "../../components/layout/MobileSystemLauncher.jsx"
 
 export default function AdminDashboard() {
   const [dashboardType, setDashboardType] = useState("checklist")
@@ -1136,6 +1136,24 @@ export default function AdminDashboard() {
   return (
     <AdminLayout>
       <div className="space-y-4">
+        {/* Mobile System Launcher Grid (small screens only) */}
+        <div className="block md:hidden rounded-2xl border border-slate-200/80 bg-white shadow-soft overflow-hidden">
+          <div className="px-3.5 pt-3 pb-1.5 border-b border-slate-100 flex items-center justify-between">
+            <div>
+              <h2 className="text-xs font-black uppercase tracking-wider text-slate-800">
+                System Launcher
+              </h2>
+              <p className="text-[10px] text-slate-400 font-medium">
+                Tap any system to switch workspace
+              </p>
+            </div>
+            <span className="text-[10px] font-bold text-brand-600 bg-brand-50 px-2 py-0.5 rounded-full border border-brand-100">
+              Workspaces
+            </span>
+          </div>
+          <MobileSystemLauncher />
+        </div>
+
         {/* Sticky Only Task Management Tabs */}
         <div className="sticky top-0 z-30 bg-white/60 backdrop-blur-xl py-2 border-b border-gray-100/50 shadow-sm transition-all duration-300">
           <div className="max-w-7xl mx-auto">

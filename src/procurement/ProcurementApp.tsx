@@ -4,7 +4,6 @@ import { ToastProvider } from './context/ToastContext';
 import { ProcurementProvider, useProcurement } from './context/ProcurementContext';
 import { DashboardView } from './components/dashboard/DashboardView';
 import { ModuleView } from './components/procurement/ModuleView';
-import { ActivityLogView } from './components/activity/ActivityLogView';
 import { CreateRecordModal } from './components/modals/CreateRecordModal';
 import { ModuleType } from './types/procurement';
 import AdminLayout from '../components/layout/AdminLayout';
@@ -28,16 +27,31 @@ const ProcurementAppInner: React.FC<ProcurementAppInnerProps> = ({ currentTab })
     const effectiveNav = currentTab || activeNav;
     switch (effectiveNav) {
       case 'dashboard':
-        return <DashboardView onOpenCreate={(mod) => setQuickCreateModule(mod)} />;
+        return <DashboardView />;
       case 'new-leather':
       case 'daily-leather':
       case 'material':
       case 'packaging':
         return <ModuleView module={effectiveNav as ModuleType} />;
-      case 'activity':
-        return <ActivityLogView />;
       default:
-        return <DashboardView onOpenCreate={(mod) => setQuickCreateModule(mod)} />;
+        return <DashboardView />;
+    }
+  };
+
+  const getPageTitle = () => {
+    const nav = currentTab || activeNav;
+    switch (nav) {
+      case 'dashboard':
+        return 'Procurement Dashboard';
+      case 'new-leather':
+        return 'New Leather Development';
+      case 'daily-leather':
+        return 'Daily Leather Procurement';
+      case 'material':
+      case 'packaging':
+        return 'Daily Material Procurement';
+      default:
+        return nav.replace('-', ' ');
     }
   };
 
@@ -46,8 +60,8 @@ const ProcurementAppInner: React.FC<ProcurementAppInnerProps> = ({ currentTab })
       <div className="w-full bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
         <div>
           <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Procurement System</span>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 capitalize">
-            {activeNav === 'dashboard' ? 'Procurement Dashboard' : activeNav.replace('-', ' ')}
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+            {getPageTitle()}
           </h1>
         </div>
       </div>

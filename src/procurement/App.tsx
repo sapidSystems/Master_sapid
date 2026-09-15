@@ -7,7 +7,6 @@ import { MobileDrawer } from './components/layout/MobileDrawer';
 import { TopHeader } from './components/layout/TopHeader';
 import { DashboardView } from './components/dashboard/DashboardView';
 import { ModuleView } from './components/procurement/ModuleView';
-import { ActivityLogView } from './components/activity/ActivityLogView';
 import { ProfileModal } from './components/modals/ProfileModal';
 import { CreateRecordModal } from './components/modals/CreateRecordModal';
 import { ModuleType } from './types/procurement';
@@ -30,8 +29,6 @@ const AppContent: React.FC = () => {
       case 'material':
       case 'packaging':
         return <ModuleView module={activeNav as ModuleType} />;
-      case 'activity':
-        return <ActivityLogView />;
       default:
         return <DashboardView onOpenCreate={(mod) => setQuickCreateModule(mod)} />;
     }
@@ -72,36 +69,6 @@ const AppContent: React.FC = () => {
         isOpen={profileModalOpen}
         onClose={() => setProfileModalOpen(false)}
       />
-
-      {/* System Activity Audit Modal */}
-      {activityModalOpen && (
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/60 backdrop-blur-xs animate-in fade-in"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div 
-            className="w-[95%] sm:w-full max-w-4xl max-h-[90vh] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in zoom-in-95"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between">
-              <h3 className="font-bold text-base sm:text-lg text-slate-900">
-                Audit Trail & Event Log
-              </h3>
-              <button
-                type="button"
-                onClick={() => setActivityModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-              <ActivityLogView />
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Quick Create Modal from Dashboard */}
       {quickCreateModule && (

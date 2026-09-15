@@ -584,19 +584,11 @@ function App() {
                     />
                     <Route
                         path="/dashboard/procurement/packaging"
-                        element={
-                            <ProtectedRoute allowedRoles={["admin", "HOD", "user"]}>
-                                <ProcurementApp currentTab="packaging" />
-                            </ProtectedRoute>
-                        }
+                        element={<Navigate to="/dashboard/procurement/material?sub=packaging" replace />}
                     />
                     <Route
                         path="/dashboard/procurement/activity"
-                        element={
-                            <ProtectedRoute allowedRoles={["admin", "HOD", "user"]}>
-                                <ProcurementApp currentTab="activity" />
-                            </ProtectedRoute>
-                        }
+                        element={<Navigate to="/dashboard/procurement" replace />}
                     />
 
 

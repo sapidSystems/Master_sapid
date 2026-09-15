@@ -5,7 +5,6 @@ import {
   Package,
   Boxes,
   ScrollText,
-  Activity,
   Database,
   Building2
 } from 'lucide-react';
@@ -34,8 +33,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav }) => {
   const modules: { id: ModuleType; label: string; icon: any }[] = [
     { id: 'new-leather', label: 'New Leather Development', icon: Layers },
     { id: 'daily-leather', label: 'Daily Leather Procurement', icon: Package },
-    { id: 'material', label: 'Daily Material Procurement', icon: Boxes },
-    { id: 'packaging', label: 'Daily Packaging Procurement', icon: ScrollText }
+    { id: 'material', label: 'Daily Material Procurement', icon: Boxes }
   ];
 
   return (
@@ -76,11 +74,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav }) => {
           Procurement Modules
         </div>
 
-        {/* 4 Procurement Modules (Clean list without sub-items per user request) */}
+        {/* Procurement Modules */}
         {modules.map(mod => {
           const Icon = mod.icon;
-          const isSelected = activeNav === mod.id;
-          const counts = getModuleCounts(mod.id);
+          const isSelected = activeNav === mod.id || (mod.id === 'material' && activeNav === 'packaging');
+          const counts = mod.id === 'material' ? {
+            pending: getModuleCounts('material').pending + getModuleCounts('packaging').pending,
+            delayed: getModuleCounts('material').delayed + getModuleCounts('packaging').delayed,
+            history: getModuleCounts('material').history + getModuleCounts('packaging').history,
+            onTime: getModuleCounts('material').onTime + getModuleCounts('packaging').onTime,
+          } : getModuleCounts(mod.id);
 
           return (
             <button
@@ -116,22 +119,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav }) => {
           );
         })}
 
-        {/* Audit / System Logs */}
-        <div className="pt-3 pb-1 px-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-          System
-        </div>
-        <button
-          type="button"
-          onClick={() => handleNavClick('activity')}
-          className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
-            activeNav === 'activity'
-              ? 'bg-brand-50 text-brand-600 shadow-soft-sm'
-              : 'text-slate-700 hover:bg-slate-100'
-          }`}
-        >
-          <Activity className="w-4 h-4" />
-          <span>Activity Audit Log</span>
-        </button>
       </nav>
 
       {/* Footer Controls */}

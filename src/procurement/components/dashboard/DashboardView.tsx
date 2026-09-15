@@ -9,18 +9,19 @@ import {
   Clock,
   ArrowUpRight,
   TrendingUp,
-  Plus,
   ArrowRight
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useProcurement } from '../../context/ProcurementContext';
 import { ModuleType } from '../../types/procurement';
 import { formatDateTime } from '../../utils/dateUtils';
 
 interface DashboardViewProps {
-  onOpenCreate: (module: ModuleType) => void;
+  onOpenCreate?: (module: ModuleType) => void;
 }
 
-export const DashboardView: React.FC<DashboardViewProps> = ({ onOpenCreate }) => {
+export const DashboardView: React.FC<DashboardViewProps> = () => {
+  const navigate = useNavigate();
   const {
     getDashboardStats,
     setActiveNav,
@@ -31,8 +32,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onOpenCreate }) =>
   const stats = getDashboardStats();
 
   const goToModule = (nav: string, tab: 'pending' | 'history' = 'pending') => {
-    setActiveNav(nav);
     setActiveTab(tab);
+    if (nav === 'packaging') {
+      navigate('/dashboard/procurement/material?sub=packaging');
+      return;
+    }
+    if (nav === 'material') {
+      navigate('/dashboard/procurement/material');
+      return;
+    }
+    if (nav === 'dashboard') {
+      navigate('/dashboard/procurement');
+      return;
+    }
+    navigate(`/dashboard/procurement/${nav}`);
   };
 
   // 4 Top Cards (Req #52: Desktop 4, Tablet 2, Mobile 1 per row)
@@ -208,50 +221,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onOpenCreate }) =>
               </div>
             </div>
           </div>
-
-          {/* Quick Add Buttons Row */}
-          <div className="pt-2 border-t border-slate-100">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">
-              Quick Procurement Actions
-            </span>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <button
-                type="button"
-                onClick={() => onOpenCreate('new-leather')}
-                className="p-2.5 rounded-xl border border-slate-200 hover:border-brand-500 hover:bg-brand-50/50 text-xs font-semibold text-slate-700 hover:text-brand-600 transition-all flex items-center gap-1.5"
-              >
-                <Plus className="w-3.5 h-3.5 text-brand-600" />
-                <span className="truncate">New Leather</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onOpenCreate('daily-leather')}
-                className="p-2.5 rounded-xl border border-slate-200 hover:border-brand-500 hover:bg-brand-50/50 text-xs font-semibold text-slate-700 hover:text-brand-600 transition-all flex items-center gap-1.5"
-              >
-                <Plus className="w-3.5 h-3.5 text-brand-600" />
-                <span className="truncate">+ Daily Leather</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onOpenCreate('material')}
-                className="p-2.5 rounded-xl border border-slate-200 hover:border-brand-500 hover:bg-brand-50/50 text-xs font-semibold text-slate-700 hover:text-brand-600 transition-all flex items-center gap-1.5"
-              >
-                <Plus className="w-3.5 h-3.5 text-brand-600" />
-                <span className="truncate">+ Material</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onOpenCreate('packaging')}
-                className="p-2.5 rounded-xl border border-slate-200 hover:border-brand-500 hover:bg-brand-50/50 text-xs font-semibold text-slate-700 hover:text-brand-600 transition-all flex items-center gap-1.5"
-              >
-                <Plus className="w-3.5 h-3.5 text-brand-600" />
-                <span className="truncate">+ Packaging</span>
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Live Activity Feed */}
@@ -261,13 +230,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onOpenCreate }) =>
               <h3 className="text-base font-bold text-slate-900">
                 Recent Audit Trail
               </h3>
-              <button
-                type="button"
-                onClick={() => goToModule('activity')}
-                className="text-xs text-brand-600 hover:underline font-medium"
-              >
-                View all
-              </button>
             </div>
 
             <div className="space-y-3 divide-y divide-slate-100">

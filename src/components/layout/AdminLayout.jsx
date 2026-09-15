@@ -27,19 +27,68 @@ import {
   Bell,
   Video,
   TrendingUp,
+  LayoutGrid,
 } from "lucide-react";
+import MobileSystemLauncher from "./MobileSystemLauncher";
+import MobileBottomNav from "./MobileBottomNav";
 
-export default function AdminLayout({ children, darkMode, toggleDarkMode, showLayout = true }) {
+const isChecklistPath = (path) => {
+  const checklistPaths = [
+    "/dashboard/admin",
+    "/dashboard/notifications",
+    "/dashboard/quick-task",
+    "/dashboard/checklist",
+    "/dashboard/maintenance",
+    "/dashboard/repair",
+    "/dashboard/ea-task",
+    "/dashboard/assign-task",
+    "/dashboard/delegation",
+    "/dashboard/delegation-data",
+    "/dashboard/task",
+    "/dashboard/calendar",
+    "/dashboard/holiday-list",
+    "/dashboard/working-day-calendar",
+    "/dashboard/admin-approval",
+    "/dashboard/training-video",
+    "/dashboard/data",
+    "/dashboard/admin-data",
+    "/dashboard/mis-report",
+    "/dashboard/demo"
+  ];
+  return checklistPaths.some(p => path === p || path.startsWith(p + "/"));
+};
+
+const isSamplePath = (path) => {
+  const samplePaths = [
+    "/dashboard/sample-dashboard",
+    "/dashboard/sample-management"
+  ];
+  return samplePaths.some(p => path === p || path.startsWith(p + "/"));
+};
+
+const isBulkPath = (path) => {
+  const bulkPaths = [
+    "/dashboard/bulk-dashboard",
+    "/dashboard/bulk-order"
+  ];
+  return bulkPaths.some(p => path === p || path.startsWith(p + "/"));
+};
+
+const isProcurementPath = (path) => {
+  return path.startsWith("/dashboard/procurement");
+};
+
+export default function AdminLayout({ children, darkMode = false, toggleDarkMode = undefined, showLayout = true }) {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { list: notifications } = useSelector((state) => state.notifications);
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isChecklistSubmenuOpen, setIsChecklistSubmenuOpen] = useState(true);
-  const [isSampleSubmenuOpen, setIsSampleSubmenuOpen] = useState(false);
-  const [isBulkSubmenuOpen, setIsBulkSubmenuOpen] = useState(false);
-  const [isProcurementSubmenuOpen, setIsProcurementSubmenuOpen] = useState(false);
+  const [isChecklistSubmenuOpen, setIsChecklistSubmenuOpen] = useState(() => isChecklistPath(location.pathname));
+  const [isSampleSubmenuOpen, setIsSampleSubmenuOpen] = useState(() => isSamplePath(location.pathname));
+  const [isBulkSubmenuOpen, setIsBulkSubmenuOpen] = useState(() => isBulkPath(location.pathname));
+  const [isProcurementSubmenuOpen, setIsProcurementSubmenuOpen] = useState(() => isProcurementPath(location.pathname));
   const [username, setUsername] = useState("");
   const [userRole, setUserRole] = useState("");
   const [userEmail, setUserEmail] = useState("");
@@ -60,44 +109,16 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
   const handleToggleSubmenu = (clickedRoute) => {
     const nextState = !clickedRoute.isOpen;
 
-    const path = location.pathname;
-    const isChecklist = [
-      "/dashboard/admin", "/dashboard/notifications", "/dashboard/quick-task",
-      "/dashboard/assign-task", "/dashboard/delegation", "/dashboard/task",
-      "/dashboard/calendar", "/dashboard/holiday-list", "/dashboard/working-day-calendar",
-      "/dashboard/admin-approval", "/dashboard/training-video"
-    ].some(p => path === p || path.startsWith(p + "/"));
-
-    const isSample = [
-      "/dashboard/sample-dashboard", "/dashboard/sample-management"
-    ].some(p => path === p || path.startsWith(p + "/"));
-
-    const isBulk = [
-      "/dashboard/bulk-dashboard", "/dashboard/bulk-order"
-    ].some(p => path === p || path.startsWith(p + "/"));
-
-    const isProcurement = path.startsWith("/dashboard/procurement");
-
-    // Only close others if they are NOT the active route's submenu
-    if (clickedRoute.setIsOpen === setIsChecklistSubmenuOpen) {
-      if (!isSample) setIsSampleSubmenuOpen(false);
-      if (!isBulk) setIsBulkSubmenuOpen(false);
-      if (!isProcurement) setIsProcurementSubmenuOpen(false);
-    } else if (clickedRoute.setIsOpen === setIsSampleSubmenuOpen) {
-      if (!isChecklist) setIsChecklistSubmenuOpen(false);
-      if (!isBulk) setIsBulkSubmenuOpen(false);
-      if (!isProcurement) setIsProcurementSubmenuOpen(false);
-    } else if (clickedRoute.setIsOpen === setIsBulkSubmenuOpen) {
-      if (!isChecklist) setIsChecklistSubmenuOpen(false);
-      if (!isSample) setIsSampleSubmenuOpen(false);
-      if (!isProcurement) setIsProcurementSubmenuOpen(false);
-    } else if (clickedRoute.setIsOpen === setIsProcurementSubmenuOpen) {
-      if (!isChecklist) setIsChecklistSubmenuOpen(false);
-      if (!isSample) setIsSampleSubmenuOpen(false);
-      if (!isBulk) setIsBulkSubmenuOpen(false);
+    if (nextState) {
+      // Accordion behavior: opening a submenu closes all other submenus
+      setIsChecklistSubmenuOpen(clickedRoute.label === "Checklist");
+      setIsSampleSubmenuOpen(clickedRoute.label === "Sample System");
+      setIsBulkSubmenuOpen(clickedRoute.label === "Production Planning and Monitoring");
+      setIsProcurementSubmenuOpen(clickedRoute.label === "Procurement System");
+    } else {
+      // Closing this specific submenu
+      clickedRoute.setIsOpen(false);
     }
-
-    clickedRoute.setIsOpen(nextState);
   };
 
 
@@ -563,40 +584,13 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
     }
   }, [dispatch, location.pathname]);
 
-  // Set initial submenu states based on current location
+  // Sync submenu open states based on current location
   useEffect(() => {
     const path = location.pathname;
-    const checklistPaths = [
-      "/dashboard/admin",
-      "/dashboard/notifications",
-      "/dashboard/quick-task",
-      "/dashboard/assign-task",
-      "/dashboard/delegation",
-      "/dashboard/task",
-      "/dashboard/calendar",
-      "/dashboard/holiday-list",
-      "/dashboard/working-day-calendar",
-      "/dashboard/admin-approval",
-      "/dashboard/training-video"
-    ];
-    const samplePaths = [
-      "/dashboard/sample-dashboard",
-      "/dashboard/sample-management"
-    ];
-    const bulkPaths = [
-      "/dashboard/bulk-dashboard",
-      "/dashboard/bulk-order"
-    ];
-
-    const isChecklist = checklistPaths.some(p => path === p || path.startsWith(p + "/"));
-    const isSample = samplePaths.some(p => path === p || path.startsWith(p + "/"));
-    const isBulk = bulkPaths.some(p => path === p || path.startsWith(p + "/"));
-    const isProcurement = path.startsWith("/dashboard/procurement");
-
-    if (isChecklist) setIsChecklistSubmenuOpen(true);
-    if (isSample) setIsSampleSubmenuOpen(true);
-    if (isBulk) setIsBulkSubmenuOpen(true);
-    if (isProcurement) setIsProcurementSubmenuOpen(true);
+    setIsChecklistSubmenuOpen(isChecklistPath(path));
+    setIsSampleSubmenuOpen(isSamplePath(path));
+    setIsBulkSubmenuOpen(isBulkPath(path));
+    setIsProcurementSubmenuOpen(isProcurementPath(path));
   }, [location.pathname]);
 
   // Handle logout
@@ -621,17 +615,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
       isOpen: isChecklistSubmenuOpen,
       setIsOpen: setIsChecklistSubmenuOpen,
       badge: ((menuCounts.delegation || 0) + (menuCounts.task || 0) + (menuCounts.adminApproval || 0)) || null,
-      active: location.pathname === "/dashboard/admin" ||
-        location.pathname === "/dashboard/notifications" ||
-        location.pathname === "/dashboard/quick-task" ||
-        location.pathname === "/dashboard/assign-task" ||
-        location.pathname === "/dashboard/delegation" ||
-        location.pathname === "/dashboard/task" ||
-        location.pathname === "/dashboard/calendar" ||
-        location.pathname === "/dashboard/holiday-list" ||
-        location.pathname === "/dashboard/working-day-calendar" ||
-        location.pathname === "/dashboard/admin-approval" ||
-        location.pathname === "/dashboard/training-video",
+      active: isChecklistPath(location.pathname),
       subItems: [
         {
           href: "/dashboard/admin",
@@ -714,8 +698,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
       isOpen: isSampleSubmenuOpen,
       setIsOpen: setIsSampleSubmenuOpen,
       badge: menuCounts.sampleManagement || null,
-      active: location.pathname === "/dashboard/sample-dashboard" ||
-        location.pathname === "/dashboard/sample-management",
+      active: isSamplePath(location.pathname),
       subItems: [
         {
           href: "/dashboard/sample-dashboard",
@@ -740,8 +723,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
       isOpen: isBulkSubmenuOpen,
       setIsOpen: setIsBulkSubmenuOpen,
       badge: menuCounts.productionPlanning || null,
-      active: location.pathname === "/dashboard/bulk-dashboard" ||
-        location.pathname === "/dashboard/bulk-order",
+      active: isBulkPath(location.pathname),
       subItems: [
         {
           href: "/dashboard/bulk-dashboard",
@@ -766,7 +748,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
       isOpen: isProcurementSubmenuOpen,
       setIsOpen: setIsProcurementSubmenuOpen,
       badge: null,
-      active: location.pathname.startsWith("/dashboard/procurement"),
+      active: isProcurementPath(location.pathname),
       subItems: [
         {
           href: "/dashboard/procurement",
@@ -790,18 +772,6 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
           href: "/dashboard/procurement/material",
           label: "Daily Material Proc",
           active: location.pathname === "/dashboard/procurement/material",
-          showFor: ["admin", "user", "HOD"],
-        },
-        {
-          href: "/dashboard/procurement/packaging",
-          label: "Daily Packaging Proc",
-          active: location.pathname === "/dashboard/procurement/packaging",
-          showFor: ["admin", "user", "HOD"],
-        },
-        {
-          href: "/dashboard/procurement/activity",
-          label: "Activity Log",
-          active: location.pathname === "/dashboard/procurement/activity",
           showFor: ["admin", "user", "HOD"],
         }
       ]
@@ -871,7 +841,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
 
   return (
     <div
-      className={`flex h-screen overflow-hidden bg-gradient-to-br from-blue-50 to-purple-50`}
+      className={`flex h-screen overflow-hidden bg-white md:bg-gradient-to-br md:from-blue-50 md:to-purple-50`}
     >
       {/* Sidebar for desktop */}
       <aside className="hidden w-64 flex-shrink-0 border-r border-blue-200 bg-white md:flex md:flex-col">
@@ -1053,186 +1023,118 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
         </div>
       </aside>
 
-      {/* Mobile menu button and sidebar - similar structure as desktop but with mobile classes */}
+      {/* Mobile System Launcher Toggle Button */}
       <button
+        type="button"
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        className="md:hidden absolute left-4 top-3 z-[110] text-blue-700 p-2 rounded-md hover:bg-blue-100"
+        className="md:hidden absolute left-3.5 top-3.5 z-[110] text-slate-700 p-2 rounded-xl bg-white border border-slate-200/80 shadow-soft hover:bg-slate-50 flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+        aria-label="Toggle Systems Launcher"
       >
-        <Menu className="h-5 w-5" />
-        <span className="sr-only">Toggle menu</span>
+        <LayoutGrid className="h-4 w-4 text-brand-600" />
+        <span className="text-[11px] font-bold text-slate-700 hidden xs:inline">Systems</span>
       </button>
 
-      {/* Mobile sidebar */}
+      {/* Mobile System Launcher Drawer / Modal */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-[100] md:hidden">
           <div
-            className="fixed inset-0 bg-black/20"
+            className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity"
             onClick={() => setIsMobileMenuOpen(false)}
           ></div>
-          <div className="fixed inset-y-0 left-0 w-64 bg-white shadow-lg">
-            <div className="flex h-14 items-center border-b border-blue-200 px-4 bg-gradient-to-r from-blue-100 to-purple-100">
+          <div className="fixed inset-y-0 left-0 w-[88%] max-w-sm bg-white shadow-2xl flex flex-col z-10 overflow-hidden">
+            {/* Drawer Header */}
+            <div className="flex h-16 items-center justify-between border-b border-slate-100 px-4 bg-white">
               <Link
                 to="/dashboard/admin"
-                className="flex items-center gap-2 font-semibold text-blue-700"
+                className="flex items-center gap-2.5 font-bold text-slate-900"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                <img src={aceLogo} alt="TaskDesk Logo" className="h-8 w-8 rounded-full object-cover border border-blue-200" />
-                <span>TaskDesk</span>
+                <img src={aceLogo} alt="TaskDesk Logo" className="h-8 w-8 rounded-full object-cover border border-slate-200" />
+                <div className="flex flex-col">
+                  <span className="text-sm font-extrabold tracking-tight">SAPID ERP</span>
+                  <span className="text-[10px] font-medium text-slate-400 -mt-0.5">Systems Launcher</span>
+                </div>
               </Link>
+              <button
+                type="button"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                aria-label="Close launcher"
+              >
+                <X className="h-5 w-5" />
+              </button>
             </div>
-            <nav className="flex-1 overflow-y-auto thin-scrollbar p-2 bg-white">
-              <ul className="space-y-1">
-                {accessibleRoutes.map((route) => (
-                  <li key={route.label}>
-                    {route.isSubmenu ? (
-                      <div className="flex flex-col">
-                        <button
-                          onClick={() => handleToggleSubmenu(route)}
-                          className={`flex items-center justify-between w-full rounded-md px-3 py-2 text-sm font-medium text-left transition-colors ${route.active
-                            ? "bg-gradient-to-r from-blue-100 to-purple-100 text-blue-700"
-                            : "text-gray-700 hover:bg-blue-50"
+
+            {/* Scrollable Body */}
+            <div className="flex-1 overflow-y-auto thin-scrollbar p-3 space-y-4 bg-white">
+              {/* Systems App-Icon Grid */}
+              <div className="rounded-2xl border border-slate-100 bg-slate-50/40 p-1">
+                <MobileSystemLauncher
+                  menuCounts={menuCounts}
+                  onClose={() => setIsMobileMenuOpen(false)}
+                  pageAccess={pageAccess}
+                  userRole={userRole}
+                />
+              </div>
+
+              {/* Sub-items navigation for active system */}
+              {accessibleRoutes
+                .filter((r) => r.active && r.subItems && r.subItems.length > 0)
+                .map((activeRoute) => (
+                  <div key={activeRoute.label} className="pt-2 px-1">
+                    <div className="px-2 pb-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                      {activeRoute.label} Pages
+                    </div>
+                    <ul className="space-y-1">
+                      {activeRoute.subItems.map((sub) => (
+                        <li key={sub.label}>
+                          <Link
+                            to={sub.href}
+                            className={`flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
+                              sub.active
+                                ? "text-brand-600 bg-brand-50 shadow-soft-sm font-bold"
+                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                             }`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <route.icon
-                              className={`h-4 w-4 ${route.active ? "text-blue-600" : ""}`}
-                            />
-                            {route.label}
-                          </div>
-                          {route.isOpen ? (
-                            <ChevronDown className="h-4 w-4" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4" />
-                          )}
-                        </button>
-                        {route.isOpen && (
-                          <ul className="mt-1 ml-4 space-y-1 border-l-2 border-blue-50 pl-2">
-                            {route.subItems.map((sub) => (
-                              <li key={sub.label}>
-                                <Link
-                                  to={sub.href}
-                                  className={`flex items-center justify-between rounded-md px-3 py-1.5 text-xs font-medium text-left transition-colors ${sub.active
-                                    ? "text-blue-700 bg-blue-50 font-semibold"
-                                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-                                    }`}
-                                  onClick={() => setIsMobileMenuOpen(false)}
-                                >
-                                  <span className="text-left">{sub.label}</span>
-                                  {sub.badge && (
-                                    <span className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-                                      {sub.badge}
-                                    </span>
-                                  )}
-                                </Link>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-                    ) : (
-                      <Link
-                        to={route.href}
-                        className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${route.active
-                          ? "bg-gradient-to-r from-blue-100 to-purple-100 text-blue-700"
-                          : "text-gray-700 hover:bg-blue-50"
-                          }`}
-                        onClick={() => setIsMobileMenuOpen(false)}
-                      >
-                        <route.icon
-                          className={`h-4 w-4 ${route.active ? "text-blue-600" : ""
-                            }`}
-                        />
-                        <div className="flex items-center justify-between w-full">
-                          <span>{route.label}</span>
-                          {route.badge && (
-                            <span className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-                              {route.badge}
-                            </span>
-                          )}
-                        </div>
-                      </Link>
-                    )}
-                  </li>
+                            onClick={() => setIsMobileMenuOpen(false)}
+                          >
+                            <span>{sub.label}</span>
+                            {sub.badge && (
+                              <span className="bg-rose-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                                {sub.badge}
+                              </span>
+                            )}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 ))}
-              </ul>
-            </nav>
-            <div className="border-t border-blue-200 p-4 bg-gradient-to-r from-blue-50 to-purple-50">
+            </div>
+
+            {/* Drawer Footer with User Info and Logout */}
+            <div className="border-t border-slate-100 p-3.5 bg-slate-50">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-full gradient-bg flex items-center justify-center overflow-hidden border border-blue-100">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="h-9 w-9 rounded-full bg-brand-600 text-white flex items-center justify-center font-bold text-sm overflow-hidden flex-shrink-0">
                     {profileImage ? (
                       <img src={profileImage} alt={username} className="h-full w-full object-cover" />
                     ) : (
-                      <span className="text-sm font-medium text-black">
-                        {username ? username.charAt(0).toUpperCase() : "U"}
-                      </span>
+                      <span>{username ? username.charAt(0).toUpperCase() : "U"}</span>
                     )}
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-blue-700">
-                      {username || "User"}{" "}
-                      {userRole === "admin"
-                        ? isSuperAdmin
-                          ? "(Super Admin)"
-                          : "(Admin)"
-                        : userRole === "HOD"
-                          ? "(HOD)"
-                          : ""}
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-slate-800 truncate">
+                      {username || "User"}
                     </p>
-                    <p className="text-xs text-blue-600">
+                    <p className="text-[11px] text-slate-500 truncate">
                       {userEmail || "user@example.com"}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {toggleDarkMode && (
-                    <button
-                      onClick={toggleDarkMode}
-                      className="text-blue-700 hover:text-blue-900 p-1 rounded-full hover:bg-blue-100"
-                    >
-                      {darkMode ? (
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-4 w-4"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-                          />
-                        </svg>
-                      ) : (
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-4 w-4"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M20.354 15.354A9 9 0 018.646 3.646A9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-                          />
-                        </svg>
-                      )}
-                      <span className="sr-only">
-                        {darkMode ? "Light mode" : "Dark mode"}
-                      </span>
-                    </button>
-                  )}
-
-                </div>
-              </div>
-              <div className="mt-2 flex justify-center">
                 <button
+                  type="button"
                   onClick={handleLogout}
-                  className="flex items-center gap-1 text-blue-700 hover:text-blue-900 px-2 py-1 rounded hover:bg-blue-100 text-sm"
+                  className="flex items-center gap-1 text-rose-600 hover:text-rose-700 px-2.5 py-1.5 rounded-lg hover:bg-rose-50 text-xs font-bold transition-colors cursor-pointer"
                 >
                   <LogOut className="h-4 w-4" />
                   <span>Logout</span>
@@ -1278,11 +1180,11 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto thin-scrollbar overflow-x-hidden px-4 pb-4 md:px-6 md:pb-6 bg-gradient-to-br from-blue-50/50 to-purple-50/50 pb-24 md:pb-6">
+        <main className="flex-1 overflow-y-auto thin-scrollbar overflow-x-hidden px-4 pb-4 md:px-6 md:pb-6 bg-white md:bg-gradient-to-br md:from-blue-50/50 md:to-purple-50/50 pb-20 md:pb-6">
           {children}
         </main>
 
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 h-5 flex items-center justify-center px-4 shadow-md z-40">
+        <div className="hidden md:flex bg-gradient-to-r from-blue-600 to-purple-600 h-5 items-center justify-center px-4 shadow-md z-40">
           <a
             href="https://www.botivate.in"
             target="_blank"
@@ -1293,62 +1195,11 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
           </a>
         </div>
 
-        {/* Premium Bottom Navigation for Mobile */}
-        <div className="md:hidden fixed bottom-6 left-4 right-4 h-16 bg-white/80 backdrop-blur-xl border border-white/20 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] z-50 flex items-center justify-around px-2">
-          <Link
-            to="/dashboard/admin"
-            className={`flex flex-col items-center justify-center w-12 h-12 rounded-xl transition-all duration-300 ${location.pathname === "/dashboard/admin"
-              ? "text-purple-600 bg-purple-50"
-              : "text-gray-400 hover:text-purple-400"
-              }`}
-          >
-            <Home size={22} strokeWidth={location.pathname === "/dashboard/admin" ? 2.5 : 2} />
-            <span className="text-[10px] mt-1 font-bold">Home</span>
-          </Link>
-
-
-
-          <Link
-            to="/dashboard/task"
-            className={`flex flex-col items-center justify-center w-12 h-12 rounded-xl transition-all duration-300 ${location.pathname === "/dashboard/task"
-              ? "text-purple-600 bg-purple-50"
-              : "text-gray-400 hover:text-purple-400"
-              }`}
-          >
-            <CalendarCheck size={22} strokeWidth={location.pathname === "/dashboard/task" ? 2.5 : 2} />
-            <span className="text-[10px] mt-1 font-bold">Tasks</span>
-          </Link>
-
-          {(userRole?.toUpperCase() === "ADMIN" || userRole?.toUpperCase() === "HOD") && (
-            <div className="relative -mt-12">
-              <Link
-                to="/dashboard/assign-task"
-                className="flex items-center justify-center w-14 h-14 bg-gradient-to-tr from-blue-600 to-purple-600 rounded-2xl shadow-lg shadow-purple-200 text-white transform active:scale-90 transition-all duration-300 border-4 border-blue-50"
-              >
-                <CirclePlus size={28} strokeWidth={2.5} />
-              </Link>
-            </div>
-          )}
-
-          <Link
-            to="/dashboard/delegation"
-            className={`flex flex-col items-center justify-center w-12 h-12 rounded-xl transition-all duration-300 ${location.pathname === "/dashboard/delegation"
-              ? "text-purple-600 bg-purple-50"
-              : "text-gray-400 hover:text-purple-400"
-              }`}
-          >
-            <BookmarkCheck size={22} strokeWidth={location.pathname === "/dashboard/delegation" ? 2.5 : 2} />
-            <span className="text-[10px] mt-1 font-bold">Status</span>
-          </Link>
-
-          <button
-            onClick={() => setIsUserPopupOpen(true)}
-            className="flex flex-col items-center justify-center w-12 h-12 rounded-xl text-gray-400 hover:text-purple-400 transition-all"
-          >
-            <UserRound size={22} strokeWidth={2} />
-            <span className="text-[10px] mt-1 font-bold">Profile</span>
-          </button>
-        </div>
+        {/* Fixed Bottom Navigation for Mobile */}
+        <MobileBottomNav
+          onOpenLauncher={() => setIsMobileMenuOpen(true)}
+          isLauncherOpen={isMobileMenuOpen}
+        />
 
         {/* User Popup */}
         {isUserPopupOpen && (

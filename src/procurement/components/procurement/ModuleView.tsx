@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Plus, CheckCircle, Clock } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Plus, CheckCircle, Clock, Boxes, ScrollText } from 'lucide-react';
 import { ModuleType, AnyProcurementItem, FilterState, ViewTab } from '../../types/procurement';
 import { useProcurement } from '../../context/ProcurementContext';
 import { TableFilters } from './TableFilters';
@@ -29,19 +30,42 @@ export const ModuleView: React.FC<ModuleViewProps> = ({ module }) => {
     addRemarkToRecord
   } = useProcurement();
 
-  // Internal active module state when on Material/Packaging page
-  const [activeSubModule, setActiveSubModule] = useState<'material' | 'packaging'>(
-    module === 'packaging' ? 'packaging' : 'material'
-  );
+  const [searchParams, setSearchParams] = useSearchParams();
+  const subQuery = searchParams.get('sub');
 
-  // Sync sub-module when parent module prop changes via sidebar navigation
+  // Internal active module state when on Material/Packaging page
+  const [activeSubModule, setActiveSubModule] = useState<'material' | 'packaging'>(() => {
+    if (subQuery === 'packaging' || module === 'packaging') return 'packaging';
+    return 'material';
+  });
+
+  // Sync with search parameter if it changes or module prop changes
   useEffect(() => {
-    if (module === 'material' || module === 'packaging') {
-      setActiveSubModule(module);
+    if (subQuery === 'packaging') {
+      setActiveSubModule('packaging');
+    } else if (subQuery === 'material') {
+      setActiveSubModule('material');
+    } else if (module === 'packaging') {
+      setActiveSubModule('packaging');
+    } else if (module === 'material') {
+      setActiveSubModule('material');
     }
-  }, [module]);
+  }, [subQuery, module]);
 
   const currentActiveModule: ModuleType = (module === 'material' || module === 'packaging') ? activeSubModule : module;
+
+  const handleSelectSubModule = (sub: 'material' | 'packaging') => {
+    setActiveSubModule(sub);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (sub === 'packaging') {
+        next.set('sub', 'packaging');
+      } else {
+        next.delete('sub');
+      }
+      return next;
+    });
+  };
 
   // Modals state
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -187,29 +211,29 @@ export const ModuleView: React.FC<ModuleViewProps> = ({ module }) => {
       title: 'New Leather Development',
       subtitle: 'Track new article swatches, lab dips, drum dyeing, and sample hides',
       vendorLabel: 'Tannery',
-      addLabel: 'New Leather',
-      shortAddLabel: '+ Add'
+      addLabel: 'Add New Leather',
+      shortAddLabel: 'Add New Leather'
     },
     'daily-leather': {
       title: 'Daily Leather Procurement',
       subtitle: 'Manage production work order leather requirements and multiple hide lots',
       vendorLabel: 'Tannery',
-      addLabel: 'New Leather Order',
-      shortAddLabel: '+ Add'
+      addLabel: 'Add Daily Leather',
+      shortAddLabel: 'Add Daily Leather'
     },
     'material': {
       title: 'Daily Material Procurement',
       subtitle: 'Monitor fabric linings, bonded threads, buckles, and footwear hardware',
       vendorLabel: 'Supplier',
-      addLabel: 'Add Daily Material Procurement',
-      shortAddLabel: '+ Add Material'
+      addLabel: 'Add Daily Material',
+      shortAddLabel: 'Add Daily Material'
     },
     'packaging': {
       title: 'Daily Packaging Procurement',
       subtitle: 'Coordinate branded shoe boxes, barcode hangtags, desiccants, and master cartons',
       vendorLabel: 'Supplier',
-      addLabel: 'Add Daily Packaging Procurement',
-      shortAddLabel: '+ Add Packaging'
+      addLabel: 'Add Daily Packaging',
+      shortAddLabel: 'Add Daily Packaging'
     }
   }[currentActiveModule];
 
@@ -248,24 +272,22 @@ export const ModuleView: React.FC<ModuleViewProps> = ({ module }) => {
     <div className="space-y-4 sm:space-y-5 animate-in fade-in duration-200">
       {/* 2-Tab Header for Material & Packaging combined view */}
       {(module === 'material' || module === 'packaging') && (
-        <div className="bg-white p-2 sm:p-2.5 rounded-2xl border border-slate-200 shadow-soft flex items-center gap-2">
+        <div className="bg-slate-100 p-2 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-1.5 sm:gap-2">
           <button
             type="button"
-            onClick={() => {
-              setActiveSubModule('material');
-              setActiveNav('material');
-            }}
-            className={`flex-1 min-h-[44px] px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2.5 ${
+            onClick={() => handleSelectSubModule('material')}
+            className={`flex-1 min-h-[44px] px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2.5 cursor-pointer ${
               currentActiveModule === 'material'
-                ? 'bg-brand-600 text-white shadow-soft'
-                : 'text-slate-600 hover:bg-slate-100'
+                ? 'bg-white text-blue-600 shadow-sm border border-blue-200 font-extrabold ring-1 ring-blue-500/20'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
             }`}
           >
-            <span>Daily Material Procurement</span>
+            <Boxes className={`w-4 h-4 ${currentActiveModule === 'material' ? 'text-blue-600' : 'text-slate-400'}`} />
+            <span>Daily Material Proc</span>
             <span className={`px-2 py-0.5 rounded-full text-[11px] font-extrabold ${
               currentActiveModule === 'material'
-                ? 'bg-white/20 text-white'
-                : 'bg-slate-100 text-slate-600'
+                ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                : 'bg-slate-200/70 text-slate-600'
             }`}>
               {matPending}
             </span>
@@ -273,21 +295,19 @@ export const ModuleView: React.FC<ModuleViewProps> = ({ module }) => {
 
           <button
             type="button"
-            onClick={() => {
-              setActiveSubModule('packaging');
-              setActiveNav('packaging');
-            }}
-            className={`flex-1 min-h-[44px] px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2.5 ${
+            onClick={() => handleSelectSubModule('packaging')}
+            className={`flex-1 min-h-[44px] px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2.5 cursor-pointer ${
               currentActiveModule === 'packaging'
-                ? 'bg-brand-600 text-white shadow-soft'
-                : 'text-slate-600 hover:bg-slate-100'
+                ? 'bg-white text-blue-600 shadow-sm border border-blue-200 font-extrabold ring-1 ring-blue-500/20'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
             }`}
           >
-            <span>Daily Packaging Procurement</span>
+            <ScrollText className={`w-4 h-4 ${currentActiveModule === 'packaging' ? 'text-blue-600' : 'text-slate-400'}`} />
+            <span>Daily Packaging Proc</span>
             <span className={`px-2 py-0.5 rounded-full text-[11px] font-extrabold ${
               currentActiveModule === 'packaging'
-                ? 'bg-white/20 text-white'
-                : 'bg-slate-100 text-slate-600'
+                ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                : 'bg-slate-200/70 text-slate-600'
             }`}>
               {pkgPending}
             </span>
@@ -295,7 +315,7 @@ export const ModuleView: React.FC<ModuleViewProps> = ({ module }) => {
         </div>
       )}
 
-      {/* Top Bar: Title & Responsive Add Button (Req #58) */}
+      {/* Top Bar: Title & Responsive Add Button */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900 leading-tight">
@@ -306,15 +326,14 @@ export const ModuleView: React.FC<ModuleViewProps> = ({ module }) => {
           </p>
         </div>
 
-        {/* Responsive Add Button (Req #58) */}
+        {/* Primary Add Button */}
         <button
           type="button"
           onClick={() => setCreateModalOpen(true)}
-          className="self-start sm:self-auto min-h-[44px] px-4 sm:px-5 py-2.5 bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white text-xs sm:text-sm font-semibold rounded-xl shadow-soft transition-all flex items-center justify-center gap-2 whitespace-nowrap"
+          className="self-start sm:self-auto min-h-[44px] px-5 py-2.5 bg-black hover:bg-slate-900 active:bg-slate-800 text-white text-xs sm:text-sm font-bold rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer ring-2 ring-black/10"
         >
-          <Plus className="w-4 h-4" />
-          <span className="hidden sm:inline">{config.addLabel}</span>
-          <span className="sm:hidden">{config.shortAddLabel}</span>
+          <Plus className="w-4 h-4 stroke-[3]" />
+          <span>{config.addLabel}</span>
         </button>
       </div>
 
