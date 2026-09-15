@@ -25,7 +25,7 @@ const files = walk(dirPath);
 
 files.forEach(filePath => {
   let content = fs.readFileSync(filePath, 'utf8');
-  const cleaned = content.replace(/\sdark:[a-zA-Z0-9_\-\/\[\]:]+/g, '');
+  const cleaned = content.replace(/\sdark:[a-zA-Z0-9_\-/[\]:]+/g, '');
   if (content !== cleaned) {
     fs.writeFileSync(filePath, cleaned, 'utf8');
     console.log('Cleaned dark classes from:', filePath);
