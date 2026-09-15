@@ -1147,7 +1147,7 @@ export default function AdminDashboard() {
                 Tap any system to switch workspace
               </p>
             </div>
-            <span className="text-[10px] font-bold text-brand-600 bg-brand-50 px-2 py-0.5 rounded-full border border-brand-100">
+            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
               Workspaces
             </span>
           </div>

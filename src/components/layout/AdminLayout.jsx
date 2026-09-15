@@ -124,14 +124,16 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
 
   // Check authentication on component mount
   useEffect(() => {
-    const storedUsername = localStorage.getItem("user-name");
-    const storedRole = localStorage.getItem("role");
-    const storedEmail = localStorage.getItem("email_id");
+    const storedUsername = localStorage.getItem("user-name") || sessionStorage.getItem("user-name");
+    const storedRole = localStorage.getItem("role") || sessionStorage.getItem("role");
+    const storedEmail = localStorage.getItem("email_id") || sessionStorage.getItem("email_id");
 
     if (!storedUsername) {
-      // Redirect to login if not authenticated
-      navigate("/login");
-      return;
+      const retryUser = localStorage.getItem("user-name") || sessionStorage.getItem("user-name");
+      if (!retryUser) {
+        navigate("/login");
+        return;
+      }
     }
 
     setUsername(storedUsername);
@@ -1030,11 +1032,11 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
         className="md:hidden absolute left-3.5 top-3.5 z-[110] text-slate-700 p-2 rounded-xl bg-white border border-slate-200/80 shadow-soft hover:bg-slate-50 flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
         aria-label="Toggle Systems Launcher"
       >
-        <LayoutGrid className="h-4 w-4 text-brand-600" />
+        <LayoutGrid className="h-4 w-4 text-blue-600" />
         <span className="text-[11px] font-bold text-slate-700 hidden xs:inline">Systems</span>
       </button>
 
-      {/* Mobile System Launcher Drawer / Modal */}
+      {/* Mobile System Launcher Drawer / Modal (Level 1 System Home Screen) */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-[100] md:hidden">
           <div
@@ -1058,16 +1060,15 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
               <button
                 type="button"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
                 aria-label="Close launcher"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            {/* Scrollable Body */}
+            {/* Scrollable Body: ONLY system names & tiles (No page-level detail) */}
             <div className="flex-1 overflow-y-auto thin-scrollbar p-3 space-y-4 bg-white">
-              {/* Systems App-Icon Grid */}
               <div className="rounded-2xl border border-slate-100 bg-slate-50/40 p-1">
                 <MobileSystemLauncher
                   menuCounts={menuCounts}
@@ -1076,46 +1077,13 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
                   userRole={userRole}
                 />
               </div>
-
-              {/* Sub-items navigation for active system */}
-              {accessibleRoutes
-                .filter((r) => r.active && r.subItems && r.subItems.length > 0)
-                .map((activeRoute) => (
-                  <div key={activeRoute.label} className="pt-2 px-1">
-                    <div className="px-2 pb-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                      {activeRoute.label} Pages
-                    </div>
-                    <ul className="space-y-1">
-                      {activeRoute.subItems.map((sub) => (
-                        <li key={sub.label}>
-                          <Link
-                            to={sub.href}
-                            className={`flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
-                              sub.active
-                                ? "text-brand-600 bg-brand-50 shadow-soft-sm font-bold"
-                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-                            }`}
-                            onClick={() => setIsMobileMenuOpen(false)}
-                          >
-                            <span>{sub.label}</span>
-                            {sub.badge && (
-                              <span className="bg-rose-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-                                {sub.badge}
-                              </span>
-                            )}
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
             </div>
 
             {/* Drawer Footer with User Info and Logout */}
             <div className="border-t border-slate-100 p-3.5 bg-slate-50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="h-9 w-9 rounded-full bg-brand-600 text-white flex items-center justify-center font-bold text-sm overflow-hidden flex-shrink-0">
+                  <div className="h-9 w-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm overflow-hidden flex-shrink-0">
                     {profileImage ? (
                       <img src={profileImage} alt={username} className="h-full w-full object-cover" />
                     ) : (
@@ -1197,6 +1165,7 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
 
         {/* Fixed Bottom Navigation for Mobile */}
         <MobileBottomNav
+          accessibleRoutes={accessibleRoutes}
           onOpenLauncher={() => setIsMobileMenuOpen(true)}
           isLauncherOpen={isMobileMenuOpen}
         />

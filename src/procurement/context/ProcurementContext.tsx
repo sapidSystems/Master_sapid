@@ -145,7 +145,21 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [packaging, setPackaging] = useState<PackagingItem[]>(() => {
     try {
       const saved = localStorage.getItem('erp_packaging');
-      return saved ? JSON.parse(saved) : [];
+      if (!saved) return [];
+      const list: PackagingItem[] = JSON.parse(saved);
+      return list.map(item => {
+        const base = item.indentReceiptDate || item.woDate || item.date;
+        if (base) {
+          const targetStockCheckDate = addDays(base, 7);
+          const poReleaseTargetDate = addDays(targetStockCheckDate, 2);
+          return {
+            ...item,
+            targetStockCheckDate,
+            poReleaseTargetDate
+          };
+        }
+        return item;
+      });
     } catch {
       return [];
     }
@@ -226,7 +240,15 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
       user: currentUser ? currentUser.name : 'System User',
       timestamp: new Date().toISOString()
     };
-    setActivityLogs(prev => [newLog, ...prev]);
+    setActivityLogs(prev => {
+      const updated = [newLog, ...prev];
+      try {
+        localStorage.setItem('erp_activity_logs', JSON.stringify(updated));
+      } catch (e) {
+        console.error(e);
+      }
+      return updated;
+    });
   }, [currentUser]);
 
   // Helper to fetch single record
@@ -333,7 +355,9 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
             createdAt: nowIso,
             updatedAt: nowIso
           };
-          setNewLeather(prev => [newItem, ...prev]);
+          const updated = [newItem, ...newLeather];
+          setNewLeather(updated);
+          try { localStorage.setItem('erp_new_leather', JSON.stringify(updated)); } catch (e) { console.error(e); }
           identifier = `${newId} (${newItem.leatherName})`;
           break;
         }
@@ -394,7 +418,9 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
             };
           });
 
-          setDailyLeather(prev => [...newEntries, ...prev]);
+          const updated = [...newEntries, ...dailyLeather];
+          setDailyLeather(updated);
+          try { localStorage.setItem('erp_daily_leather', JSON.stringify(updated)); } catch (e) { console.error(e); }
           identifier = `${data.woNo} (${newEntries.length} leather item${newEntries.length > 1 ? 's' : ''})`;
           break;
         }
@@ -432,14 +458,16 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
             createdAt: nowIso,
             updatedAt: nowIso
           };
-          setMaterials(prev => [newItem, ...prev]);
+          const updated = [newItem, ...materials];
+          setMaterials(updated);
+          try { localStorage.setItem('erp_materials', JSON.stringify(updated)); } catch (e) { console.error(e); }
           identifier = `${newItem.woNo} (${newItem.materialName})`;
           break;
         }
         case 'packaging': {
           const newId = 'PKG-' + (4000 + packaging.length + 1);
           const indentDate = data.indentReceiptDate || data.woDate || data.date || getTodayDateString();
-          const targetStockCheckDate = addDays(indentDate, 3);
+          const targetStockCheckDate = addDays(indentDate, 7);
           const poReleaseTargetDate = addDays(targetStockCheckDate, 2);
           const expectedMatDate = data.expectedMaterialReceiptDate || data.targetReceiptDate || data.shipmentDate || '';
 
@@ -470,7 +498,9 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
             createdAt: nowIso,
             updatedAt: nowIso
           };
-          setPackaging(prev => [newItem, ...prev]);
+          const updated = [newItem, ...packaging];
+          setPackaging(updated);
+          try { localStorage.setItem('erp_packaging', JSON.stringify(updated)); } catch (e) { console.error(e); }
           identifier = `${newItem.woNo} (${newItem.packagingType})`;
           break;
         }
@@ -527,6 +557,17 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
       if (updates.actualReceiptDate && updates.actualReceiptDate !== existing.actualReceiptDate) {
         changeLogs.push(`Actual Receipt Date set to ${updates.actualReceiptDate}. Order Completed.`);
       }
+      if (updates.incrementalQtyReceived !== undefined && Number(updates.incrementalQtyReceived) > 0) {
+        const delta = Number(updates.incrementalQtyReceived);
+        const oldQtyReceived = Number((existing as any).qtyReceived || 0);
+        const newTotal = oldQtyReceived + delta;
+        updates.qtyReceived = newTotal;
+        const totalOrdered = (existing as any).quantity || (existing as any).qtyOrdered || 0;
+        changeLogs.push(`Received ${delta.toLocaleString()} sqft more (Total: ${newTotal.toLocaleString()} / ${totalOrdered.toLocaleString()} sqft)`);
+      } else if (updates.qtyReceived !== undefined && Number(updates.qtyReceived) !== Number((existing as any).qtyReceived)) {
+        changeLogs.push(`Qty Received updated to ${updates.qtyReceived}`);
+      }
+      delete updates.incrementalQtyReceived;
       if (updates.targetReceiptDate && updates.targetReceiptDate !== existing.targetReceiptDate) {
         changeLogs.push(`Target Receipt Date updated to ${updates.targetReceiptDate}`);
       }
@@ -561,7 +602,8 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
       if (module === 'material' || module === 'packaging') {
         const indentDate = merged.indentReceiptDate || merged.woDate || merged.date;
-        merged.targetStockCheckDate = addDays(indentDate, 3);
+        const stockCheckDays = module === 'packaging' ? 7 : 3;
+        merged.targetStockCheckDate = addDays(indentDate, stockCheckDays);
         merged.poReleaseTargetDate = addDays(merged.targetStockCheckDate, 2);
         if (merged.expectedMaterialReceiptDate) {
           merged.targetReceiptDate = merged.expectedMaterialReceiptDate;
@@ -577,18 +619,30 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
 
       switch (module) {
-        case 'new-leather':
-          setNewLeather(prev => prev.map(i => (i.id === id ? (merged as NewLeatherItem) : i)));
+        case 'new-leather': {
+          const updated = newLeather.map(i => (i.id === id ? (merged as NewLeatherItem) : i));
+          setNewLeather(updated);
+          localStorage.setItem('erp_new_leather', JSON.stringify(updated));
           break;
-        case 'daily-leather':
-          setDailyLeather(prev => prev.map(i => (i.id === id ? (merged as DailyLeatherItem) : i)));
+        }
+        case 'daily-leather': {
+          const updated = dailyLeather.map(i => (i.id === id ? (merged as DailyLeatherItem) : i));
+          setDailyLeather(updated);
+          localStorage.setItem('erp_daily_leather', JSON.stringify(updated));
           break;
-        case 'material':
-          setMaterials(prev => prev.map(i => (i.id === id ? (merged as MaterialItem) : i)));
+        }
+        case 'material': {
+          const updated = materials.map(i => (i.id === id ? (merged as MaterialItem) : i));
+          setMaterials(updated);
+          localStorage.setItem('erp_materials', JSON.stringify(updated));
           break;
-        case 'packaging':
-          setPackaging(prev => prev.map(i => (i.id === id ? (merged as PackagingItem) : i)));
+        }
+        case 'packaging': {
+          const updated = packaging.map(i => (i.id === id ? (merged as PackagingItem) : i));
+          setPackaging(updated);
+          localStorage.setItem('erp_packaging', JSON.stringify(updated));
           break;
+        }
       }
 
       const identifier = (merged as any).woNo || merged.id;
@@ -619,18 +673,30 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
       const identifier = existing ? ((existing as any).woNo || existing.id) : id;
 
       switch (module) {
-        case 'new-leather':
-          setNewLeather(prev => prev.filter(i => i.id !== id));
+        case 'new-leather': {
+          const updated = newLeather.filter(i => i.id !== id);
+          setNewLeather(updated);
+          try { localStorage.setItem('erp_new_leather', JSON.stringify(updated)); } catch (e) { console.error(e); }
           break;
-        case 'daily-leather':
-          setDailyLeather(prev => prev.filter(i => i.id !== id));
+        }
+        case 'daily-leather': {
+          const updated = dailyLeather.filter(i => i.id !== id);
+          setDailyLeather(updated);
+          try { localStorage.setItem('erp_daily_leather', JSON.stringify(updated)); } catch (e) { console.error(e); }
           break;
-        case 'material':
-          setMaterials(prev => prev.filter(i => i.id !== id));
+        }
+        case 'material': {
+          const updated = materials.filter(i => i.id !== id);
+          setMaterials(updated);
+          try { localStorage.setItem('erp_materials', JSON.stringify(updated)); } catch (e) { console.error(e); }
           break;
-        case 'packaging':
-          setPackaging(prev => prev.filter(i => i.id !== id));
+        }
+        case 'packaging': {
+          const updated = packaging.filter(i => i.id !== id);
+          setPackaging(updated);
+          try { localStorage.setItem('erp_packaging', JSON.stringify(updated)); } catch (e) { console.error(e); }
           break;
+        }
       }
 
       logActivity('DELETE', module, identifier, `Permanently removed record.`);
@@ -660,18 +726,30 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
       const identifier = (existing as any).woNo || existing.id;
 
       switch (module) {
-        case 'new-leather':
-          setNewLeather(prev => prev.map(i => i.id === id ? { ...i, remarks: newRemark.text, remarkHistory: updatedHistory, updatedAt: newRemark.timestamp } : i));
+        case 'new-leather': {
+          const updated = newLeather.map(i => i.id === id ? { ...i, remarks: newRemark.text, remarkHistory: updatedHistory, updatedAt: newRemark.timestamp } : i);
+          setNewLeather(updated);
+          localStorage.setItem('erp_new_leather', JSON.stringify(updated));
           break;
-        case 'daily-leather':
-          setDailyLeather(prev => prev.map(i => i.id === id ? { ...i, remarks: newRemark.text, remarkHistory: updatedHistory, updatedAt: newRemark.timestamp } : i));
+        }
+        case 'daily-leather': {
+          const updated = dailyLeather.map(i => i.id === id ? { ...i, remarks: newRemark.text, remarkHistory: updatedHistory, updatedAt: newRemark.timestamp } : i);
+          setDailyLeather(updated);
+          localStorage.setItem('erp_daily_leather', JSON.stringify(updated));
           break;
-        case 'material':
-          setMaterials(prev => prev.map(i => i.id === id ? { ...i, remarks: newRemark.text, remarkHistory: updatedHistory, updatedAt: newRemark.timestamp } : i));
+        }
+        case 'material': {
+          const updated = materials.map(i => i.id === id ? { ...i, remarks: newRemark.text, remarkHistory: updatedHistory, updatedAt: newRemark.timestamp } : i);
+          setMaterials(updated);
+          localStorage.setItem('erp_materials', JSON.stringify(updated));
           break;
-        case 'packaging':
-          setPackaging(prev => prev.map(i => i.id === id ? { ...i, remarks: newRemark.text, remarkHistory: updatedHistory, updatedAt: newRemark.timestamp } : i));
+        }
+        case 'packaging': {
+          const updated = packaging.map(i => i.id === id ? { ...i, remarks: newRemark.text, remarkHistory: updatedHistory, updatedAt: newRemark.timestamp } : i);
+          setPackaging(updated);
+          localStorage.setItem('erp_packaging', JSON.stringify(updated));
           break;
+        }
       }
 
       logActivity('ADD_REMARK', module, identifier, `Added remark: "${newRemark.text.substring(0, 50)}..."`);

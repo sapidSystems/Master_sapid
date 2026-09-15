@@ -546,6 +546,93 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
               const remarkCount = item.remarkHistory ? item.remarkHistory.length : 0;
               const latestRemark = item.remarks || (remarkCount > 0 ? item.remarkHistory[remarkCount - 1].text : '—');
 
+              if (module === 'new-leather') {
+                const nl = item as NewLeatherItem;
+                return (
+                  <tr
+                    key={nl.id || idx}
+                    className="hover:bg-slate-50/80 transition-colors group text-xs sm:text-sm"
+                  >
+                    {/* Sticky Action Column */}
+                    <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50/80 px-3 sm:px-4 py-3 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)] whitespace-nowrap">
+                      <div className="flex items-center gap-1 sm:gap-1.5">
+                        {!isHistory && (
+                          <button
+                            type="button"
+                            onClick={() => onUpdate(item)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors shadow-xs"
+                            title="Update Tracking Parameters"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Update</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => onDelete(item)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                          title="Delete Record"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+
+                    {/* 1. Date */}
+                    <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-slate-600">
+                      {formatDate(nl.date)}
+                    </td>
+
+                    {/* 2. Buyer Code */}
+                    <td className="px-3 sm:px-4 py-3 whitespace-nowrap font-medium">
+                      <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-mono text-xs">
+                        {nl.buyerCode || '—'}
+                      </span>
+                    </td>
+
+                    {/* 3. Leather Name */}
+                    <td className="px-3 sm:px-4 py-3 whitespace-nowrap font-bold text-slate-900">
+                      {nl.leatherName || '—'}
+                    </td>
+
+                    {/* 4. Colour */}
+                    <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-slate-600">
+                      {nl.colour || '—'}
+                    </td>
+
+                    {/* 5. Quantity */}
+                    <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-right font-mono font-medium text-slate-800">
+                      {nl.quantity ? `${nl.quantity.toLocaleString()} ${nl.unit || ''}` : '—'}
+                    </td>
+
+                    {/* 6. Tannery */}
+                    <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-slate-600">
+                      {nl.tannery || '—'}
+                    </td>
+
+                    {/* 7. Target Date */}
+                    <td className="px-3 sm:px-4 py-3 whitespace-nowrap font-semibold text-slate-700">
+                      {formatDate(nl.targetReceiptDate)}
+                    </td>
+
+                    {/* 8. Actual Receipt Date */}
+                    <td className="px-3 sm:px-4 py-3 whitespace-nowrap font-bold text-emerald-700 bg-emerald-500/10 border-l-2 border-emerald-500">
+                      {formatDate(nl.actualReceiptDate) || '—'}
+                    </td>
+
+                    {/* 9. Status */}
+                    <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
+                      <StatusBadge status={nl.status} size="sm" />
+                    </td>
+
+                    {/* 10. Remarks */}
+                    <td className="px-3 sm:px-4 py-3 text-xs text-slate-700 max-w-[220px] truncate bg-amber-500/5" title={latestRemark}>
+                      {latestRemark}
+                    </td>
+                  </tr>
+                );
+              }
+
               if (module === 'material' || module === 'packaging') {
                 const mat = item as any;
                 return (

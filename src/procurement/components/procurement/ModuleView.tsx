@@ -104,7 +104,7 @@ export const ModuleView: React.FC<ModuleViewProps> = ({ module }) => {
     if (activeTab === 'pending') {
       return currentModuleItems.filter(i => !i.actualReceiptDate);
     } else {
-      return currentModuleItems.filter(i => (i.remarkHistory && i.remarkHistory.length > 0) || !!i.actualReceiptDate);
+      return currentModuleItems.filter(i => (i.remarkHistory && i.remarkHistory.length > 0) || Boolean(i.actualReceiptDate));
     }
   }, [currentModuleItems, activeTab]);
 
@@ -140,6 +140,7 @@ export const ModuleView: React.FC<ModuleViewProps> = ({ module }) => {
         const woMatch = (item as any).woNo?.toLowerCase().includes(q);
         const buyerMatch = item.buyerCode?.toLowerCase().includes(q);
         const remarkMatch = item.remarks?.toLowerCase().includes(q);
+        const remarkHistoryMatch = item.remarkHistory?.some(r => r.text?.toLowerCase().includes(q) || r.author?.toLowerCase().includes(q));
         const leatherMatch = (item as any).leatherName?.toLowerCase().includes(q);
         const materialMatch = (item as any).materialName?.toLowerCase().includes(q);
         const packagingMatch = (item as any).packagingType?.toLowerCase().includes(q);
@@ -147,7 +148,7 @@ export const ModuleView: React.FC<ModuleViewProps> = ({ module }) => {
           sub.leatherName.toLowerCase().includes(q) || sub.colour.toLowerCase().includes(q) || sub.tannery.toLowerCase().includes(q)
         );
 
-        if (!woMatch && !buyerMatch && !remarkMatch && !leatherMatch && !materialMatch && !packagingMatch && !subItemsMatch) {
+        if (!woMatch && !buyerMatch && !remarkMatch && !remarkHistoryMatch && !leatherMatch && !materialMatch && !packagingMatch && !subItemsMatch) {
           return false;
         }
       }
@@ -263,7 +264,7 @@ export const ModuleView: React.FC<ModuleViewProps> = ({ module }) => {
   };
 
   const pendingCount = currentModuleItems.filter(i => !i.actualReceiptDate).length;
-  const historyCount = currentModuleItems.filter(i => (i.remarkHistory && i.remarkHistory.length > 0) || !!i.actualReceiptDate).length;
+  const historyCount = currentModuleItems.filter(i => (i.remarkHistory && i.remarkHistory.length > 0) || Boolean(i.actualReceiptDate)).length;
 
   const matPending = materials.filter(i => !i.actualReceiptDate).length;
   const pkgPending = packaging.filter(i => !i.actualReceiptDate).length;

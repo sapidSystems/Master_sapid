@@ -127,7 +127,7 @@ export const RemarksHistoryModal: React.FC<RemarksHistoryModalProps> = ({
             <button
               type="submit"
               disabled={!newRemarkText.trim() || isSubmitting}
-              className="self-end min-h-[44px] px-3.5 sm:px-4 py-2 bg-brand-600 hover:bg-brand-700 active:bg-brand-800 disabled:opacity-50 text-white rounded-xl text-xs sm:text-sm font-medium transition-colors flex items-center justify-center gap-1.5 shadow-soft"
+              className="self-end min-h-[44px] px-3.5 sm:px-4 py-2 bg-black hover:bg-slate-900 active:bg-slate-800 disabled:opacity-50 text-white rounded-xl text-xs sm:text-sm font-bold transition-colors flex items-center justify-center gap-1.5 shadow-md ring-2 ring-black/10 cursor-pointer"
             >
               {isSubmitting ? (
                 <span className="inline-block animate-spin">⌛</span>

@@ -42,17 +42,7 @@ export const CreateRecordModal: React.FC<CreateRecordModalProps> = ({
     { id: 'sub-1', leatherName: '', colour: '', quantity: 500, tannery: '', remarks: '' }
   ]);
 
-  // Material specific
-  const [materialName, setMaterialName] = useState('');
-  const [materialSpec, setMaterialSpec] = useState('');
-  const [materialSupplier, setMaterialSupplier] = useState('');
-  const [materialUnit, setMaterialUnit] = useState('meters');
 
-  // Packaging specific
-  const [packagingType, setPackagingType] = useState('');
-  const [packagingSpec, setPackagingSpec] = useState('');
-  const [packagingSupplier, setPackagingSupplier] = useState('');
-  const [packagingUnit, setPackagingUnit] = useState('pcs');
 
   if (!isOpen) return null;
 
@@ -145,11 +135,7 @@ export const CreateRecordModal: React.FC<CreateRecordModalProps> = ({
         woDate: date,
         indentReceiptDate: indentReceiptDate || date,
         shipmentDate: shipmentDate || '',
-        materialName: materialName.trim() || 'Material Requirements',
-        specification: materialSpec.trim(),
-        quantity: Number(quantity) || 0,
-        unit: materialUnit,
-        supplier: materialSupplier.trim() || 'Material Vendor'
+        targetReceiptDate: undefined
       };
     } else if (module === 'packaging') {
       if (!woNo.trim()) {
@@ -162,11 +148,7 @@ export const CreateRecordModal: React.FC<CreateRecordModalProps> = ({
         woDate: date,
         indentReceiptDate: indentReceiptDate || date,
         shipmentDate: shipmentDate || '',
-        packagingType: packagingType.trim() || 'Packaging Requirements',
-        specification: packagingSpec.trim(),
-        quantity: Number(quantity) || 0,
-        unit: packagingUnit,
-        supplier: packagingSupplier.trim() || 'Packaging Vendor'
+        targetReceiptDate: undefined
       };
     }
 
@@ -176,7 +158,6 @@ export const CreateRecordModal: React.FC<CreateRecordModalProps> = ({
 
     if (success) {
       onClose();
-      window.location.reload();
     }
   };
 
@@ -518,203 +499,39 @@ export const CreateRecordModal: React.FC<CreateRecordModalProps> = ({
             </div>
           )}
 
-          {/* Module 3: Daily Material specific inputs */}
-          {module === 'material' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-2">
-              <div>
-                <label htmlFor="mat-name" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
-                  Material Name / Type <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  id="mat-name"
-                  type="text"
-                  required
-                  placeholder="e.g. Cotton Twill Lining 240 GSM"
-                  value={materialName}
-                  onChange={(e) => setMaterialName(e.target.value)}
-                  className="w-full min-h-[44px] px-3.5 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                />
-              </div>
+          {/* Module 3: Daily Material inputs hidden (Material Name, Specification, Quantity, Unit, Supplier/Vendor) */}
 
-              <div>
-                <label htmlFor="mat-spec" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
-                  Specification
-                </label>
-                <input
-                  id="mat-spec"
-                  type="text"
-                  placeholder="e.g. Water-resistant coating, 58 inch"
-                  value={materialSpec}
-                  onChange={(e) => setMaterialSpec(e.target.value)}
-                  className="w-full min-h-[44px] px-3.5 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label htmlFor="mat-qty" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
-                    Quantity <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    id="mat-qty"
-                    type="number"
-                    required
-                    min="1"
-                    placeholder="5000"
-                    value={quantity}
-                    onChange={(e) => setQuantity(e.target.value === '' ? '' : Number(e.target.value))}
-                    className="w-full min-h-[44px] px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="mat-unit" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
-                    Unit
-                  </label>
-                  <select
-                    id="mat-unit"
-                    value={materialUnit}
-                    onChange={(e) => setMaterialUnit(e.target.value)}
-                    className="w-full min-h-[44px] px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                  >
-                    <option value="meters">Meters</option>
-                    <option value="rolls">Rolls</option>
-                    <option value="spools">Spools</option>
-                    <option value="pcs">Pcs</option>
-                    <option value="kg">Kg</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="mat-supplier" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
-                  Supplier / Vendor <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  id="mat-supplier"
-                  type="text"
-                  required
-                  placeholder="e.g. TexFab Global"
-                  value={materialSupplier}
-                  onChange={(e) => setMaterialSupplier(e.target.value)}
-                  className="w-full min-h-[44px] px-3.5 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                />
-              </div>
+          {/* Target Receipt Date (excluded for daily-leather and packaging) */}
+          {module !== 'daily-leather' && module !== 'packaging' && (
+            <div className="pt-2">
+              <label htmlFor="create-target-date" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
+                Target Receipt Date <span className="text-slate-400 font-normal"></span>
+              </label>
+              <input
+                id="create-target-date"
+                type="date"
+                value={targetReceiptDate}
+                onChange={(e) => setTargetReceiptDate(e.target.value)}
+                className="w-full min-h-[44px] px-3.5 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
+              />
             </div>
           )}
 
-          {/* Module 4: Daily Packaging specific inputs */}
-          {module === 'packaging' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-2">
-              <div>
-                <label htmlFor="pkg-type" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
-                  Packaging Item / Type <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  id="pkg-type"
-                  type="text"
-                  required
-                  placeholder="e.g. Rigid Drawer Shoe Boxes"
-                  value={packagingType}
-                  onChange={(e) => setPackagingType(e.target.value)}
-                  className="w-full min-h-[44px] px-3.5 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="pkg-spec" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
-                  Specification
-                </label>
-                <input
-                  id="pkg-spec"
-                  type="text"
-                  placeholder="e.g. 1400 GSM greyboard with foil logo"
-                  value={packagingSpec}
-                  onChange={(e) => setPackagingSpec(e.target.value)}
-                  className="w-full min-h-[44px] px-3.5 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label htmlFor="pkg-qty" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
-                    Quantity <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    id="pkg-qty"
-                    type="number"
-                    required
-                    min="1"
-                    placeholder="3000"
-                    value={quantity}
-                    onChange={(e) => setQuantity(e.target.value === '' ? '' : Number(e.target.value))}
-                    className="w-full min-h-[44px] px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="pkg-unit" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
-                    Unit
-                  </label>
-                  <select
-                    id="pkg-unit"
-                    value={packagingUnit}
-                    onChange={(e) => setPackagingUnit(e.target.value)}
-                    className="w-full min-h-[44px] px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                  >
-                    <option value="pcs">Pcs</option>
-                    <option value="cartons">Cartons</option>
-                    <option value="pouches">Pouches</option>
-                    <option value="rolls">Rolls</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="pkg-supplier" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
-                  Supplier / Vendor <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  id="pkg-supplier"
-                  type="text"
-                  required
-                  placeholder="e.g. Precision Pack & Print"
-                  value={packagingSupplier}
-                  onChange={(e) => setPackagingSupplier(e.target.value)}
-                  className="w-full min-h-[44px] px-3.5 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Target Receipt Date & Initial Remarks (Common for modules other than daily-leather) */}
+          {/* Remarks / Initial Notes (Common for modules other than daily-leather) */}
           {module !== 'daily-leather' && (
-            <>
-              <div className="pt-2">
-                <label htmlFor="create-target-date" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
-                  Target Receipt Date <span className="text-slate-400 font-normal"></span>
-                </label>
-                <input
-                  id="create-target-date"
-                  type="date"
-                  value={targetReceiptDate}
-                  onChange={(e) => setTargetReceiptDate(e.target.value)}
-                  className="w-full min-h-[44px] px-3.5 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="create-remarks" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
-                  Remarks / Initial Notes
-                </label>
-                <textarea
-                  id="create-remarks"
-                  rows={2}
-                  placeholder="Add any initial purchase order or sampling instructions..."
-                  value={remarks}
-                  onChange={(e) => setRemarks(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-slate-300 bg-white text-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none resize-none"
-                />
-              </div>
-            </>
+            <div>
+              <label htmlFor="create-remarks" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
+                Remarks / Initial Notes
+              </label>
+              <textarea
+                id="create-remarks"
+                rows={2}
+                placeholder="Add any initial purchase order or sampling instructions..."
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
+                className="w-full p-3 rounded-xl border border-slate-300 bg-white text-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none resize-none"
+              />
+            </div>
           )}
 
           {/* Modal Footer Buttons (Req #54 & #66) */}
@@ -730,7 +547,7 @@ export const CreateRecordModal: React.FC<CreateRecordModalProps> = ({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full sm:w-auto min-h-[44px] px-6 py-2.5 bg-brand-600 hover:bg-brand-700 active:bg-brand-800 disabled:opacity-50 text-white rounded-xl text-sm font-semibold shadow-soft transition-colors flex items-center justify-center gap-2"
+              className="w-full sm:w-auto min-h-[44px] px-6 py-2.5 bg-black hover:bg-slate-900 active:bg-slate-800 disabled:opacity-50 text-white rounded-xl text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer ring-2 ring-black/10"
             >
               {isSubmitting ? (
                 <span className="inline-flex items-center gap-2">

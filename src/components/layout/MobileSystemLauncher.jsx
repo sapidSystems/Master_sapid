@@ -185,7 +185,7 @@ export default function MobileSystemLauncher({
               key={system.id}
               type="button"
               onClick={() => handleTileClick(system.href)}
-              className={`group relative flex flex-col items-center justify-center p-3 rounded-2xl bg-white border text-center transition-all duration-150 active:scale-95 shadow-soft hover:shadow-soft-md min-h-[96px] min-w-[76px] cursor-pointer ${
+              className={`group relative flex flex-col items-center justify-center p-3 rounded-2xl bg-white border text-center transition-all duration-150 active:scale-95 shadow-sm hover:shadow-md aspect-square min-h-[76px] min-w-[76px] cursor-pointer ${
                 system.isActive
                   ? `${system.activeBorder} bg-slate-50/50`
                   : 'border-slate-200/80 hover:border-slate-300'
@@ -200,9 +200,9 @@ export default function MobileSystemLauncher({
 
               {/* Icon Tile */}
               <div
-                className={`w-12 h-12 rounded-xl flex items-center justify-center mb-2 transition-transform duration-200 group-hover:scale-105 ${system.bgColor} border ${system.borderColor}`}
+                className={`w-11 h-11 rounded-xl flex items-center justify-center mb-1.5 transition-transform duration-200 group-hover:scale-105 ${system.bgColor} border ${system.borderColor}`}
               >
-                <Icon className={`w-6 h-6 ${system.iconColor}`} />
+                <Icon className={`w-5 h-5 ${system.iconColor}`} />
               </div>
 
               {/* System Name */}
@@ -217,7 +217,7 @@ export default function MobileSystemLauncher({
 
               {/* Active Indicator Dot */}
               {system.isActive && (
-                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-brand-600" />
+                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-600" />
               )}
             </button>
           );
