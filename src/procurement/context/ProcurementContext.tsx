@@ -11,15 +11,139 @@ import {
   ActivityLogEntry,
   RemarkEntry
 } from '../types/procurement';
-import {
-  INITIAL_NEW_LEATHER,
-  INITIAL_DAILY_LEATHER,
-  INITIAL_MATERIAL,
-  INITIAL_PACKAGING,
-  INITIAL_ACTIVITY_LOGS
-} from '../utils/seedData';
 import { calculateStatus, calculateMaterialStatus, addDays, getTodayDateString } from '../utils/dateUtils';
 import { useToast } from './ToastContext';
+import { supabase } from '../utils/supabase';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Table name mapping
+// ─────────────────────────────────────────────────────────────────────────────
+const TABLE: Record<ModuleType, string> = {
+  'new-leather': 'procurement_new_leather',
+  'daily-leather': 'procurement_daily_leather',
+  'material': 'procurement_material',
+  'packaging': 'procurement_packaging',
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// camelCase ↔ snake_case conversion helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Convert a JS procurement item (camelCase) → DB row (snake_case) */
+function toDbRow(item: any): Record<string, any> {
+  const row: Record<string, any> = {};
+  const map: Record<string, string> = {
+    buyerCode: 'buyer_code',
+    targetReceiptDate: 'target_receipt_date',
+    actualReceiptDate: 'actual_receipt_date',
+    remarkHistory: 'remark_history',
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+    leatherName: 'leather_name',
+    woNo: 'wo_no',
+    woDate: 'wo_date',
+    indentReceiptDate: 'indent_receipt_date',
+    shipmentDate: 'shipment_date',
+    targetStockCheckDate: 'target_stock_check_date',
+    poReleaseTargetDate: 'po_release_target_date',
+    actualStockUpdateDate: 'actual_stock_update_date',
+    actualPoReleaseDate: 'actual_po_release_date',
+    expectedMaterialReceiptDate: 'expected_material_receipt_date',
+    materialName: 'material_name',
+    packagingType: 'packaging_type',
+    qtyInStock: 'qty_in_stock',
+    qtyOrdered: 'qty_ordered',
+    poDeliveryDate: 'po_delivery_date',
+    plannedDeliveryDate: 'planned_delivery_date',
+    qtyReceived: 'qty_received',
+    recordIdentifier: 'record_identifier',
+  };
+
+  for (const [jsKey, dbKey] of Object.entries(map)) {
+    if (item[jsKey] !== undefined) {
+      row[dbKey] = item[jsKey];
+    }
+  }
+
+  // Pass-through fields that are already snake_case or identical
+  const passThrough = ['id', 'module', 'date', 'colour', 'quantity', 'unit', 'tannery',
+    'status', 'remarks', 'specification', 'supplier', 'timestamp', 'action', 'details', 'user'];
+  for (const k of passThrough) {
+    if (item[k] !== undefined) row[k] = item[k];
+  }
+
+  // Empty strings → null for DATE columns to avoid Postgres errors
+  const dateFields = ['date', 'wo_date', 'indent_receipt_date', 'shipment_date',
+    'target_receipt_date', 'actual_receipt_date', 'target_stock_check_date',
+    'po_release_target_date', 'actual_stock_update_date', 'actual_po_release_date',
+    'expected_material_receipt_date', 'po_delivery_date', 'planned_delivery_date'];
+  for (const f of dateFields) {
+    if (row[f] === '') row[f] = null;
+  }
+
+  return row;
+}
+
+/** Convert a DB row (snake_case) → JS item (camelCase) */
+function fromDbRow(row: any): any {
+  if (!row) return null;
+  return {
+    id: row.id,
+    module: row.module,
+    date: row.date || '',
+    buyerCode: row.buyer_code || '',
+    targetReceiptDate: row.target_receipt_date || '',
+    actualReceiptDate: row.actual_receipt_date || undefined,
+    status: row.status || 'pending',
+    remarks: row.remarks || '',
+    remarkHistory: Array.isArray(row.remark_history) ? row.remark_history : [],
+    createdAt: row.created_at || new Date().toISOString(),
+    updatedAt: row.updated_at || new Date().toISOString(),
+    // New Leather
+    leatherName: row.leather_name,
+    colour: row.colour,
+    quantity: row.quantity,
+    unit: row.unit,
+    tannery: row.tannery,
+    // Daily Leather extra
+    woNo: row.wo_no,
+    woDate: row.wo_date,
+    indentReceiptDate: row.indent_receipt_date || undefined,
+    shipmentDate: row.shipment_date || undefined,
+    actualPoReleaseDate: row.actual_po_release_date || undefined,
+    poReleaseTargetDate: row.po_release_target_date || undefined,
+    qtyInStock: row.qty_in_stock,
+    qtyOrdered: row.qty_ordered,
+    poDeliveryDate: row.po_delivery_date || undefined,
+    plannedDeliveryDate: row.planned_delivery_date || undefined,
+    qtyReceived: row.qty_received,
+    // Material / Packaging extra
+    targetStockCheckDate: row.target_stock_check_date || undefined,
+    actualStockUpdateDate: row.actual_stock_update_date || undefined,
+    expectedMaterialReceiptDate: row.expected_material_receipt_date || undefined,
+    materialName: row.material_name,
+    specification: row.specification,
+    supplier: row.supplier,
+    // Packaging only
+    packagingType: row.packaging_type,
+  };
+}
+
+function fromDbActivityLog(row: any): ActivityLogEntry {
+  return {
+    id: row.id,
+    action: row.action,
+    module: row.module,
+    recordIdentifier: row.record_identifier || '',
+    details: row.details || '',
+    user: row.user || 'System User',
+    timestamp: row.timestamp || new Date().toISOString(),
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// User Profile
+// ─────────────────────────────────────────────────────────────────────────────
 
 export interface UserProfile {
   name: string;
@@ -37,22 +161,24 @@ const DEFAULT_USER: UserProfile = {
   avatar: 'VS'
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Context type
+// ─────────────────────────────────────────────────────────────────────────────
+
 interface ProcurementContextType {
-  // Navigation State
-  activeNav: string; // 'dashboard' | 'activity' | 'new-leather' | 'daily-leather' | 'material' | 'packaging'
-  activeTab: ViewTab; // 'pending' | 'history'
+  activeNav: string;
+  activeTab: ViewTab;
   setActiveNav: (nav: string) => void;
   setActiveTab: (tab: ViewTab) => void;
-  
-  // Data
+
   newLeather: NewLeatherItem[];
   dailyLeather: DailyLeatherItem[];
   materials: MaterialItem[];
   packaging: PackagingItem[];
   activityLogs: ActivityLogEntry[];
   currentUser: UserProfile | null;
-  
-  // Counts & Stats
+  isLoading: boolean;
+
   getModuleCounts: (module: ModuleType) => { pending: number; history: number; delayed: number; onTime: number };
   getDashboardStats: () => {
     totalPending: number;
@@ -65,14 +191,12 @@ interface ProcurementContextType {
     packagingPending: number;
   };
 
-  // Operations
   createRecord: (module: ModuleType, data: any) => Promise<boolean>;
   updateRecord: (module: ModuleType, id: string, updates: any) => Promise<boolean>;
   deleteRecord: (module: ModuleType, id: string) => Promise<boolean>;
   addRemarkToRecord: (module: ModuleType, id: string, remarkText: string) => Promise<boolean>;
   completeProcurement: (module: ModuleType, id: string, actualDate: string) => Promise<boolean>;
-  
-  // Helpers
+
   getRecordById: (module: ModuleType, id: string) => AnyProcurementItem | undefined;
   resetAllDataToDefault: () => void;
   logoutUser: () => void;
@@ -81,151 +205,113 @@ interface ProcurementContextType {
 
 const ProcurementContext = createContext<ProcurementContextType | undefined>(undefined);
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Provider
+// ─────────────────────────────────────────────────────────────────────────────
+
 export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { showToast } = useToast();
 
+  const [isLoading, setIsLoading] = useState(true);
+
   const [activeNav, setActiveNavState] = useState<string>(() => {
-    try {
-      return localStorage.getItem('erp_active_nav') || 'dashboard';
-    } catch {
-      return 'dashboard';
-    }
+    try { return localStorage.getItem('erp_active_nav') || 'dashboard'; } catch { return 'dashboard'; }
   });
 
   const [activeTab, setActiveTabState] = useState<ViewTab>(() => {
-    try {
-      return (localStorage.getItem('erp_active_tab') as ViewTab) || 'pending';
-    } catch {
-      return 'pending';
-    }
+    try { return (localStorage.getItem('erp_active_tab') as ViewTab) || 'pending'; } catch { return 'pending'; }
   });
 
   const setActiveNav = (nav: string) => {
     setActiveNavState(nav);
-    try {
-      localStorage.setItem('erp_active_nav', nav);
-    } catch {}
+    try { localStorage.setItem('erp_active_nav', nav); } catch {}
   };
 
   const setActiveTab = (tab: ViewTab) => {
     setActiveTabState(tab);
-    try {
-      localStorage.setItem('erp_active_tab', tab);
-    } catch {}
+    try { localStorage.setItem('erp_active_tab', tab); } catch {}
   };
 
-  // Load from localStorage or initialize with empty array
+  // State — seed from localStorage cache for instant first render, then Supabase overwrites
   const [newLeather, setNewLeather] = useState<NewLeatherItem[]>(() => {
-    try {
-      const saved = localStorage.getItem('erp_new_leather');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
+    try { const s = localStorage.getItem('erp_new_leather'); return s ? JSON.parse(s) : []; } catch { return []; }
   });
-
   const [dailyLeather, setDailyLeather] = useState<DailyLeatherItem[]>(() => {
-    try {
-      const saved = localStorage.getItem('erp_daily_leather');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
+    try { const s = localStorage.getItem('erp_daily_leather'); return s ? JSON.parse(s) : []; } catch { return []; }
   });
-
   const [materials, setMaterials] = useState<MaterialItem[]>(() => {
-    try {
-      const saved = localStorage.getItem('erp_materials');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
+    try { const s = localStorage.getItem('erp_materials'); return s ? JSON.parse(s) : []; } catch { return []; }
   });
-
   const [packaging, setPackaging] = useState<PackagingItem[]>(() => {
     try {
-      const saved = localStorage.getItem('erp_packaging');
-      if (!saved) return [];
-      const list: PackagingItem[] = JSON.parse(saved);
+      const s = localStorage.getItem('erp_packaging');
+      if (!s) return [];
+      const list: PackagingItem[] = JSON.parse(s);
       return list.map(item => {
         const base = item.indentReceiptDate || item.woDate || item.date;
         if (base) {
           const targetStockCheckDate = addDays(base, 7);
           const poReleaseTargetDate = addDays(targetStockCheckDate, 2);
-          return {
-            ...item,
-            targetStockCheckDate,
-            poReleaseTargetDate
-          };
+          return { ...item, targetStockCheckDate, poReleaseTargetDate };
         }
         return item;
       });
-    } catch {
-      return [];
-    }
+    } catch { return []; }
   });
-
   const [activityLogs, setActivityLogs] = useState<ActivityLogEntry[]>(() => {
-    try {
-      const saved = localStorage.getItem('erp_activity_logs');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
+    try { const s = localStorage.getItem('erp_activity_logs'); return s ? JSON.parse(s) : []; } catch { return []; }
   });
-
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
-    try {
-      const saved = localStorage.getItem('erp_current_user_session');
-      return saved !== null ? JSON.parse(saved) : DEFAULT_USER;
-    } catch {
-      return DEFAULT_USER;
-    }
+    try { const s = localStorage.getItem('erp_current_user_session'); return s !== null ? JSON.parse(s) : DEFAULT_USER; } catch { return DEFAULT_USER; }
   });
 
-  // Sync to LocalStorage on updates
+  // ── Sync localStorage cache whenever state changes ──────────────────────────
+  useEffect(() => { try { localStorage.setItem('erp_new_leather', JSON.stringify(newLeather)); } catch {} }, [newLeather]);
+  useEffect(() => { try { localStorage.setItem('erp_daily_leather', JSON.stringify(dailyLeather)); } catch {} }, [dailyLeather]);
+  useEffect(() => { try { localStorage.setItem('erp_materials', JSON.stringify(materials)); } catch {} }, [materials]);
+  useEffect(() => { try { localStorage.setItem('erp_packaging', JSON.stringify(packaging)); } catch {} }, [packaging]);
+  useEffect(() => { try { localStorage.setItem('erp_activity_logs', JSON.stringify(activityLogs)); } catch {} }, [activityLogs]);
   useEffect(() => {
     try {
-      localStorage.setItem('erp_new_leather', JSON.stringify(newLeather));
-    } catch (e) { console.error(e); }
-  }, [newLeather]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('erp_daily_leather', JSON.stringify(dailyLeather));
-    } catch (e) { console.error(e); }
-  }, [dailyLeather]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('erp_materials', JSON.stringify(materials));
-    } catch (e) { console.error(e); }
-  }, [materials]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('erp_packaging', JSON.stringify(packaging));
-    } catch (e) { console.error(e); }
-  }, [packaging]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('erp_activity_logs', JSON.stringify(activityLogs));
-    } catch (e) { console.error(e); }
-  }, [activityLogs]);
-
-  useEffect(() => {
-    try {
-      if (currentUser) {
-        localStorage.setItem('erp_current_user_session', JSON.stringify(currentUser));
-      } else {
-        localStorage.removeItem('erp_current_user_session');
-      }
-    } catch (e) { console.error(e); }
+      if (currentUser) localStorage.setItem('erp_current_user_session', JSON.stringify(currentUser));
+      else localStorage.removeItem('erp_current_user_session');
+    } catch {}
   }, [currentUser]);
 
-  // Activity logger helper
-  const logActivity = useCallback((
+  // ── Fetch all data from Supabase on mount ───────────────────────────────────
+  useEffect(() => {
+    async function fetchAll() {
+      try {
+        const [nlRes, dlRes, matRes, pkgRes, logRes] = await Promise.all([
+          supabase.from('procurement_new_leather').select('*').order('created_at', { ascending: false }),
+          supabase.from('procurement_daily_leather').select('*').order('created_at', { ascending: false }),
+          supabase.from('procurement_material').select('*').order('created_at', { ascending: false }),
+          supabase.from('procurement_packaging').select('*').order('created_at', { ascending: false }),
+          supabase.from('procurement_activity_logs').select('*').order('timestamp', { ascending: false }).limit(200),
+        ]);
+
+        if (nlRes.data)  setNewLeather(nlRes.data.map(r => fromDbRow(r) as NewLeatherItem));
+        if (dlRes.data)  setDailyLeather(dlRes.data.map(r => fromDbRow(r) as DailyLeatherItem));
+        if (matRes.data) setMaterials(matRes.data.map(r => fromDbRow(r) as MaterialItem));
+        if (pkgRes.data) setPackaging(pkgRes.data.map(r => fromDbRow(r) as PackagingItem));
+        if (logRes.data) setActivityLogs(logRes.data.map(fromDbActivityLog));
+
+        if (nlRes.error)  console.error('[Procurement] new_leather fetch error:', nlRes.error);
+        if (dlRes.error)  console.error('[Procurement] daily_leather fetch error:', dlRes.error);
+        if (matRes.error) console.error('[Procurement] material fetch error:', matRes.error);
+        if (pkgRes.error) console.error('[Procurement] packaging fetch error:', pkgRes.error);
+        if (logRes.error) console.error('[Procurement] activity_logs fetch error:', logRes.error);
+      } catch (err) {
+        console.error('[Procurement] Failed to fetch from Supabase, using localStorage cache:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchAll();
+  }, []);
+
+  // ── Activity logger ─────────────────────────────────────────────────────────
+  const logActivity = useCallback(async (
     action: ActivityLogEntry['action'],
     module: ModuleType,
     recordIdentifier: string,
@@ -240,88 +326,68 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
       user: currentUser ? currentUser.name : 'System User',
       timestamp: new Date().toISOString()
     };
-    setActivityLogs(prev => {
-      const updated = [newLog, ...prev];
-      try {
-        localStorage.setItem('erp_activity_logs', JSON.stringify(updated));
-      } catch (e) {
-        console.error(e);
-      }
-      return updated;
+    setActivityLogs(prev => [newLog, ...prev]);
+    // Write to Supabase (fire-and-forget, non-blocking)
+    supabase.from('procurement_activity_logs').insert({
+      id: newLog.id,
+      action: newLog.action,
+      module: newLog.module,
+      record_identifier: newLog.recordIdentifier,
+      details: newLog.details,
+      user: newLog.user,
+      timestamp: newLog.timestamp,
+    }).then(({ error }) => {
+      if (error) console.error('[Procurement] Activity log insert error:', error);
     });
   }, [currentUser]);
 
-  // Helper to fetch single record
+  // ── Helpers ─────────────────────────────────────────────────────────────────
   const getRecordById = useCallback((module: ModuleType, id: string): AnyProcurementItem | undefined => {
     switch (module) {
-      case 'new-leather':
-        return newLeather.find(i => i.id === id);
-      case 'daily-leather':
-        return dailyLeather.find(i => i.id === id);
-      case 'material':
-        return materials.find(i => i.id === id);
-      case 'packaging':
-        return packaging.find(i => i.id === id);
+      case 'new-leather':  return newLeather.find(i => i.id === id);
+      case 'daily-leather': return dailyLeather.find(i => i.id === id);
+      case 'material':     return materials.find(i => i.id === id);
+      case 'packaging':    return packaging.find(i => i.id === id);
     }
   }, [newLeather, dailyLeather, materials, packaging]);
 
-  // Calculate statistics
   const getModuleCounts = useCallback((module: ModuleType) => {
     let list: AnyProcurementItem[] = [];
     switch (module) {
-      case 'new-leather': list = newLeather; break;
+      case 'new-leather':  list = newLeather; break;
       case 'daily-leather': list = dailyLeather; break;
-      case 'material': list = materials; break;
-      case 'packaging': list = packaging; break;
+      case 'material':     list = materials; break;
+      case 'packaging':    list = packaging; break;
     }
-
     const pending = list.filter(i => !i.actualReceiptDate).length;
     const history = list.filter(i => !!i.actualReceiptDate).length;
     const delayed = list.filter(i => !i.actualReceiptDate && i.status === 'delayed').length;
-    const onTime = list.filter(i => !i.actualReceiptDate && (i.status === 'on-time' || i.status === 'pending')).length;
-
+    const onTime  = list.filter(i => !i.actualReceiptDate && (i.status === 'on-time' || i.status === 'pending')).length;
     return { pending, history, delayed, onTime };
   }, [newLeather, dailyLeather, materials, packaging]);
 
   const getDashboardStats = useCallback(() => {
-    const allItems: AnyProcurementItem[] = [
-      ...newLeather,
-      ...dailyLeather,
-      ...materials,
-      ...packaging
-    ];
-
-    const pendingItems = allItems.filter(i => !i.actualReceiptDate);
+    const allItems: AnyProcurementItem[] = [...newLeather, ...dailyLeather, ...materials, ...packaging];
+    const pendingItems   = allItems.filter(i => !i.actualReceiptDate);
     const completedItems = allItems.filter(i => !!i.actualReceiptDate);
-
-    const totalPending = pendingItems.length;
-    const totalDelayed = pendingItems.filter(i => i.status === 'delayed').length;
-    const totalOnTime = pendingItems.filter(i => i.status === 'on-time' || i.status === 'pending').length;
-    const totalCompleted = completedItems.length;
-
-    const newLeatherPending = newLeather.filter(i => !i.actualReceiptDate).length;
-    const dailyLeatherPending = dailyLeather.filter(i => !i.actualReceiptDate).length;
-    const materialsPending = materials.filter(i => !i.actualReceiptDate).length;
-    const packagingPending = packaging.filter(i => !i.actualReceiptDate).length;
-
     return {
-      totalPending,
-      totalDelayed,
-      totalOnTime,
-      totalCompleted,
-      newLeatherPending,
-      dailyLeatherPending,
-      materialsPending,
-      packagingPending
+      totalPending:        pendingItems.length,
+      totalDelayed:        pendingItems.filter(i => i.status === 'delayed').length,
+      totalOnTime:         pendingItems.filter(i => i.status === 'on-time' || i.status === 'pending').length,
+      totalCompleted:      completedItems.length,
+      newLeatherPending:   newLeather.filter(i => !i.actualReceiptDate).length,
+      dailyLeatherPending: dailyLeather.filter(i => !i.actualReceiptDate).length,
+      materialsPending:    materials.filter(i => !i.actualReceiptDate).length,
+      packagingPending:    packaging.filter(i => !i.actualReceiptDate).length,
     };
   }, [newLeather, dailyLeather, materials, packaging]);
 
-  // Create record
+  // ── CREATE ──────────────────────────────────────────────────────────────────
   const createRecord = async (module: ModuleType, data: any): Promise<boolean> => {
     try {
       const nowIso = new Date().toISOString();
       const calculatedStatus = calculateStatus(data.targetReceiptDate, data.actualReceiptDate);
-      
+
       const remarkHistory: RemarkEntry[] = [];
       if (data.remarks && data.remarks.trim()) {
         remarkHistory.push({
@@ -355,23 +421,22 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
             createdAt: nowIso,
             updatedAt: nowIso
           };
-          const updated = [newItem, ...newLeather];
-          setNewLeather(updated);
-          try { localStorage.setItem('erp_new_leather', JSON.stringify(updated)); } catch (e) { console.error(e); }
+          const { error } = await supabase.from(TABLE[module]).insert(toDbRow(newItem));
+          if (error) throw error;
+          setNewLeather(prev => [newItem, ...prev]);
           identifier = `${newId} (${newItem.leatherName})`;
           break;
         }
+
         case 'daily-leather': {
-          const rawItems: LeatherSubItem[] = data.items && data.items.length > 0 ? data.items : [
-            {
-              id: 'sub-' + Date.now(),
-              leatherName: data.leatherName || 'Standard Leather',
-              colour: data.colour || 'Black',
-              quantity: Number(data.quantity) || 100,
-              tannery: data.tannery || 'Tannery 1',
-              remarks: data.remarks || ''
-            }
-          ];
+          const rawItems: LeatherSubItem[] = data.items && data.items.length > 0 ? data.items : [{
+            id: 'sub-' + Date.now(),
+            leatherName: data.leatherName || 'Standard Leather',
+            colour: data.colour || 'Black',
+            quantity: Number(data.quantity) || 100,
+            tannery: data.tannery || 'Tannery 1',
+            remarks: data.remarks || ''
+          }];
 
           const newEntries: DailyLeatherItem[] = rawItems.map((sub, idx) => {
             const entryId = 'DL-' + (2000 + dailyLeather.length + idx + 1);
@@ -385,7 +450,6 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
                 timestamp: nowIso
               });
             }
-
             return {
               id: entryId,
               module: 'daily-leather',
@@ -415,22 +479,25 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
               remarkHistory: itemRemarkHistory,
               createdAt: nowIso,
               updatedAt: nowIso
-            };
+            } as DailyLeatherItem;
           });
 
-          const updated = [...newEntries, ...dailyLeather];
-          setDailyLeather(updated);
-          try { localStorage.setItem('erp_daily_leather', JSON.stringify(updated)); } catch (e) { console.error(e); }
+          // Insert all sub-items to Supabase
+          const rows = newEntries.map(e => toDbRow(e));
+          const { error } = await supabase.from(TABLE[module]).insert(rows);
+          if (error) throw error;
+          setDailyLeather(prev => [...newEntries, ...prev]);
           identifier = `${data.woNo} (${newEntries.length} leather item${newEntries.length > 1 ? 's' : ''})`;
           break;
         }
+
         case 'material': {
           const newId = 'MAT-' + (3000 + materials.length + 1);
           const indentDate = data.indentReceiptDate || data.woDate || data.date || getTodayDateString();
           const targetStockCheckDate = addDays(indentDate, 3);
-          const poReleaseTargetDate = addDays(targetStockCheckDate, 2);
+          const poReleaseTargetDate  = addDays(targetStockCheckDate, 2);
           const expectedMatDate = data.expectedMaterialReceiptDate || data.targetReceiptDate || data.shipmentDate || '';
-          
+
           const newItem: MaterialItem = {
             id: newId,
             module: 'material',
@@ -458,17 +525,18 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
             createdAt: nowIso,
             updatedAt: nowIso
           };
-          const updated = [newItem, ...materials];
-          setMaterials(updated);
-          try { localStorage.setItem('erp_materials', JSON.stringify(updated)); } catch (e) { console.error(e); }
+          const { error } = await supabase.from(TABLE[module]).insert(toDbRow(newItem));
+          if (error) throw error;
+          setMaterials(prev => [newItem, ...prev]);
           identifier = `${newItem.woNo} (${newItem.materialName})`;
           break;
         }
+
         case 'packaging': {
           const newId = 'PKG-' + (4000 + packaging.length + 1);
           const indentDate = data.indentReceiptDate || data.woDate || data.date || getTodayDateString();
           const targetStockCheckDate = addDays(indentDate, 7);
-          const poReleaseTargetDate = addDays(targetStockCheckDate, 2);
+          const poReleaseTargetDate  = addDays(targetStockCheckDate, 2);
           const expectedMatDate = data.expectedMaterialReceiptDate || data.targetReceiptDate || data.shipmentDate || '';
 
           const newItem: PackagingItem = {
@@ -498,33 +566,30 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
             createdAt: nowIso,
             updatedAt: nowIso
           };
-          const updated = [newItem, ...packaging];
-          setPackaging(updated);
-          try { localStorage.setItem('erp_packaging', JSON.stringify(updated)); } catch (e) { console.error(e); }
+          const { error } = await supabase.from(TABLE[module]).insert(toDbRow(newItem));
+          if (error) throw error;
+          setPackaging(prev => [newItem, ...prev]);
           identifier = `${newItem.woNo} (${newItem.packagingType})`;
           break;
         }
       }
 
-      logActivity('CREATE', module, identifier, `New ${module} order placed.`);
+      await logActivity('CREATE', module, identifier, `New ${module} order placed.`);
       showToast('Record created successfully', 'success');
       return true;
     } catch (err) {
-      console.error(err);
+      console.error('[Procurement] createRecord error:', err);
       showToast('Failed to create record. Check input values.', 'error');
       return false;
     }
   };
 
-  // Update record
+  // ── UPDATE ──────────────────────────────────────────────────────────────────
   const updateRecord = async (module: ModuleType, id: string, updates: any): Promise<boolean> => {
     try {
       const nowIso = new Date().toISOString();
       const existing = getRecordById(module, id);
-      if (!existing) {
-        showToast('Record not found', 'error');
-        return false;
-      }
+      if (!existing) { showToast('Record not found', 'error'); return false; }
 
       const targetDate = updates.targetReceiptDate !== undefined ? updates.targetReceiptDate : existing.targetReceiptDate;
       const actualDate = updates.actualReceiptDate !== undefined ? updates.actualReceiptDate : existing.actualReceiptDate;
@@ -532,31 +597,24 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
       // Build detailed change list for audit trail
       const changeLogs: string[] = [];
-      
-      if (updates.leatherName && updates.leatherName !== (existing as any).leatherName) {
+      if (updates.leatherName && updates.leatherName !== (existing as any).leatherName)
         changeLogs.push(`Leather Name changed to "${updates.leatherName}"`);
-      }
-      if (updates.colour && updates.colour !== (existing as any).colour) {
+      if (updates.colour && updates.colour !== (existing as any).colour)
         changeLogs.push(`Colour changed to "${updates.colour}"`);
-      }
-      if (updates.quantity !== undefined && Number(updates.quantity) !== Number((existing as any).quantity)) {
+      if (updates.quantity !== undefined && Number(updates.quantity) !== Number((existing as any).quantity))
         changeLogs.push(`Quantity updated to ${updates.quantity}`);
-      }
-      if (updates.tannery && updates.tannery !== (existing as any).tannery) {
+      if (updates.tannery && updates.tannery !== (existing as any).tannery)
         changeLogs.push(`Tannery updated to "${updates.tannery}"`);
-      }
-      if (updates.supplier && updates.supplier !== (existing as any).supplier) {
+      if (updates.supplier && updates.supplier !== (existing as any).supplier)
         changeLogs.push(`Supplier updated to "${updates.supplier}"`);
-      }
-      if (updates.buyerCode && updates.buyerCode !== existing.buyerCode) {
+      if (updates.buyerCode && updates.buyerCode !== existing.buyerCode)
         changeLogs.push(`Buyer Code changed to "${updates.buyerCode}"`);
-      }
-      if (updates.actualPoReleaseDate && updates.actualPoReleaseDate !== (existing as any).actualPoReleaseDate) {
+      if (updates.actualPoReleaseDate && updates.actualPoReleaseDate !== (existing as any).actualPoReleaseDate)
         changeLogs.push(`Actual PO Release Date set to ${updates.actualPoReleaseDate}`);
-      }
-      if (updates.actualReceiptDate && updates.actualReceiptDate !== existing.actualReceiptDate) {
+      if (updates.actualReceiptDate && updates.actualReceiptDate !== existing.actualReceiptDate)
         changeLogs.push(`Actual Receipt Date set to ${updates.actualReceiptDate}. Order Completed.`);
-      }
+
+      // Incremental qty received logic
       if (updates.incrementalQtyReceived !== undefined && Number(updates.incrementalQtyReceived) > 0) {
         const delta = Number(updates.incrementalQtyReceived);
         const oldQtyReceived = Number((existing as any).qtyReceived || 0);
@@ -568,148 +626,98 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
         changeLogs.push(`Qty Received updated to ${updates.qtyReceived}`);
       }
       delete updates.incrementalQtyReceived;
-      if (updates.targetReceiptDate && updates.targetReceiptDate !== existing.targetReceiptDate) {
+
+      if (updates.targetReceiptDate && updates.targetReceiptDate !== existing.targetReceiptDate)
         changeLogs.push(`Target Receipt Date updated to ${updates.targetReceiptDate}`);
-      }
-      if (updates.newRemark && updates.newRemark.trim()) {
+      if (updates.newRemark && updates.newRemark.trim())
         changeLogs.push(`Remark: "${updates.newRemark.trim()}"`);
-      }
 
       let updatedRemarkHistory = [...(existing.remarkHistory || [])];
-      if (changeLogs.length > 0) {
-        updatedRemarkHistory.push({
-          id: 'rem-' + Date.now() + '-' + Math.random().toString(36).substring(2, 5),
-          text: changeLogs.join(' • '),
-          author: currentUser ? currentUser.name : 'System User',
-          timestamp: nowIso
-        });
-      } else {
-        updatedRemarkHistory.push({
-          id: 'rem-' + Date.now() + '-' + Math.random().toString(36).substring(2, 5),
-          text: 'Procurement details updated.',
-          author: currentUser ? currentUser.name : 'System User',
-          timestamp: nowIso
-        });
-      }
+      updatedRemarkHistory.push({
+        id: 'rem-' + Date.now() + '-' + Math.random().toString(36).substring(2, 5),
+        text: changeLogs.length > 0 ? changeLogs.join(' • ') : 'Procurement details updated.',
+        author: currentUser ? currentUser.name : 'System User',
+        timestamp: nowIso
+      });
 
-      const merged: any = {
-        ...existing,
-        ...updates,
-        remarkHistory: updatedRemarkHistory,
-        updatedAt: nowIso
-      };
+      const merged: any = { ...existing, ...updates, remarkHistory: updatedRemarkHistory, updatedAt: nowIso };
       delete merged.newRemark;
 
       if (module === 'material' || module === 'packaging') {
         const indentDate = merged.indentReceiptDate || merged.woDate || merged.date;
         const stockCheckDays = module === 'packaging' ? 7 : 3;
         merged.targetStockCheckDate = addDays(indentDate, stockCheckDays);
-        merged.poReleaseTargetDate = addDays(merged.targetStockCheckDate, 2);
-        if (merged.expectedMaterialReceiptDate) {
-          merged.targetReceiptDate = merged.expectedMaterialReceiptDate;
-        }
+        merged.poReleaseTargetDate  = addDays(merged.targetStockCheckDate, 2);
+        if (merged.expectedMaterialReceiptDate) merged.targetReceiptDate = merged.expectedMaterialReceiptDate;
         newStatus = calculateMaterialStatus(merged.expectedMaterialReceiptDate, merged.actualReceiptDate);
       }
-
       merged.status = newStatus;
 
-      // Check if moving to history
       const movingToHistory = !existing.actualReceiptDate && !!merged.actualReceiptDate;
 
+      // Upsert to Supabase
+      const { error } = await supabase.from(TABLE[module]).upsert(toDbRow(merged));
+      if (error) throw error;
 
-
+      // Update local state
       switch (module) {
-        case 'new-leather': {
-          const updated = newLeather.map(i => (i.id === id ? (merged as NewLeatherItem) : i));
-          setNewLeather(updated);
-          localStorage.setItem('erp_new_leather', JSON.stringify(updated));
-          break;
-        }
-        case 'daily-leather': {
-          const updated = dailyLeather.map(i => (i.id === id ? (merged as DailyLeatherItem) : i));
-          setDailyLeather(updated);
-          localStorage.setItem('erp_daily_leather', JSON.stringify(updated));
-          break;
-        }
-        case 'material': {
-          const updated = materials.map(i => (i.id === id ? (merged as MaterialItem) : i));
-          setMaterials(updated);
-          localStorage.setItem('erp_materials', JSON.stringify(updated));
-          break;
-        }
-        case 'packaging': {
-          const updated = packaging.map(i => (i.id === id ? (merged as PackagingItem) : i));
-          setPackaging(updated);
-          localStorage.setItem('erp_packaging', JSON.stringify(updated));
-          break;
-        }
+        case 'new-leather':
+          setNewLeather(prev => prev.map(i => i.id === id ? (merged as NewLeatherItem) : i)); break;
+        case 'daily-leather':
+          setDailyLeather(prev => prev.map(i => i.id === id ? (merged as DailyLeatherItem) : i)); break;
+        case 'material':
+          setMaterials(prev => prev.map(i => i.id === id ? (merged as MaterialItem) : i)); break;
+        case 'packaging':
+          setPackaging(prev => prev.map(i => i.id === id ? (merged as PackagingItem) : i)); break;
       }
 
       const identifier = (merged as any).woNo || merged.id;
       if (movingToHistory) {
-        logActivity('COMPLETE', module, identifier, `Procurement completed on ${actualDate}. Moved to History.`);
+        await logActivity('COMPLETE', module, identifier, `Procurement completed on ${actualDate}. Moved to History.`);
         showToast('Record moved to history', 'success', 'Procurement Completed');
       } else {
-        logActivity('UPDATE', module, identifier, `Updated details and status.`);
+        await logActivity('UPDATE', module, identifier, 'Updated details and status.');
         showToast('Record updated successfully', 'success');
       }
       return true;
     } catch (err) {
-      console.error(err);
+      console.error('[Procurement] updateRecord error:', err);
       showToast('Error updating record', 'error');
       return false;
     }
   };
 
-  // Complete procurement directly
   const completeProcurement = async (module: ModuleType, id: string, actualDate: string): Promise<boolean> => {
     return updateRecord(module, id, { actualReceiptDate: actualDate });
   };
 
-  // Delete record
+  // ── DELETE ──────────────────────────────────────────────────────────────────
   const deleteRecord = async (module: ModuleType, id: string): Promise<boolean> => {
     try {
       const existing = getRecordById(module, id);
       const identifier = existing ? ((existing as any).woNo || existing.id) : id;
 
+      const { error } = await supabase.from(TABLE[module]).delete().eq('id', id);
+      if (error) throw error;
+
       switch (module) {
-        case 'new-leather': {
-          const updated = newLeather.filter(i => i.id !== id);
-          setNewLeather(updated);
-          try { localStorage.setItem('erp_new_leather', JSON.stringify(updated)); } catch (e) { console.error(e); }
-          break;
-        }
-        case 'daily-leather': {
-          const updated = dailyLeather.filter(i => i.id !== id);
-          setDailyLeather(updated);
-          try { localStorage.setItem('erp_daily_leather', JSON.stringify(updated)); } catch (e) { console.error(e); }
-          break;
-        }
-        case 'material': {
-          const updated = materials.filter(i => i.id !== id);
-          setMaterials(updated);
-          try { localStorage.setItem('erp_materials', JSON.stringify(updated)); } catch (e) { console.error(e); }
-          break;
-        }
-        case 'packaging': {
-          const updated = packaging.filter(i => i.id !== id);
-          setPackaging(updated);
-          try { localStorage.setItem('erp_packaging', JSON.stringify(updated)); } catch (e) { console.error(e); }
-          break;
-        }
+        case 'new-leather':  setNewLeather(prev => prev.filter(i => i.id !== id)); break;
+        case 'daily-leather': setDailyLeather(prev => prev.filter(i => i.id !== id)); break;
+        case 'material':     setMaterials(prev => prev.filter(i => i.id !== id)); break;
+        case 'packaging':    setPackaging(prev => prev.filter(i => i.id !== id)); break;
       }
 
-      logActivity('DELETE', module, identifier, `Permanently removed record.`);
+      await logActivity('DELETE', module, identifier, 'Permanently removed record.');
       showToast('Record deleted successfully', 'success');
       return true;
     } catch (err) {
-      console.error(err);
+      console.error('[Procurement] deleteRecord error:', err);
       showToast('Failed to delete record', 'error');
       return false;
     }
   };
 
-  // Add Remark
+  // ── ADD REMARK ──────────────────────────────────────────────────────────────
   const addRemarkToRecord = async (module: ModuleType, id: string, remarkText: string): Promise<boolean> => {
     try {
       const existing = getRecordById(module, id);
@@ -721,48 +729,40 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
         author: currentUser ? currentUser.name : 'System User',
         timestamp: new Date().toISOString()
       };
-
       const updatedHistory = [...existing.remarkHistory, newRemark];
       const identifier = (existing as any).woNo || existing.id;
 
+      // Update Supabase
+      const { error } = await supabase
+        .from(TABLE[module])
+        .update({
+          remarks: newRemark.text,
+          remark_history: updatedHistory,
+          updated_at: newRemark.timestamp
+        })
+        .eq('id', id);
+      if (error) throw error;
+
+      // Update local state
+      const patch = { remarks: newRemark.text, remarkHistory: updatedHistory, updatedAt: newRemark.timestamp };
       switch (module) {
-        case 'new-leather': {
-          const updated = newLeather.map(i => i.id === id ? { ...i, remarks: newRemark.text, remarkHistory: updatedHistory, updatedAt: newRemark.timestamp } : i);
-          setNewLeather(updated);
-          localStorage.setItem('erp_new_leather', JSON.stringify(updated));
-          break;
-        }
-        case 'daily-leather': {
-          const updated = dailyLeather.map(i => i.id === id ? { ...i, remarks: newRemark.text, remarkHistory: updatedHistory, updatedAt: newRemark.timestamp } : i);
-          setDailyLeather(updated);
-          localStorage.setItem('erp_daily_leather', JSON.stringify(updated));
-          break;
-        }
-        case 'material': {
-          const updated = materials.map(i => i.id === id ? { ...i, remarks: newRemark.text, remarkHistory: updatedHistory, updatedAt: newRemark.timestamp } : i);
-          setMaterials(updated);
-          localStorage.setItem('erp_materials', JSON.stringify(updated));
-          break;
-        }
-        case 'packaging': {
-          const updated = packaging.map(i => i.id === id ? { ...i, remarks: newRemark.text, remarkHistory: updatedHistory, updatedAt: newRemark.timestamp } : i);
-          setPackaging(updated);
-          localStorage.setItem('erp_packaging', JSON.stringify(updated));
-          break;
-        }
+        case 'new-leather':  setNewLeather(prev => prev.map(i => i.id === id ? { ...i, ...patch } : i)); break;
+        case 'daily-leather': setDailyLeather(prev => prev.map(i => i.id === id ? { ...i, ...patch } : i)); break;
+        case 'material':     setMaterials(prev => prev.map(i => i.id === id ? { ...i, ...patch } : i)); break;
+        case 'packaging':    setPackaging(prev => prev.map(i => i.id === id ? { ...i, ...patch } : i)); break;
       }
 
-      logActivity('ADD_REMARK', module, identifier, `Added remark: "${newRemark.text.substring(0, 50)}..."`);
+      await logActivity('ADD_REMARK', module, identifier, `Added remark: "${newRemark.text.substring(0, 50)}..."`);
       showToast('Remark history saved', 'success');
       return true;
     } catch (err) {
-      console.error(err);
+      console.error('[Procurement] addRemarkToRecord error:', err);
       showToast('Failed to save remark', 'error');
       return false;
     }
   };
 
-  // Clear all saved data
+  // ── RESET ───────────────────────────────────────────────────────────────────
   const resetAllDataToDefault = useCallback(() => {
     setNewLeather([]);
     setDailyLeather([]);
@@ -774,10 +774,9 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
     localStorage.removeItem('erp_materials');
     localStorage.removeItem('erp_packaging');
     localStorage.removeItem('erp_activity_logs');
-    showToast('Database reset to empty state', 'info');
+    showToast('Local cache cleared', 'info');
   }, [showToast]);
 
-  // Logout (clears session without deleting app data per Req #71)
   const logoutUser = useCallback(() => {
     setCurrentUser(null);
     showToast('Logged out of active session. Application data preserved.', 'info');
@@ -791,27 +790,12 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
   return (
     <ProcurementContext.Provider
       value={{
-        activeNav,
-        activeTab,
-        setActiveNav,
-        setActiveTab,
-        newLeather,
-        dailyLeather,
-        materials,
-        packaging,
-        activityLogs,
-        currentUser,
-        getModuleCounts,
-        getDashboardStats,
-        createRecord,
-        updateRecord,
-        deleteRecord,
-        addRemarkToRecord,
-        completeProcurement,
-        getRecordById,
-        resetAllDataToDefault,
-        logoutUser,
-        loginUser
+        activeNav, activeTab, setActiveNav, setActiveTab,
+        newLeather, dailyLeather, materials, packaging, activityLogs, currentUser,
+        isLoading,
+        getModuleCounts, getDashboardStats,
+        createRecord, updateRecord, deleteRecord, addRemarkToRecord, completeProcurement,
+        getRecordById, resetAllDataToDefault, logoutUser, loginUser
       }}
     >
       {children}
@@ -821,8 +805,6 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
 export function useProcurement() {
   const context = useContext(ProcurementContext);
-  if (!context) {
-    throw new Error('useProcurement must be used within a ProcurementProvider');
-  }
+  if (!context) throw new Error('useProcurement must be used within a ProcurementProvider');
   return context;
 }
