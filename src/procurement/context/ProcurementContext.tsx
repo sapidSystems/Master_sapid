@@ -16,6 +16,14 @@ import { useToast } from './ToastContext';
 import { supabase } from '../utils/supabase';
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Required Supabase Migrations (run manually in Supabase SQL editor):
+// ALTER TABLE procurement_daily_leather ADD COLUMN IF NOT EXISTS po_delivery_date_locked boolean DEFAULT false;
+// ALTER TABLE procurement_daily_leather ADD COLUMN IF NOT EXISTS planned_delivery_date_locked boolean DEFAULT false;
+// ALTER TABLE procurement_material ADD COLUMN IF NOT EXISTS update_section_locked boolean DEFAULT false;
+// ALTER TABLE procurement_packaging ADD COLUMN IF NOT EXISTS update_section_locked boolean DEFAULT false;
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Table name mapping
 // ─────────────────────────────────────────────────────────────────────────────
 const TABLE: Record<ModuleType, string> = {
@@ -56,6 +64,9 @@ function toDbRow(item: any): Record<string, any> {
     poDeliveryDate: 'po_delivery_date',
     plannedDeliveryDate: 'planned_delivery_date',
     qtyReceived: 'qty_received',
+    poDeliveryDateLocked: 'po_delivery_date_locked',
+    plannedDeliveryDateLocked: 'planned_delivery_date_locked',
+    updateSectionLocked: 'update_section_locked',
     recordIdentifier: 'record_identifier',
   };
 
@@ -117,10 +128,13 @@ function fromDbRow(row: any): any {
     poDeliveryDate: row.po_delivery_date || undefined,
     plannedDeliveryDate: row.planned_delivery_date || undefined,
     qtyReceived: row.qty_received,
+    poDeliveryDateLocked: row.po_delivery_date_locked !== undefined ? Boolean(row.po_delivery_date_locked) : undefined,
+    plannedDeliveryDateLocked: row.planned_delivery_date_locked !== undefined ? Boolean(row.planned_delivery_date_locked) : undefined,
     // Material / Packaging extra
     targetStockCheckDate: row.target_stock_check_date || undefined,
     actualStockUpdateDate: row.actual_stock_update_date || undefined,
     expectedMaterialReceiptDate: row.expected_material_receipt_date || undefined,
+    updateSectionLocked: row.update_section_locked !== undefined ? Boolean(row.update_section_locked) : undefined,
     materialName: row.material_name,
     specification: row.specification,
     supplier: row.supplier,
@@ -591,6 +605,29 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
       const existing = getRecordById(module, id);
       if (!existing) { showToast('Record not found', 'error'); return false; }
 
+      // Server-side style role guard: non-admin cannot overwrite locked fields
+      const isAdmin = (localStorage.getItem('role') || '').toLowerCase() === 'admin';
+      if (!isAdmin) {
+        if (module === 'daily-leather') {
+          if ((existing as any)?.poDeliveryDateLocked) {
+            delete updates.poDeliveryDate;
+            delete updates.poDeliveryDateLocked;
+          }
+          if ((existing as any)?.plannedDeliveryDateLocked) {
+            delete updates.plannedDeliveryDate;
+            delete updates.plannedDeliveryDateLocked;
+          }
+        } else if (module === 'material' || module === 'packaging') {
+          if ((existing as any)?.updateSectionLocked) {
+            delete updates.actualStockUpdateDate;
+            delete updates.actualPoReleaseDate;
+            delete updates.expectedMaterialReceiptDate;
+            delete updates.actualReceiptDate;
+            delete updates.updateSectionLocked;
+          }
+        }
+      }
+
       const targetDate = updates.targetReceiptDate !== undefined ? updates.targetReceiptDate : existing.targetReceiptDate;
       const actualDate = updates.actualReceiptDate !== undefined ? updates.actualReceiptDate : existing.actualReceiptDate;
       let newStatus = calculateStatus(targetDate, actualDate);
@@ -632,13 +669,16 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
       if (updates.newRemark && updates.newRemark.trim())
         changeLogs.push(`Remark: "${updates.newRemark.trim()}"`);
 
+      // Only append to remarkHistory if user actually typed a new remark (Task 5)
       let updatedRemarkHistory = [...(existing.remarkHistory || [])];
-      updatedRemarkHistory.push({
-        id: 'rem-' + Date.now() + '-' + Math.random().toString(36).substring(2, 5),
-        text: changeLogs.length > 0 ? changeLogs.join(' • ') : 'Procurement details updated.',
-        author: currentUser ? currentUser.name : 'System User',
-        timestamp: nowIso
-      });
+      if (updates.newRemark && updates.newRemark.trim()) {
+        updatedRemarkHistory.push({
+          id: 'rem-' + Date.now() + '-' + Math.random().toString(36).substring(2, 5),
+          text: updates.newRemark.trim(),
+          author: currentUser ? currentUser.name : 'System User',
+          timestamp: nowIso
+        });
+      }
 
       const merged: any = { ...existing, ...updates, remarkHistory: updatedRemarkHistory, updatedAt: nowIso };
       delete merged.newRemark;
@@ -676,7 +716,8 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
         await logActivity('COMPLETE', module, identifier, `Procurement completed on ${actualDate}. Moved to History.`);
         showToast('Record moved to history', 'success', 'Procurement Completed');
       } else {
-        await logActivity('UPDATE', module, identifier, 'Updated details and status.');
+        const detailText = changeLogs.length > 0 ? changeLogs.join(' • ') : 'Updated details and status.';
+        await logActivity('UPDATE', module, identifier, detailText);
         showToast('Record updated successfully', 'success');
       }
       return true;

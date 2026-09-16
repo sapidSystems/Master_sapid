@@ -154,7 +154,7 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                     <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-amber-500/10 text-amber-900">Leather Name</th>
                     <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-amber-500/10 text-amber-900">Colour</th>
                     <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-amber-500/10 text-amber-900 text-right">Quantity</th>
-                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-amber-500/10 text-amber-900">Tannery / Supplier</th>
+                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-amber-500/10 text-amber-900">Tannery</th>
                     <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold text-slate-700">Target Receipt Date</th>
                     <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-emerald-500/20 text-emerald-950 font-bold border-l-2 border-emerald-500">Actual Receipt Date</th>
                     <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold">Status (On-time / Delayed)</th>
@@ -172,7 +172,7 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                     <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold">Status (On-time / Delayed)</th>
                   </>
                 )}
-                <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap min-w-[240px] bg-amber-500/10">Update Description / History Log</th>
+                <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap min-w-[240px] bg-amber-500/10">Remarks / History Log</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-800">

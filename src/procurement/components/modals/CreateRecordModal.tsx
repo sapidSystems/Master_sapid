@@ -322,7 +322,7 @@ export const CreateRecordModal: React.FC<CreateRecordModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-2">
               <div>
                 <label htmlFor="nl-name" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
-                  Leather Name / Article <span className="text-rose-500">*</span>
+                  Leather Name <span className="text-rose-500">*</span>
                 </label>
                 <input
                   id="nl-name"
@@ -352,7 +352,7 @@ export const CreateRecordModal: React.FC<CreateRecordModalProps> = ({
 
               <div>
                 <label htmlFor="nl-qty" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
-                  Quantity (sqft / hides) <span className="text-rose-500">*</span>
+                  Quantity (sqft) <span className="text-rose-500">*</span>
                 </label>
                 <input
                   id="nl-qty"
@@ -368,7 +368,7 @@ export const CreateRecordModal: React.FC<CreateRecordModalProps> = ({
 
               <div>
                 <label htmlFor="nl-tannery" className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
-                  Tannery / Supplier <span className="text-rose-500">*</span>
+                  Tannery <span className="text-rose-500">*</span>
                 </label>
                 <input
                   id="nl-tannery"

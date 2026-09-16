@@ -66,6 +66,8 @@ export interface DailyLeatherItem extends BaseProcurementItem {
   poDeliveryDate?: string;
   plannedDeliveryDate?: string;
   qtyReceived?: number;
+  poDeliveryDateLocked?: boolean;
+  plannedDeliveryDateLocked?: boolean;
   // Note: actualReceiptDate is inherited from BaseProcurementItem (Actual Receipt Date for Complete Order)
   
   // Legacy / fallback field
@@ -88,6 +90,7 @@ export interface MaterialItem extends BaseProcurementItem {
   actualStockUpdateDate?: string; // Actual Stock Update Date (as recd from Material Store)
   actualPoReleaseDate?: string; // Actual PO Release Date
   expectedMaterialReceiptDate?: string; // Expected Material Receipt Date
+  updateSectionLocked?: boolean;
 
   materialName: string;
   specification?: string;
@@ -112,6 +115,7 @@ export interface PackagingItem extends BaseProcurementItem {
   actualStockUpdateDate?: string; // Actual Stock Update Date (as recd from Material Store)
   actualPoReleaseDate?: string; // Actual PO Release Date
   expectedMaterialReceiptDate?: string; // Expected Material Receipt Date
+  updateSectionLocked?: boolean;
 
   packagingType: string;
   specification?: string;
@@ -137,6 +141,7 @@ export interface FilterState {
   fromDate: string;
   toDate: string;
   status: string; // 'all' or specific status
+  leatherName: string; // 'all' or a specific leather name — only used on the daily-leather module
   buyerCode: string;
   vendor: string; // Tannery or Supplier
 }

@@ -85,6 +85,7 @@ export const ModuleView: React.FC<ModuleViewProps> = ({ module }) => {
     fromDate: '',
     toDate: '',
     status: 'all',
+    leatherName: 'all',
     buyerCode: 'all',
     vendor: 'all'
   });
@@ -131,6 +132,19 @@ export const ModuleView: React.FC<ModuleViewProps> = ({ module }) => {
     return Array.from(set).sort();
   }, [currentModuleItems]);
 
+  const leatherNameOptions = useMemo(() => {
+    const set = new Set<string>();
+    currentModuleItems.forEach(i => {
+      if ((i as any).leatherName) set.add((i as any).leatherName);
+      if ((i as any).items) {
+        (i as any).items.forEach((sub: any) => {
+          if (sub.leatherName) set.add(sub.leatherName);
+        });
+      }
+    });
+    return Array.from(set).sort();
+  }, [currentModuleItems]);
+
   // Apply Search and Filters
   const filteredItems = useMemo(() => {
     return tabItems.filter(item => {
@@ -163,9 +177,19 @@ export const ModuleView: React.FC<ModuleViewProps> = ({ module }) => {
         return false;
       }
 
-      // 4. Status
-      if (filters.status && filters.status !== 'all' && item.status !== filters.status) {
-        return false;
+      // 4. Status or Leather Name (for daily-leather)
+      if (currentActiveModule === 'daily-leather') {
+        if (filters.leatherName && filters.leatherName !== 'all') {
+          const directMatch = (item as any).leatherName === filters.leatherName;
+          const subMatch = (item as any).items?.some((sub: any) => sub.leatherName === filters.leatherName);
+          if (!directMatch && !subMatch) {
+            return false;
+          }
+        }
+      } else {
+        if (filters.status && filters.status !== 'all' && item.status !== filters.status) {
+          return false;
+        }
       }
 
       // 5. Buyer Code
@@ -184,13 +208,15 @@ export const ModuleView: React.FC<ModuleViewProps> = ({ module }) => {
 
       return true;
     });
-  }, [tabItems, filters]);
+  }, [tabItems, filters, currentActiveModule]);
 
   const hasActiveFilters = Boolean(
     filters.search ||
     filters.fromDate ||
     filters.toDate ||
-    (filters.status && filters.status !== 'all') ||
+    (currentActiveModule === 'daily-leather'
+      ? (filters.leatherName && filters.leatherName !== 'all')
+      : (filters.status && filters.status !== 'all')) ||
     (filters.buyerCode && filters.buyerCode !== 'all') ||
     (filters.vendor && filters.vendor !== 'all')
   );
@@ -201,6 +227,7 @@ export const ModuleView: React.FC<ModuleViewProps> = ({ module }) => {
       fromDate: '',
       toDate: '',
       status: 'all',
+      leatherName: 'all',
       buyerCode: 'all',
       vendor: 'all'
     });
@@ -388,6 +415,8 @@ export const ModuleView: React.FC<ModuleViewProps> = ({ module }) => {
         buyerOptions={buyerOptions}
         vendorOptions={vendorOptions}
         vendorLabel={config.vendorLabel}
+        module={currentActiveModule}
+        leatherNameOptions={leatherNameOptions}
       />
 
       {/* Table Component (Req #55, #56, #63) */}

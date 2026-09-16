@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Search, Filter, X, RotateCcw, SlidersHorizontal, Check } from 'lucide-react';
-import { FilterState } from '../../types/procurement';
+import { FilterState, ModuleType } from '../../types/procurement';
 
 interface TableFiltersProps {
   filters: FilterState;
@@ -8,6 +8,8 @@ interface TableFiltersProps {
   buyerOptions: string[];
   vendorOptions: string[];
   vendorLabel?: string; // 'Tannery' or 'Supplier'
+  module: ModuleType;
+  leatherNameOptions: string[];
 }
 
 export const TableFilters: React.FC<TableFiltersProps> = ({
@@ -15,7 +17,9 @@ export const TableFilters: React.FC<TableFiltersProps> = ({
   onFilterChange,
   buyerOptions,
   vendorOptions,
-  vendorLabel = 'Vendor / Tannery'
+  vendorLabel = 'Vendor / Tannery',
+  module,
+  leatherNameOptions = []
 }) => {
   const [mobileModalOpen, setMobileModalOpen] = useState(false);
   const [tempFilters, setTempFilters] = useState<FilterState>(filters);
@@ -23,7 +27,9 @@ export const TableFilters: React.FC<TableFiltersProps> = ({
   const activeFilterCount = [
     filters.fromDate ? 1 : 0,
     filters.toDate ? 1 : 0,
-    filters.status && filters.status !== 'all' ? 1 : 0,
+    module === 'daily-leather'
+      ? (filters.leatherName && filters.leatherName !== 'all' ? 1 : 0)
+      : (filters.status && filters.status !== 'all' ? 1 : 0),
     filters.buyerCode && filters.buyerCode !== 'all' ? 1 : 0,
     filters.vendor && filters.vendor !== 'all' ? 1 : 0,
   ].reduce((a, b) => a + b, 0);
@@ -38,6 +44,7 @@ export const TableFilters: React.FC<TableFiltersProps> = ({
       fromDate: '',
       toDate: '',
       status: 'all',
+      leatherName: 'all',
       buyerCode: 'all',
       vendor: 'all'
     };
@@ -133,18 +140,31 @@ export const TableFilters: React.FC<TableFiltersProps> = ({
           />
         </div>
 
-        {/* Status Dropdown */}
-        <select
-          value={filters.status}
-          onChange={(e) => onFilterChange({ ...filters, status: e.target.value })}
-          className="bg-white text-slate-800 px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-brand-500 shadow-soft-sm"
-        >
-          <option value="all">All Statuses</option>
-          <option value="on-time">● On-time</option>
-          <option value="delayed">● Delayed</option>
-          <option value="pending">● Pending</option>
-          <option value="completed">● Completed</option>
-        </select>
+        {/* Status or Leather Name Dropdown */}
+        {module === 'daily-leather' ? (
+          <select
+            value={filters.leatherName}
+            onChange={(e) => onFilterChange({ ...filters, leatherName: e.target.value })}
+            className="bg-white text-slate-800 px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-brand-500 shadow-soft-sm"
+          >
+            <option value="all">All Leather Names</option>
+            {leatherNameOptions.map(l => (
+              <option key={l} value={l}>{l}</option>
+            ))}
+          </select>
+        ) : (
+          <select
+            value={filters.status}
+            onChange={(e) => onFilterChange({ ...filters, status: e.target.value })}
+            className="bg-white text-slate-800 px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-brand-500 shadow-soft-sm"
+          >
+            <option value="all">All Statuses</option>
+            <option value="on-time">● On-time</option>
+            <option value="delayed">● Delayed</option>
+            <option value="pending">● Pending</option>
+            <option value="completed">● Completed</option>
+          </select>
+        )}
 
         {/* Buyer Dropdown */}
         <select
@@ -235,22 +255,40 @@ export const TableFilters: React.FC<TableFiltersProps> = ({
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Status
-                </label>
-                <select
-                  value={tempFilters.status}
-                  onChange={(e) => setTempFilters({ ...tempFilters, status: e.target.value })}
-                  className="w-full min-h-[44px] px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                >
-                  <option value="all">All Statuses</option>
-                  <option value="on-time">● On-time</option>
-                  <option value="delayed">● Delayed</option>
-                  <option value="pending">● Pending</option>
-                  <option value="completed">● Completed</option>
-                </select>
-              </div>
+              {module === 'daily-leather' ? (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Leather Name
+                  </label>
+                  <select
+                    value={tempFilters.leatherName}
+                    onChange={(e) => setTempFilters({ ...tempFilters, leatherName: e.target.value })}
+                    className="w-full min-h-[44px] px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                  >
+                    <option value="all">All Leather Names</option>
+                    {leatherNameOptions.map(l => (
+                      <option key={l} value={l}>{l}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Status
+                  </label>
+                  <select
+                    value={tempFilters.status}
+                    onChange={(e) => setTempFilters({ ...tempFilters, status: e.target.value })}
+                    className="w-full min-h-[44px] px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                  >
+                    <option value="all">All Statuses</option>
+                    <option value="on-time">● On-time</option>
+                    <option value="delayed">● Delayed</option>
+                    <option value="pending">● Pending</option>
+                    <option value="completed">● Completed</option>
+                  </select>
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
