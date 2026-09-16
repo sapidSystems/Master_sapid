@@ -67,6 +67,13 @@ const ProtectedRoute = ({ children }) => {
     }
 
     const currentPermission = pageAccess[path];
+    if (path.startsWith("/dashboard/procurement")) {
+        if (currentPermission === "none") {
+            return <Navigate to="/dashboard/admin" replace />;
+        }
+        return children;
+    }
+
     if (!currentPermission || currentPermission === "none") {
         return <Navigate to="/dashboard/admin" replace />
     }

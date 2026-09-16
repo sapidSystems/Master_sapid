@@ -16,6 +16,7 @@ interface UpdateStatusModalProps {
   module: ModuleType;
   item: AnyProcurementItem | null;
   onSave: (updates: any) => Promise<boolean>;
+  canWrite?: boolean;
 }
 
 export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
@@ -23,7 +24,8 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
   onClose,
   module,
   item,
-  onSave
+  onSave,
+  canWrite = true
 }) => {
   // Common / Base Fields
   const [date, setDate] = useState('');
@@ -309,14 +311,14 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
-                  Update Entry #{item.id}
+                  {canWrite ? `Update Entry #${item.id}` : `View Entry #${item.id}`}
                 </h3>
                 <span className="px-2 py-0.5 rounded-md bg-brand-100 text-brand-700 font-mono text-xs font-semibold">
                   {(item as any).woNo || item.id}
                 </span>
               </div>
               <p className="text-xs text-slate-500">
-                Prefilled with existing order details. Modify any parameters and save changes.
+                {canWrite ? 'Prefilled with existing order details. Modify any parameters and save changes.' : 'Viewing existing order details and parameters (read-only mode).'}
               </p>
             </div>
           </div>
@@ -333,6 +335,7 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
 
         {/* Scrollable Form Body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+          <fieldset disabled={!canWrite} className="space-y-4">
           
           {/* Module 1: New Leather Development */}
           {module === 'new-leather' && (
@@ -1054,6 +1057,7 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
               className="w-full p-3 rounded-xl border border-slate-300 bg-white text-slate-900 text-xs sm:text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none resize-none"
             />
           </div>
+          </fieldset>
 
           {/* Modal Footer Buttons */}
           <div className="pt-4 border-t border-slate-100 flex flex-col-reverse sm:flex-row items-center justify-end gap-2.5">
@@ -1061,27 +1065,29 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="w-full sm:w-auto min-h-[44px] px-4 py-2.5 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors"
+              className="w-full sm:w-auto min-h-[44px] px-4 py-2.5 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
             >
-              Cancel
+              {canWrite ? 'Cancel' : 'Close'}
             </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full sm:w-auto min-h-[44px] px-6 py-2.5 bg-black hover:bg-slate-900 active:bg-slate-800 disabled:opacity-50 text-white rounded-xl text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer ring-2 ring-black/10"
-            >
-              {isSubmitting ? (
-                <span className="inline-flex items-center gap-2">
-                  <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-                  </svg>
-                  Updating...
-                </span>
-              ) : (
-                'Save Changes'
-              )}
-            </button>
+            {canWrite && (
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full sm:w-auto min-h-[44px] px-6 py-2.5 bg-black hover:bg-slate-900 active:bg-slate-800 disabled:opacity-50 text-white rounded-xl text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer ring-2 ring-black/10"
+              >
+                {isSubmitting ? (
+                  <span className="inline-flex items-center gap-2">
+                    <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                    </svg>
+                    Updating...
+                  </span>
+                ) : (
+                  'Save Changes'
+                )}
+              </button>
+            )}
           </div>
         </form>
       </div>

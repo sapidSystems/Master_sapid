@@ -54,6 +54,19 @@ export const ModuleView: React.FC<ModuleViewProps> = ({ module }) => {
 
   const currentActiveModule: ModuleType = (module === 'material' || module === 'packaging') ? activeSubModule : module;
 
+  // Permission check based on user role and pageAccess
+  const userRole = (localStorage.getItem('role') || '').toLowerCase();
+  const isAdmin = userRole === 'admin';
+  const pageAccess = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem('page_access') || '{}');
+    } catch {
+      return {};
+    }
+  }, []);
+  const currentPermission = pageAccess[window.location.pathname];
+  const canWrite = isAdmin || currentPermission === 'write' || currentPermission === undefined;
+
   const handleSelectSubModule = (sub: 'material' | 'packaging') => {
     setActiveSubModule(sub);
     setSearchParams((prev) => {
@@ -355,14 +368,16 @@ export const ModuleView: React.FC<ModuleViewProps> = ({ module }) => {
         </div>
 
         {/* Primary Add Button */}
-        <button
-          type="button"
-          onClick={() => setCreateModalOpen(true)}
-          className="self-start sm:self-auto min-h-[44px] px-5 py-2.5 bg-black hover:bg-slate-900 active:bg-slate-800 text-white text-xs sm:text-sm font-bold rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer ring-2 ring-black/10"
-        >
-          <Plus className="w-4 h-4 stroke-[3]" />
-          <span>{config.addLabel}</span>
-        </button>
+        {canWrite && (
+          <button
+            type="button"
+            onClick={() => setCreateModalOpen(true)}
+            className="self-start sm:self-auto min-h-[44px] px-5 py-2.5 bg-black hover:bg-slate-900 active:bg-slate-800 text-white text-xs sm:text-sm font-bold rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer ring-2 ring-black/10"
+          >
+            <Plus className="w-4 h-4 stroke-[3]" />
+            <span>{config.addLabel}</span>
+          </button>
+        )}
       </div>
 
       {/* Tab Switcher: Pending vs History (Req #50) */}
@@ -431,6 +446,7 @@ export const ModuleView: React.FC<ModuleViewProps> = ({ module }) => {
         onAddNew={() => setCreateModalOpen(true)}
         hasActiveFilters={hasActiveFilters}
         onResetFilters={resetFilters}
+        canWrite={canWrite}
       />
 
       {/* Create Modal */}
@@ -450,6 +466,7 @@ export const ModuleView: React.FC<ModuleViewProps> = ({ module }) => {
         }}
         module={currentActiveModule}
         item={selectedItemForUpdate}
+        canWrite={canWrite}
         onSave={(updates) => {
           if (!selectedItemForUpdate) return Promise.resolve(false);
           return updateRecord(currentActiveModule, selectedItemForUpdate.id, updates);

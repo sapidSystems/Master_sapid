@@ -55,15 +55,18 @@ export default function MobileSystemLauncher({
 
   const hasAccess = (href) => {
     if (isAdmin) return true;
+    const perm = pageAccess[href];
+    if (perm !== undefined && perm !== null) {
+      return perm !== 'none';
+    }
     const exceptionPaths = [
       '/dashboard/admin',
       '/dashboard/notifications',
-      '/dashboard/training-video',
-      '/dashboard/procurement'
+      '/dashboard/training-video'
     ];
     if (exceptionPaths.some((ep) => href === ep || href.startsWith(ep + '/'))) return true;
-    const perm = pageAccess[href];
-    return perm && perm !== 'none';
+    if (isProcurementPath(href)) return true;
+    return false;
   };
 
   const systems = [
@@ -123,9 +126,9 @@ export default function MobileSystemLauncher({
       bgColor: 'bg-amber-50',
       borderColor: 'border-amber-200/70',
       activeBorder: 'ring-2 ring-amber-500 border-amber-500',
-      badge: null,
+      badge: ((menuCounts?.procurementNewLeather || 0) + (menuCounts?.procurementDailyLeather || 0) + (menuCounts?.procurementMaterial || 0)) || null,
       isActive: isProcurementPath(location.pathname),
-      accessible: hasAccess('/dashboard/procurement')
+      accessible: hasAccess('/dashboard/procurement') || hasAccess('/dashboard/procurement/new-leather') || hasAccess('/dashboard/procurement/daily-leather') || hasAccess('/dashboard/procurement/material')
     },
     {
       id: 'setting',

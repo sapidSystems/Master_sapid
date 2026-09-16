@@ -103,7 +103,10 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
     task: null,
     adminApproval: null,
     sampleManagement: null,
-    productionPlanning: null
+    productionPlanning: null,
+    procurementNewLeather: null,
+    procurementDailyLeather: null,
+    procurementMaterial: null
   });
 
   const handleToggleSubmenu = (clickedRoute) => {
@@ -177,13 +180,18 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
       const exceptionPaths = [
         "/dashboard/admin",
         "/dashboard/notifications",
-        "/dashboard/training-video",
-        "/dashboard/procurement"
+        "/dashboard/training-video"
       ];
 
       const isException = exceptionPaths.some(p => path === p || path.startsWith(p + "/"));
 
-      if (!isException) {
+      if (isProcurementPath(path)) {
+        const currentPermission = activeAccess[path];
+        if (currentPermission === "none") {
+          navigate("/dashboard/admin");
+          return;
+        }
+      } else if (!isException) {
         // Also check if any parent route path exists in pageAccess as a fallback
         const currentPermission = activeAccess[path];
         if (!currentPermission || currentPermission === "none") {
@@ -558,13 +566,83 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
         console.error('Error fetching production planning count:', err);
       }
 
+      // 7. Procurement System pending counts (actual_receipt_date IS NULL)
+      let procurementNewLeatherCount = 0;
+      let procurementDailyLeatherCount = 0;
+      let procurementMaterialCount = 0;
+      try {
+        const [nlCountRes, dlCountRes, matCountRes, pkgCountRes] = await Promise.all([
+          supabase
+            .from('procurement_new_leather')
+            .select('*', { count: 'exact', head: true })
+            .is('actual_receipt_date', null),
+          supabase
+            .from('procurement_daily_leather')
+            .select('*', { count: 'exact', head: true })
+            .is('actual_receipt_date', null),
+          supabase
+            .from('procurement_material')
+            .select('*', { count: 'exact', head: true })
+            .is('actual_receipt_date', null),
+          supabase
+            .from('procurement_packaging')
+            .select('*', { count: 'exact', head: true })
+            .is('actual_receipt_date', null),
+        ]);
+
+        if (!nlCountRes.error) {
+          procurementNewLeatherCount = nlCountRes.count ?? 0;
+        } else {
+          try {
+            const cached = JSON.parse(localStorage.getItem('erp_new_leather') || '[]');
+            procurementNewLeatherCount = cached.filter((i) => !i.actualReceiptDate).length;
+          } catch {}
+        }
+
+        if (!dlCountRes.error) {
+          procurementDailyLeatherCount = dlCountRes.count ?? 0;
+        } else {
+          try {
+            const cached = JSON.parse(localStorage.getItem('erp_daily_leather') || '[]');
+            procurementDailyLeatherCount = cached.filter((i) => !i.actualReceiptDate).length;
+          } catch {}
+        }
+
+        let matCount = 0;
+        if (!matCountRes.error) {
+          matCount = matCountRes.count ?? 0;
+        } else {
+          try {
+            const cached = JSON.parse(localStorage.getItem('erp_materials') || '[]');
+            matCount = cached.filter((i) => !i.actualReceiptDate).length;
+          } catch {}
+        }
+
+        let pkgCount = 0;
+        if (!pkgCountRes.error) {
+          pkgCount = pkgCountRes.count ?? 0;
+        } else {
+          try {
+            const cached = JSON.parse(localStorage.getItem('erp_packaging') || '[]');
+            pkgCount = cached.filter((i) => !i.actualReceiptDate).length;
+          } catch {}
+        }
+
+        procurementMaterialCount = matCount + pkgCount;
+      } catch (err) {
+        console.error('Error fetching procurement counts:', err);
+      }
+
       setMenuCounts({
         quickTask: pendingChecklistCount,
         delegation: delegationCount || 0,
         task: taskCount,
         adminApproval: approvalCount,
         sampleManagement: sampleManagementCount || 0,
-        productionPlanning: productionPlanningCount || 0
+        productionPlanning: productionPlanningCount || 0,
+        procurementNewLeather: procurementNewLeatherCount || 0,
+        procurementDailyLeather: procurementDailyLeatherCount || 0,
+        procurementMaterial: procurementMaterialCount || 0
       });
     } catch (err) {
       console.error("Error fetching sidebar counts:", err);
@@ -576,6 +654,19 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
       fetchSidebarCounts(username, userRole);
     }
   }, [username, userRole, location.pathname]);
+
+  // Realtime / reactive listener for procurement updates
+  useEffect(() => {
+    const handleProcurementUpdate = () => {
+      if (username) {
+        fetchSidebarCounts(username, userRole);
+      }
+    };
+    window.addEventListener('procurement-updated', handleProcurementUpdate);
+    return () => {
+      window.removeEventListener('procurement-updated', handleProcurementUpdate);
+    };
+  }, [username, userRole]);
 
   // Fetch notifications globally for badge count
   useEffect(() => {
@@ -749,7 +840,7 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
       isSubmenu: true,
       isOpen: isProcurementSubmenuOpen,
       setIsOpen: setIsProcurementSubmenuOpen,
-      badge: null,
+      badge: ((menuCounts.procurementNewLeather || 0) + (menuCounts.procurementDailyLeather || 0) + (menuCounts.procurementMaterial || 0)) || null,
       active: isProcurementPath(location.pathname),
       subItems: [
         {
@@ -763,18 +854,21 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
           label: "New Leather Dev",
           active: location.pathname === "/dashboard/procurement/new-leather",
           showFor: ["admin", "user", "HOD"],
+          badge: menuCounts.procurementNewLeather || null,
         },
         {
           href: "/dashboard/procurement/daily-leather",
           label: "Daily Leather Proc",
           active: location.pathname === "/dashboard/procurement/daily-leather",
           showFor: ["admin", "user", "HOD"],
+          badge: menuCounts.procurementDailyLeather || null,
         },
         {
           href: "/dashboard/procurement/material",
           label: "Daily Material Proc",
           active: location.pathname === "/dashboard/procurement/material",
           showFor: ["admin", "user", "HOD"],
+          badge: menuCounts.procurementMaterial || null,
         }
       ]
     },
@@ -804,14 +898,16 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
     const exceptionPaths = [
       "/dashboard/admin",
       "/dashboard/notifications",
-      "/dashboard/training-video",
-      "/dashboard/procurement"
+      "/dashboard/training-video"
     ];
 
     const hasAccess = (href) => {
-      if (exceptionPaths.includes(href)) return true;
       const perm = pageAccess[href];
-      return perm && perm !== "none";
+      if (perm !== undefined && perm !== null) {
+        return perm !== "none";
+      }
+      if (exceptionPaths.includes(href) || isProcurementPath(href)) return true;
+      return false;
     };
 
     return routes

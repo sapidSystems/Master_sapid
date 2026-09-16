@@ -16,6 +16,7 @@ interface ProcurementTableProps {
   onAddNew: () => void;
   hasActiveFilters?: boolean;
   onResetFilters?: () => void;
+  canWrite?: boolean;
 }
 
 export const ProcurementTable: React.FC<ProcurementTableProps> = ({
@@ -28,7 +29,8 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
   onDelete,
   onAddNew,
   hasActiveFilters,
-  onResetFilters
+  onResetFilters,
+  canWrite = true
 }) => {
   const [sortField, setSortField] = useState<string>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -81,8 +83,8 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
       return (
         <EmptyState
           isSearchOrFilter={hasActiveFilters}
-          onAction={hasActiveFilters ? onResetFilters : onAddNew}
-          actionLabel={hasActiveFilters ? 'Reset Filters' : '+ Add New Record'}
+          onAction={hasActiveFilters ? onResetFilters : (canWrite ? onAddNew : undefined)}
+          actionLabel={hasActiveFilters ? 'Reset Filters' : (canWrite ? '+ Add New Record' : undefined)}
         />
       );
     }
@@ -373,8 +375,8 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
     return (
       <EmptyState
         isSearchOrFilter={hasActiveFilters}
-        onAction={hasActiveFilters ? onResetFilters : onAddNew}
-        actionLabel={hasActiveFilters ? 'Reset Filters' : '+ Add New Record'}
+        onAction={hasActiveFilters ? onResetFilters : (canWrite ? onAddNew : undefined)}
+        actionLabel={hasActiveFilters ? 'Reset Filters' : (canWrite ? '+ Add New Record' : undefined)}
       />
     );
   }
@@ -561,20 +563,22 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                             type="button"
                             onClick={() => onUpdate(item)}
                             className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors shadow-xs"
-                            title="Update Tracking Parameters"
+                            title={canWrite ? "Update Tracking Parameters" : "View Record Details"}
                           >
                             <Edit3 className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline">Update</span>
+                            <span className="hidden sm:inline">{canWrite ? 'Update' : 'View'}</span>
                           </button>
                         )}
-                        <button
-                          type="button"
-                          onClick={() => onDelete(item)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                          title="Delete Record"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {canWrite && (
+                          <button
+                            type="button"
+                            onClick={() => onDelete(item)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                            title="Delete Record"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
 
@@ -648,23 +652,23 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                             type="button"
                             onClick={() => onUpdate(item)}
                             className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-brand-50 hover:bg-brand-100 text-brand-600 transition-colors shadow-soft-sm"
-                            title="Update Tracking Parameters"
+                            title={canWrite ? "Update Tracking Parameters" : "View Record Details"}
                           >
                             <Edit3 className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline">Update</span>
+                            <span className="hidden sm:inline">{canWrite ? 'Update' : 'View'}</span>
                           </button>
                         )}
 
-
-
-                        <button
-                          type="button"
-                          onClick={() => onDelete(item)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                          title="Delete Record"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {canWrite && (
+                          <button
+                            type="button"
+                            onClick={() => onDelete(item)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                            title="Delete Record"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
 
@@ -757,20 +761,22 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                             type="button"
                             onClick={() => onUpdate(item)}
                             className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-brand-50 hover:bg-brand-100 text-brand-600 transition-colors shadow-soft-sm"
-                            title="Update Tracking Parameters"
+                            title={canWrite ? "Update Tracking Parameters" : "View Record Details"}
                           >
                             <Edit3 className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline">Update</span>
+                            <span className="hidden sm:inline">{canWrite ? 'Update' : 'View'}</span>
                           </button>
                         )}
-                        <button
-                          type="button"
-                          onClick={() => onDelete(item)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                          title="Delete Record"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {canWrite && (
+                          <button
+                            type="button"
+                            onClick={() => onDelete(item)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                            title="Delete Record"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
 

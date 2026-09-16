@@ -292,6 +292,13 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
     } catch {}
   }, [currentUser]);
 
+  // Dispatch global event when procurement tasks change so sidebar badges update reactively
+  useEffect(() => {
+    if (!isLoading) {
+      window.dispatchEvent(new CustomEvent('procurement-updated'));
+    }
+  }, [newLeather, dailyLeather, materials, packaging, isLoading]);
+
   // ── Fetch all data from Supabase on mount ───────────────────────────────────
   useEffect(() => {
     async function fetchAll() {

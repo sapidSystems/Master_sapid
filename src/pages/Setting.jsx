@@ -53,6 +53,15 @@ const SYSTEM_PAGE_GROUPS = [
     ]
   },
   {
+    title: "Procurement System",
+    pages: [
+      { path: "/dashboard/procurement", label: "Procurement Dashboard" },
+      { path: "/dashboard/procurement/new-leather", label: "New Leather Development" },
+      { path: "/dashboard/procurement/daily-leather", label: "Daily Leather Procurement" },
+      { path: "/dashboard/procurement/material", label: "Daily Material Procurement" }
+    ]
+  },
+  {
     title: "Other Settings",
     pages: [
       { path: "/dashboard/setting", label: "Settings" }

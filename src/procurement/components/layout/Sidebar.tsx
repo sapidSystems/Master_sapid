@@ -107,13 +107,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav }) => {
                     {counts.delayed}!
                   </span>
                 )}
-                <span className={`px-2 py-0.5 text-[11px] font-medium rounded-full ${
-                  isSelected
-                    ? 'bg-brand-600 text-white'
-                    : 'bg-slate-100 text-slate-600'
-                }`}>
-                  {counts.pending}
-                </span>
+                {counts.pending > 0 && (
+                  <span className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                    {counts.pending}
+                  </span>
+                )}
               </div>
             </button>
           );
