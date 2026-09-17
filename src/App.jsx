@@ -3,6 +3,8 @@ import "./index.css"
 
 // --- Page Imports ---
 import LoginPage from "./pages/LoginPage"
+import UnifiedDashboard from "./pages/UnifiedDashboard"
+import RecordDetailPage from "./pages/RecordDetailPage"
 import AdminDashboard from "./pages/admin/Dashboard"
 import AdminAssignTask from "./pages/admin/AssignTask"
 import ChecklistTask from "./pages/admin/ChecklistTask"     // New
@@ -55,6 +57,10 @@ const ProtectedRoute = ({ children }) => {
     const pageAccess = JSON.parse(localStorage.getItem("page_access") || "{}");
     const path = location.pathname;
 
+    if (path === "/dashboard" || path.match(/^\/dashboard\/(procurement|production|sample|checklist)\/[^/]+$/)) {
+        return children;
+    }
+
     const exceptionPaths = [
         "/dashboard/admin",
         "/dashboard/notifications",
@@ -101,12 +107,37 @@ function App() {
 
                 <Routes>
                     {/* --- Public Routes --- */}
-                    <Route path="/" element={<Navigate to="/login" replace />} />
+                    <Route
+                        path="/"
+                        element={
+                            localStorage.getItem("user-name") ? (
+                                <Navigate to="/dashboard" replace />
+                            ) : (
+                                <Navigate to="/login" replace />
+                            )
+                        }
+                    />
                     <Route path="/login" element={<LoginPage />} />
 
-                    {/* --- Main Dashboard Redirect --- */}
-                    {/* Redirects /dashboard to /dashboard/admin to ensure canonical URL */}
-                    <Route path="/dashboard" element={<Navigate to="/dashboard/admin" replace />} />
+                    {/* --- Unified Dashboard (Home / Default Landing Route) --- */}
+                    <Route
+                        path="/dashboard"
+                        element={
+                            <ProtectedRoute>
+                                <UnifiedDashboard />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    {/* --- Record Detail Page (Unified Pipedrive-style Detail View) --- */}
+                    <Route
+                        path="/dashboard/:systemId/:recordId"
+                        element={
+                            <ProtectedRoute>
+                                <RecordDetailPage />
+                            </ProtectedRoute>
+                        }
+                    />
 
                     {/* --- Core Dashboard Routes --- */}
                     <Route

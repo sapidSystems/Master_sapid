@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import MobileSystemLauncher from "./MobileSystemLauncher";
 import MobileBottomNav from "./MobileBottomNav";
+import useUnifiedCounts from "../../hooks/useUnifiedCounts";
 
 const isChecklistPath = (path) => {
   const checklistPaths = [
@@ -109,6 +110,14 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
     procurementMaterial: null
   });
 
+  const { menuCounts: unifiedCounts } = useUnifiedCounts(username, userRole);
+
+  useEffect(() => {
+    if (unifiedCounts) {
+      setMenuCounts(unifiedCounts);
+    }
+  }, [unifiedCounts]);
+
   const handleToggleSubmenu = (clickedRoute) => {
     const nextState = !clickedRoute.isOpen;
 
@@ -175,6 +184,9 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
     const storedRoleLower = (storedRole || "user").toLowerCase();
 
     if (storedRoleLower !== "admin") {
+      if (path === "/dashboard" || path.match(/^\/dashboard\/(procurement|production|sample|checklist)\/[^/]+$/)) {
+        return;
+      }
       const activeAccess = JSON.parse(localStorage.getItem("page_access") || "{}");
 
       const exceptionPaths = [
@@ -701,6 +713,13 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
   // Update the routes array based on user role and super admin status
   const routes = [
     {
+      href: "/dashboard",
+      label: "Dashboard",
+      icon: LayoutGrid,
+      showFor: ["admin", "user", "HOD"],
+      active: location.pathname === "/dashboard",
+    },
+    {
       label: "Checklist",
       icon: ClipboardList,
       showFor: ["admin", "user", "HOD"],
@@ -902,6 +921,7 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
     ];
 
     const hasAccess = (href) => {
+      if (href === "/dashboard") return true;
       const perm = pageAccess[href];
       if (perm !== undefined && perm !== null) {
         return perm !== "none";
@@ -945,7 +965,7 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
       <aside className="hidden w-64 flex-shrink-0 border-r border-blue-200 bg-white md:flex md:flex-col">
         <div className="flex h-14 items-center border-b border-blue-200 px-4 bg-gradient-to-r from-blue-100 to-purple-100">
           <Link
-            to="/dashboard/admin"
+            to="/dashboard"
             className="flex items-center gap-2 font-semibold text-blue-700"
           >
             <img src={aceLogo} alt="TaskDesk Logo" className="h-8 w-8 rounded-full object-cover border border-blue-200" />
@@ -1143,7 +1163,7 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
             {/* Drawer Header */}
             <div className="flex h-16 items-center justify-between border-b border-slate-100 px-4 bg-white">
               <Link
-                to="/dashboard/admin"
+                to="/dashboard"
                 className="flex items-center gap-2.5 font-bold text-slate-900"
                 onClick={() => setIsMobileMenuOpen(false)}
               >

@@ -88,7 +88,7 @@ const LoginPage = () => {
         console.log("Stored email:", userData.email_id || userData.email); // Debug log
 
         showToast(`Welcome back, ${userData.user_name || userData.username}!`, "success");
-        navigate("/dashboard/admin");
+        navigate("/dashboard");
       } else if (error) {
         showToast(error, "error");
         setIsLoginLoading(false);

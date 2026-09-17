@@ -7,7 +7,8 @@ import {
   Boxes,
   Settings,
   X,
-  ChevronRight
+  ChevronRight,
+  LayoutGrid
 } from 'lucide-react';
 
 export default function MobileSystemLauncher({
@@ -70,6 +71,20 @@ export default function MobileSystemLauncher({
   };
 
   const systems = [
+    {
+      id: 'unified',
+      name: 'Unified Dashboard',
+      subtitle: 'All Pipelines & Home',
+      href: '/dashboard',
+      icon: LayoutGrid,
+      iconColor: 'text-indigo-600',
+      bgColor: 'bg-indigo-50',
+      borderColor: 'border-indigo-200/70',
+      activeBorder: 'ring-2 ring-indigo-500 border-indigo-500',
+      badge: null,
+      isActive: location.pathname === '/dashboard',
+      accessible: true
+    },
     {
       id: 'checklist',
       name: 'Checklist',
