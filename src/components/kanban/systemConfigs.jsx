@@ -49,6 +49,98 @@ const getStatusBadge = (status) => {
   }
 };
 
+export const getCardUrgencyStatus = ({
+  targetDate,
+  actualDate,
+  isCompleted = false,
+  fallbackStatus = "Active",
+}) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  let target = null;
+  if (targetDate) {
+    const d = new Date(targetDate);
+    if (!isNaN(d.getTime())) {
+      d.setHours(0, 0, 0, 0);
+      target = d;
+    }
+  }
+
+  let actual = null;
+  if (actualDate) {
+    const d = new Date(actualDate);
+    if (!isNaN(d.getTime())) {
+      d.setHours(0, 0, 0, 0);
+      actual = d;
+    }
+  }
+
+  // 1. Task is completed / done
+  if (isCompleted) {
+    if (target && actual) {
+      if (actual > target) {
+        const delayDays = Math.max(1, Math.round((actual.getTime() - target.getTime()) / (1000 * 60 * 60 * 24)));
+        return {
+          label: `${delayDays}d delay`,
+          statusColor: "bg-rose-100 text-rose-700 border border-rose-200",
+          cardStyle: "border-2 border-rose-400 shadow-md shadow-rose-200/70 bg-white hover:border-rose-500",
+          type: "delayed",
+        };
+      }
+    }
+    // Done on time -> Green
+    return {
+      label: "Done on time",
+      statusColor: "bg-emerald-100 text-emerald-700 border border-emerald-200",
+      cardStyle: "border-2 border-emerald-400 shadow-md shadow-emerald-200/70 bg-white hover:border-emerald-500",
+      type: "completed",
+    };
+  }
+
+  // 2. Task not completed - check target date
+  if (target) {
+    const diffMs = target.getTime() - today.getTime();
+    const daysDiff = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+    if (daysDiff < 0) {
+      // Delay (past target date) -> Red border & shadow
+      const delayDays = Math.abs(daysDiff);
+      return {
+        label: `${delayDays}d delay`,
+        statusColor: "bg-rose-100 text-rose-700 border border-rose-200",
+        cardStyle: "border-2 border-rose-400 shadow-md shadow-rose-200/70 bg-white hover:border-rose-500",
+        type: "delayed",
+      };
+    } else if (daysDiff <= 5) {
+      // Within 5 days (0 to 5 days) -> Orange border & shadow
+      const label = daysDiff === 0 ? "Due today" : `${daysDiff}d left`;
+      return {
+        label,
+        statusColor: "bg-amber-100 text-amber-800 border border-amber-200",
+        cardStyle: "border-2 border-amber-400 shadow-md shadow-amber-200/70 bg-white hover:border-amber-500",
+        type: "near-due",
+      };
+    } else {
+      // More than 5 days to be done -> White card (keep it as it is {white})
+      return {
+        label: `${daysDiff}d left`,
+        statusColor: "bg-slate-100 text-slate-700 border border-slate-200",
+        cardStyle: "bg-white border border-gray-200/90 shadow-xs hover:border-brand-300 hover:shadow-md",
+        type: "normal",
+      };
+    }
+  }
+
+  // 3. Fallback when no target date exists
+  return {
+    label: fallbackStatus,
+    statusColor: "bg-slate-100 text-slate-700 border border-slate-200",
+    cardStyle: "bg-white border border-gray-200/90 shadow-xs hover:border-brand-300 hover:shadow-md",
+    type: "normal",
+  };
+};
+
 // ======================================================================
 // 1. PROCUREMENT SYSTEM CONFIG
 // ======================================================================
@@ -254,16 +346,24 @@ export const procurementConfig = {
   },
 
   renderCard: (item, columnId, navigate) => {
-    const statusMeta = getStatusBadge(item?.status);
+    const isCompleted = Boolean(item?.actualDate) || item?.status === "completed";
+    const urgency = getCardUrgencyStatus({
+      targetDate: item?.targetDate,
+      actualDate: item?.actualDate,
+      isCompleted,
+      fallbackStatus: item?.status || "Pending",
+    });
     const moduleName = (item?.module || columnId || "item").replace(/-/g, " ");
+
     return (
       <KanbanCard
         id={item?.id}
         title={item?.title || "Procurement Item"}
         subtitle={item?.subtitle || ""}
         badgeText={moduleName}
-        status={statusMeta.label}
-        statusColor={statusMeta.color}
+        status={urgency.label}
+        statusColor={urgency.statusColor}
+        cardStyle={urgency.cardStyle}
         datePrimary={formatDateDisplay(item?.targetDate)}
         dateSecondary={formatDateDisplay(item?.actualDate)}
         datePrimaryLabel="Target"
@@ -385,10 +485,19 @@ export const productionConfig = {
   },
 
   renderCard: (item, columnId, navigate) => {
-    const isDelayed = item?.isDelayed;
-    const statusMeta = isDelayed
-      ? { label: "Delayed", color: "bg-rose-100 text-rose-700" }
-      : { label: "In Progress", color: "bg-sky-100 text-sky-700" };
+    const isCompleted =
+      item?.raw?.is_history === true ||
+      (item?.activeStage === "Planned Shipment" && Boolean(item?.activeStageObj?.actualDate));
+
+    const targetDate = item?.activeStageObj?.plannedDate || item?.despatchDate;
+    const actualDate = item?.activeStageObj?.actualDate;
+
+    const urgency = getCardUrgencyStatus({
+      targetDate,
+      actualDate,
+      isCompleted,
+      fallbackStatus: isCompleted ? "Completed" : "In Progress",
+    });
 
     return (
       <KanbanCard
@@ -396,9 +505,10 @@ export const productionConfig = {
         title={`WO: ${item?.woNo || "—"}`}
         subtitle={`Buyer: ${item?.buyer || "—"}`}
         badgeText={item?.buyer || "WO"}
-        status={statusMeta.label}
-        statusColor={statusMeta.color}
-        datePrimary={formatDateDisplay(item?.activeStageObj?.plannedDate || item?.despatchDate)}
+        status={urgency.label}
+        statusColor={urgency.statusColor}
+        cardStyle={urgency.cardStyle}
+        datePrimary={formatDateDisplay(targetDate)}
         dateSecondary={formatDateDisplay(item?.woDate)}
         datePrimaryLabel="Target"
         dateSecondaryLabel="WO Date"
@@ -539,13 +649,19 @@ export const sampleConfig = {
   },
 
   renderCard: (item, columnId, navigate) => {
-    const statusMeta = item?.dispatchSentDate
-      ? { label: "Dispatched", color: "bg-slate-100 text-slate-700" }
-      : item?.isDelayed
-      ? { label: "Delayed", color: "bg-rose-100 text-rose-700" }
-      : item?.actualCompletionDate
-      ? { label: "Ready", color: "bg-emerald-100 text-emerald-700" }
-      : { label: "Active", color: "bg-blue-100 text-blue-700" };
+    const isCompleted =
+      Boolean(item?.dispatchSentDate) ||
+      (item?.stage === "ready" && Boolean(item?.actualCompletionDate));
+
+    const targetDate = item?.requirementDate || item?.expectedCompletionDate;
+    const actualDate = item?.dispatchSentDate || item?.actualCompletionDate;
+
+    const urgency = getCardUrgencyStatus({
+      targetDate,
+      actualDate,
+      isCompleted,
+      fallbackStatus: isCompleted ? "Completed" : "Active",
+    });
 
     return (
       <KanbanCard
@@ -553,9 +669,10 @@ export const sampleConfig = {
         title={item?.sampleWONo || item?.productName || "Sample WO"}
         subtitle={`${item?.buyerCoder || "No Buyer"} • ${item?.productName || "Item"}`}
         badgeText={item?.type || "Sample"}
-        status={statusMeta.label}
-        statusColor={statusMeta.color}
-        datePrimary={formatDateDisplay(item?.requirementDate || item?.expectedCompletionDate)}
+        status={urgency.label}
+        statusColor={urgency.statusColor}
+        cardStyle={urgency.cardStyle}
+        datePrimary={formatDateDisplay(targetDate)}
         dateSecondary={formatDateDisplay(item?.receiptDate)}
         datePrimaryLabel="Req Date"
         dateSecondaryLabel="Received"
@@ -698,17 +815,13 @@ export const checklistConfig = {
   },
 
   renderCard: (item, columnId, navigate) => {
-    const stage = item?.stage || columnId;
-    const statusMeta =
-      stage === "completed"
-        ? { label: "Approved", color: "bg-emerald-100 text-emerald-700" }
-        : stage === "approval"
-        ? { label: "Review", color: "bg-purple-100 text-purple-700" }
-        : stage === "overdue"
-        ? { label: "Overdue", color: "bg-rose-100 text-rose-700" }
-        : stage === "today"
-        ? { label: "Today", color: "bg-amber-100 text-amber-700" }
-        : { label: "Pending", color: "bg-sky-100 text-sky-700" };
+    const isCompleted = Boolean(item?.raw?.admin_done || (item?.submissionDate && item?.status === "yes"));
+    const urgency = getCardUrgencyStatus({
+      targetDate: item?.plannedDate,
+      actualDate: item?.submissionDate,
+      isCompleted,
+      fallbackStatus: item?.stage === "approval" ? "Review" : "Pending",
+    });
 
     return (
       <KanbanCard
@@ -716,8 +829,9 @@ export const checklistConfig = {
         title={item?.taskDescription || "Checklist Task"}
         subtitle={`${item?.department || "Operations"} • Assigned by: ${item?.givenBy || "Admin"}`}
         badgeText={item?.department || "TASK"}
-        status={statusMeta.label}
-        statusColor={statusMeta.color}
+        status={urgency.label}
+        statusColor={urgency.statusColor}
+        cardStyle={urgency.cardStyle}
         datePrimary={formatDateDisplay(item?.plannedDate)}
         dateSecondary={formatDateDisplay(item?.submissionDate)}
         datePrimaryLabel="Planned"

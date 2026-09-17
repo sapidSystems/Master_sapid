@@ -11,6 +11,7 @@ import { createPortal } from 'react-dom';
 import * as XLSX from 'xlsx';
 import { sendTaskReassignmentNotification } from '../services/whatsappService';
 import { useMagicToast } from '../context/MagicToastContext';
+import TatMasterTab from '../components/setting/TatMasterTab';
 
 const formatDateLong = (date) => date ? date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "";
 const formatDateISO = (date) => {
@@ -1429,6 +1430,7 @@ const Setting = () => {
                 { id: 'leave', label: 'Leave', icon: Calendar },
                 { id: 'categories', label: 'Machines', icon: Settings },
                 { id: 'daily_reminder', label: 'Daily Reminder', icon: Clock },
+                { id: 'tat_master', label: 'TAT Master', icon: Clock },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -2506,6 +2508,11 @@ const Setting = () => {
               </button>
             </div>
           </div>
+        )}
+
+        {/* TAT Master Tab */}
+        {activeTab === 'tat_master' && (
+          <TatMasterTab />
         )}
 
 

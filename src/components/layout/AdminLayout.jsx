@@ -28,6 +28,7 @@ import {
   Video,
   TrendingUp,
   LayoutGrid,
+  BarChart3,
 } from "lucide-react";
 import MobileSystemLauncher from "./MobileSystemLauncher";
 import MobileBottomNav from "./MobileBottomNav";
@@ -680,13 +681,36 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
     };
   }, [username, userRole]);
 
-  // Fetch notifications globally for badge count
+  // Fetch notifications globally for badge count + Realtime sync
   useEffect(() => {
-    const role = localStorage.getItem("role");
-    const userId = localStorage.getItem("user-id");
-    if (role) {
-      dispatch(fetchNotifications({ role: role.toLowerCase(), userId }));
-    }
+    const refreshNotifications = () => {
+      const role = localStorage.getItem("role");
+      const userId = localStorage.getItem("user-id");
+      if (role) {
+        dispatch(fetchNotifications({ role: role.toLowerCase(), userId }));
+      }
+    };
+
+    refreshNotifications();
+
+    const handleCustomEvent = () => refreshNotifications();
+    window.addEventListener("notification-sent", handleCustomEvent);
+
+    const notifChannel = supabase
+      .channel("global_notifications_sync")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "notifications" },
+        () => {
+          refreshNotifications();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      window.removeEventListener("notification-sent", handleCustomEvent);
+      supabase.removeChannel(notifChannel);
+    };
   }, [dispatch, location.pathname]);
 
   // Sync submenu open states based on current location
@@ -714,8 +738,8 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
   const routes = [
     {
       href: "/dashboard",
-      label: "Dashboard",
-      icon: LayoutGrid,
+      label: "Reports",
+      icon: BarChart3,
       showFor: ["admin", "user", "HOD"],
       active: location.pathname === "/dashboard",
     },
@@ -921,7 +945,7 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
     ];
 
     const hasAccess = (href) => {
-      if (href === "/dashboard") return true;
+      if (href === "/dashboard" || href.startsWith("/dashboard?")) return true;
       const perm = pageAccess[href];
       if (perm !== undefined && perm !== null) {
         return perm !== "none";

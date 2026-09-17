@@ -811,6 +811,8 @@ export default function RecordDetailPage() {
                   notes={notes}
                   onAddNote={handleAddNote}
                   isAdding={isAddingNote}
+                  systemConfig={systemConfig}
+                  systemId={systemId}
                 />
               )}
 

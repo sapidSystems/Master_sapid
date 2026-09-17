@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Bell, Plus, Trash2, Shield, User, Globe, Clock, Loader2, X, CheckCheck } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Bell, Plus, Trash2, Shield, User, Globe, Clock, Loader2, X, CheckCheck, ArrowUpRight, AtSign } from "lucide-react";
 import AdminLayout from "../../components/layout/AdminLayout";
 import { fetchNotifications, createNotification, removeNotification, markAsRead } from "../../redux/slice/notificationSlice";
 import { useMagicToast } from "../../context/MagicToastContext";
@@ -166,13 +167,19 @@ export default function Notifications() {
                       
                       {/* Status Badges */}
                       <div className="ml-auto flex items-center gap-3">
-                         <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border ${
-                          noti.role_target === 'all' ? 'bg-blue-50 text-blue-600 border-blue-100' : 
-                          noti.role_target === 'admin' ? 'bg-purple-50 text-purple-600 border-purple-100' :
-                          noti.role_target === 'superadmin' ? 'bg-red-50 text-red-600 border-red-100' :
-                          'bg-orange-50 text-orange-600 border-orange-100'
+                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold tracking-wider border flex items-center gap-1 ${
+                          noti.role_target === 'all' ? 'bg-blue-50 text-blue-600 border-blue-100 uppercase' : 
+                          noti.role_target === 'admin' ? 'bg-purple-50 text-purple-600 border-purple-100 uppercase' :
+                          noti.role_target === 'superadmin' ? 'bg-red-50 text-red-600 border-red-100 uppercase' :
+                          noti.role_target === 'user' ? 'bg-orange-50 text-orange-600 border-orange-100 uppercase' :
+                          'bg-indigo-50 text-indigo-700 border-indigo-200'
                         }`}>
-                          {noti.role_target}
+                          {!['all', 'admin', 'superadmin', 'user', 'hod'].includes(noti.role_target) && (
+                            <AtSign size={11} className="text-indigo-600" />
+                          )}
+                          {['all', 'admin', 'superadmin', 'user', 'hod'].includes(noti.role_target)
+                            ? noti.role_target
+                            : noti.role_target.replace(/^@/, '')}
                         </span>
                         {noti.isRead ? (
                           <CheckCheck size={16} className="text-blue-500" />
@@ -200,6 +207,24 @@ export default function Notifications() {
                       <p className="text-sm md:text-base text-gray-600 leading-relaxed whitespace-pre-wrap">
                         {noti.message}
                       </p>
+
+                      {/* Direct Link to Project/Record if present */}
+                      {(() => {
+                        const linkMatch = noti.message ? noti.message.match(/Link:\s*(\/[^\s]+)/) : null;
+                        const targetLink = linkMatch ? linkMatch[1] : null;
+                        if (!targetLink) return null;
+                        return (
+                          <div className="mt-3 pt-2.5 border-t border-gray-100 flex items-center">
+                            <Link
+                              to={targetLink}
+                              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 transition-colors shadow-sm"
+                            >
+                              <span>Open Linked Project / Record</span>
+                              <ArrowUpRight size={14} />
+                            </Link>
+                          </div>
+                        );
+                      })()}
 
                       {isAdmin && (
                         <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">

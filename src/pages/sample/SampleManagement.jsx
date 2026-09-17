@@ -4,6 +4,13 @@ import { Plus, Search, ChevronLeft, ChevronRight, X, Calendar, Edit2, Trash2, Fi
 import DraggableScroll from '../../components/DraggableScroll';
 import supabase from '../../SupabaseClient';
 import AdminLayout from '../../components/layout/AdminLayout';
+import {
+  fetchTatConfigs,
+  getTatDays,
+  calculateTatStatus,
+  TatPlannedCell,
+  TatDelayCell,
+} from '../../utils/tatUtils';
 
 const formatDate = (dateString) => {
   if (!dateString) return '-';
@@ -98,29 +105,25 @@ const generateDummyLeads = () => {
     }
 
     const lead = {
-      id: `LEAD-${Date.now()}-${i}`,
-      receiptDate: dateObj.toISOString().split('T')[0],
+      id: `DUMMY-${i + 1}`,
       buyerCoder: buyers[i % buyers.length],
-      productName: `Product ${i + 1}`,
-      qty: `${(i + 1) * 50}`,
+      receiptDate: dateObj.toISOString().split('T')[0],
+      productName: `Product Sample ${i + 1}`,
+      qty: `${(i + 1) * 2}`,
       type: types[i % types.length],
       requirementDate: reqDateStr,
-      sampleWONo: `WO-${1000 + i}`,
+      sampleWONo: `SWO-2026-${1000 + i}`,
       sampleWODate: dateObj.toISOString().split('T')[0],
-      completionDate: isHistory ? compDateObj.toISOString().split('T')[0] : '',
-      remarks: `Dummy lead record v10 ${i + 1}`,
-      timestamp: new Date().toISOString(),
-      addedBy: i % 2 === 0 ? 'Admin User' : 'Employee 1'
+      completionDate: compDateObj.toISOString().split('T')[0],
+      remarks: `Initial remark for sample ${i + 1}`,
+      addedBy: i % 2 === 0 ? 'Admin User' : 'Employee 1',
+      isFollowedUp: isHistory,
+      followUpTimestamp: isHistory ? compDateObj.toISOString() : null,
+      sampleWOHandoverDate: dateObj.toISOString().split('T')[0],
+      expectedCompletionDate: compDateObj.toISOString().split('T')[0],
+      actualCompletionDate: isHistory ? compDateObj.toISOString().split('T')[0] : null,
+      dispatchSentDate: isHistory ? compDateObj.toISOString().split('T')[0] : null
     };
-
-    if (isHistory) {
-      lead.isFollowedUp = true;
-      lead.followUpTimestamp = new Date().toISOString();
-      lead.sampleWOHandoverDate = compDateObj.toISOString().split('T')[0];
-      lead.expectedCompletionDate = compDateObj.toISOString().split('T')[0];
-      lead.actualCompletionDate = compDateObj.toISOString().split('T')[0];
-      lead.dispatchSentDate = compDateObj.toISOString().split('T')[0];
-    }
 
     dummyLeads.push(lead);
   }
@@ -130,6 +133,8 @@ const generateDummyLeads = () => {
 const ALL_COLUMNS = [
   { id: 'buyerCoder', label: 'Buyer Code' },
   { id: 'receiptDate', label: 'Enquiry Receipt Date' },
+  { id: 'tatPlanned', label: 'TAT Planned' },
+  { id: 'tatDelay', label: 'TAT Delay' },
   { id: 'productName', label: 'Description of Enquiry' },
   { id: 'type', label: 'Type' },
   { id: 'requirementDate', label: 'Requirement Date' },
@@ -151,6 +156,11 @@ export default function SampleManagement() {
     error: (msg) => showToast(msg, 'error')
   };
   const [leads, setLeads] = useState([]);
+  const [tatConfigs, setTatConfigs] = useState([]);
+  useEffect(() => {
+    fetchTatConfigs().then(setTatConfigs);
+  }, []);
+  const sampleTatDays = getTatDays(tatConfigs, '/dashboard/sample-management', 5);
   const [isLoading, setIsLoading] = useState(true);
   const [canWrite, setCanWrite] = useState(true);
   const [sampleTypes, setSampleTypes] = useState([]);
@@ -1005,6 +1015,28 @@ export default function SampleManagement() {
                        <span className="font-medium text-gray-800">{formatDate(lead.receiptDate)}</span>
                     </div>
                   )}
+                  {visibleColumns.tatPlanned && (
+                    <div>
+                       <span className="text-gray-500 block text-[10px] uppercase tracking-wide">TAT Planned</span>
+                       <TatPlannedCell
+                         tatDays={sampleTatDays}
+                         startDate={lead.receiptDate || lead.sampleWODate || lead.timestamp}
+                       />
+                    </div>
+                  )}
+                  {visibleColumns.tatDelay && (
+                    <div>
+                       <span className="text-gray-500 block text-[10px] uppercase tracking-wide">TAT Delay</span>
+                       <TatDelayCell
+                         status={calculateTatStatus({
+                           tatDays: sampleTatDays,
+                           startDate: lead.receiptDate || lead.sampleWODate || lead.timestamp,
+                           endDate: lead.dispatchSentDate || lead.actualCompletionDate || lead.completionDate,
+                           isCompleted: activeTab === 'history' || Boolean(lead.dispatchSentDate)
+                         })}
+                       />
+                    </div>
+                  )}
                   {visibleColumns.addedBy && (
                     <div>
                        <span className="text-gray-500 block text-[10px] uppercase tracking-wide">Added By</span>
@@ -1101,6 +1133,16 @@ export default function SampleManagement() {
                           {sortConfig.key === 'receiptDate' ? (sortConfig.direction === 'asc' ? ' ▲' : ' ▼') : ' ↕'}
                         </span>
                       </div>
+                    </th>
+                  )}
+                  {visibleColumns.tatPlanned && (
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-purple-900 bg-purple-50/50 whitespace-nowrap">
+                      TAT Planned
+                    </th>
+                  )}
+                  {visibleColumns.tatDelay && (
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-purple-900 bg-purple-50/50 whitespace-nowrap">
+                      TAT Delay
                     </th>
                   )}
                   {visibleColumns.productName && (
@@ -1278,6 +1320,26 @@ export default function SampleManagement() {
                     )}
                     {visibleColumns.buyerCoder && <td className="px-4 py-3 text-left text-sm text-gray-900 font-medium">{lead.buyerCoder}</td>}
                     {visibleColumns.receiptDate && <td className="px-4 py-3 text-left text-sm text-gray-700 whitespace-nowrap">{formatDate(lead.receiptDate)}</td>}
+                    {visibleColumns.tatPlanned && (
+                      <td className="px-4 py-3 text-left text-sm whitespace-nowrap">
+                        <TatPlannedCell
+                          tatDays={sampleTatDays}
+                          startDate={lead.receiptDate || lead.sampleWODate || lead.timestamp}
+                        />
+                      </td>
+                    )}
+                    {visibleColumns.tatDelay && (
+                      <td className="px-4 py-3 text-left text-sm whitespace-nowrap">
+                        <TatDelayCell
+                          status={calculateTatStatus({
+                            tatDays: sampleTatDays,
+                            startDate: lead.receiptDate || lead.sampleWODate || lead.timestamp,
+                            endDate: lead.dispatchSentDate || lead.actualCompletionDate || lead.completionDate,
+                            isCompleted: activeTab === 'history' || Boolean(lead.dispatchSentDate)
+                          })}
+                        />
+                      </td>
+                    )}
                     {visibleColumns.productName && <td className="px-4 py-3 text-left text-sm text-gray-900">{lead.productName || '-'}</td>}
                     {visibleColumns.type && <td className="px-4 py-3 text-left text-sm text-gray-700">{lead.type}</td>}
                     {visibleColumns.requirementDate && <td className="px-4 py-3 text-left text-sm text-gray-700">{formatDate(lead.requirementDate)}</td>}

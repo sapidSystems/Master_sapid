@@ -4,6 +4,13 @@ import { Plus, Search, ChevronLeft, ChevronRight, X, Calendar, Edit2, Trash2, Fi
 import DraggableScroll from '../../components/DraggableScroll';
 import supabase from '../../SupabaseClient';
 import AdminLayout from '../../components/layout/AdminLayout';
+import {
+  fetchTatConfigs,
+  getTatDays,
+  calculateTatStatus,
+  TatPlannedCell,
+  TatDelayCell,
+} from '../../utils/tatUtils';
 
 const getTodayDate = () => {
   const d = new Date();
@@ -146,6 +153,8 @@ const ALL_COLUMNS = [
   { id: 'woDate', label: 'W/O Date' },
   { id: 'wResDate', label: 'W/O Rec Date' },
   { id: 'woDespatchDate', label: 'W/O Shipment Date' },
+  { id: 'tatPlanned', label: 'TAT Planned' },
+  { id: 'tatDelay', label: 'TAT Delay' },
   { id: 'qty', label: 'Qty' },
   { id: 'remarks', label: 'Remarks' },
   ...STAGES_LIST.flatMap(stage => [
@@ -165,6 +174,11 @@ export default function ProductionPlanning() {
   };
   const [activeTab, setActiveTab] = useState('pending');
   const [leads, setLeads] = useState([]);
+  const [tatConfigs, setTatConfigs] = useState([]);
+  useEffect(() => {
+    fetchTatConfigs().then(setTatConfigs);
+  }, []);
+  const ppTatDays = getTatDays(tatConfigs, '/dashboard/bulk-order', 15);
   const [isLoading, setIsLoading] = useState(true);
   const [canWrite, setCanWrite] = useState(true);
 
@@ -1068,6 +1082,28 @@ export default function ProductionPlanning() {
                           <span className={getShipmentDisplay(lead).colorClass}>{formatDate(getShipmentDisplay(lead).date)}</span>
                         </div>
                       )}
+                      {visibleColumns.tatPlanned && (
+                        <div>
+                          <span className="text-gray-500 block text-[10px] uppercase tracking-wide">TAT Planned</span>
+                          <TatPlannedCell
+                            tatDays={ppTatDays}
+                            startDate={lead.woDate || lead.wResDate || lead.timestamp}
+                          />
+                        </div>
+                      )}
+                      {visibleColumns.tatDelay && (
+                        <div>
+                          <span className="text-gray-500 block text-[10px] uppercase tracking-wide">TAT Delay</span>
+                          <TatDelayCell
+                            status={calculateTatStatus({
+                              tatDays: ppTatDays,
+                              startDate: lead.woDate || lead.wResDate || lead.timestamp,
+                              endDate: lead.isHistory ? (lead.historyTimestamp || lead.woDespatchDate) : null,
+                              isCompleted: lead.isHistory
+                            })}
+                          />
+                        </div>
+                      )}
                       {visibleColumns.addedBy && (
                         <div>
                           <span className="text-gray-500 block text-[10px] uppercase tracking-wide">Added By</span>
@@ -1203,6 +1239,16 @@ export default function ProductionPlanning() {
                           </div>
                         </th>
                       )}
+                      {visibleColumns.tatPlanned && (
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-purple-900 bg-purple-50/50 whitespace-nowrap min-w-[95px]">
+                          TAT Planned
+                        </th>
+                      )}
+                      {visibleColumns.tatDelay && (
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-purple-900 bg-purple-50/50 whitespace-nowrap min-w-[95px]">
+                          TAT Delay
+                        </th>
+                      )}
                       {visibleColumns.qty && (
                         <th
                           className="px-4 py-3 text-center text-xs font-semibold text-gray-900 whitespace-normal cursor-pointer select-none hover:bg-gray-100 transition-colors"
@@ -1331,6 +1377,26 @@ export default function ProductionPlanning() {
                           {visibleColumns.woDate && <td className="px-4 py-3 text-left text-xs text-gray-700 whitespace-normal">{formatDate(lead.woDate)}</td>}
                           {visibleColumns.wResDate && <td className="px-4 py-3 text-left text-xs text-gray-700 whitespace-normal">{formatDate(lead.wResDate)}</td>}
                           {visibleColumns.woDespatchDate && <td className={`px-4 py-3 text-left text-xs whitespace-normal ${getShipmentDisplay(lead).colorClass}`}>{formatDate(getShipmentDisplay(lead).date)}</td>}
+                          {visibleColumns.tatPlanned && (
+                            <td className="px-4 py-3 text-left text-xs whitespace-nowrap">
+                              <TatPlannedCell
+                                tatDays={ppTatDays}
+                                startDate={lead.woDate || lead.wResDate || lead.timestamp}
+                              />
+                            </td>
+                          )}
+                          {visibleColumns.tatDelay && (
+                            <td className="px-4 py-3 text-left text-xs whitespace-nowrap">
+                              <TatDelayCell
+                                status={calculateTatStatus({
+                                  tatDays: ppTatDays,
+                                  startDate: lead.woDate || lead.wResDate || lead.timestamp,
+                                  endDate: lead.isHistory ? (lead.historyTimestamp || lead.woDespatchDate) : null,
+                                  isCompleted: lead.isHistory
+                                })}
+                              />
+                            </td>
+                          )}
                           {visibleColumns.qty && <td className="px-4 py-3 text-center text-xs font-semibold text-sky-700 bg-sky-50 whitespace-normal">{lead.qty}</td>}
                           {visibleColumns.remarks && <td className="px-4 py-3 text-left text-xs text-gray-500 max-w-[200px] whitespace-normal break-words">{lead.remarks || '-'}</td>}
 

@@ -4,6 +4,13 @@ import { ModuleType, AnyProcurementItem, NewLeatherItem, DailyLeatherItem, Mater
 import { StatusBadge } from '../common/StatusBadge';
 import { formatDate, formatDateTime, getDaysDiffText } from '../../utils/dateUtils';
 import { EmptyState } from '../common/EmptyState';
+import {
+  fetchTatConfigs,
+  getTatDays,
+  calculateTatStatus,
+  TatPlannedCell,
+  TatDelayCell,
+} from '../../../utils/tatUtils';
 
 interface ProcurementTableProps {
   module: ModuleType;
@@ -34,6 +41,28 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
 }) => {
   const [sortField, setSortField] = useState<string>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [tatConfigs, setTatConfigs] = useState<any[]>([]);
+
+  React.useEffect(() => {
+    fetchTatConfigs().then(setTatConfigs);
+  }, []);
+
+  const getModuleTatPath = (mod: ModuleType) => {
+    switch (mod) {
+      case 'new-leather':
+        return '/dashboard/procurement/new-leather';
+      case 'daily-leather':
+        return '/dashboard/procurement/daily-leather';
+      case 'material':
+        return '/dashboard/procurement/material';
+      case 'packaging':
+        return '/dashboard/procurement/packaging';
+      default:
+        return `/dashboard/procurement/${mod}`;
+    }
+  };
+
+  const currentTatDays = getTatDays(tatConfigs, getModuleTatPath(module), 4);
 
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -174,6 +203,8 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                     <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold">Status (On-time / Delayed)</th>
                   </>
                 )}
+                <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-purple-500/10 text-purple-900 font-bold">TAT Planned</th>
+                <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-purple-500/10 text-purple-900 font-bold">TAT Delay</th>
                 <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap min-w-[240px] bg-amber-500/10">Remarks / History Log</th>
               </tr>
             </thead>
@@ -333,6 +364,26 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                         </td>
                       </>
                     )}
+                    {(() => {
+                      const histStartDate = item.date || item.woDate || item.createdAt;
+                      const histEndDate = item.actualReceiptDate || item.actualMaterialReceiptDate || log.timestamp || item.updatedAt;
+                      const histTatStatus = calculateTatStatus({
+                        tatDays: currentTatDays,
+                        startDate: histStartDate,
+                        endDate: histEndDate,
+                        isCompleted: true,
+                      });
+                      return (
+                        <>
+                          <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
+                            <TatPlannedCell tatDays={currentTatDays} startDate={histStartDate} />
+                          </td>
+                          <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
+                            <TatDelayCell status={histTatStatus} />
+                          </td>
+                        </>
+                      );
+                    })()}
                     <td className="px-3 sm:px-4 py-3 text-xs text-slate-800 font-medium">
                       <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/60 leading-relaxed">
                         {log.logText}
@@ -425,6 +476,8 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                   <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-emerald-500/20 text-emerald-950 font-bold">Actual Material Receipt Date</th>
                   {/* Auto status column */}
                   <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold">Status (On-time / Delayed)</th>
+                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold text-slate-700 bg-indigo-50/70 border-l border-indigo-100">TAT Planned</th>
+                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold text-slate-700 bg-indigo-50/70 border-r border-indigo-100">TAT Delay</th>
                   {/* Yellow header column: editable */}
                   <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap min-w-[160px] bg-amber-500/10 text-amber-900">Remarks</th>
                 </>
@@ -450,6 +503,8 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                   <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-emerald-500/20 text-emerald-950 font-bold">Actual Material Receipt Date</th>
                   {/* Auto status column */}
                   <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold">Status (On-time / Delayed)</th>
+                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold text-slate-700 bg-indigo-50/70 border-l border-indigo-100">TAT Planned</th>
+                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold text-slate-700 bg-indigo-50/70 border-r border-indigo-100">TAT Delay</th>
                   {/* Yellow header column: editable */}
                   <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap min-w-[160px] bg-amber-500/10 text-amber-900">Remarks</th>
                 </>
@@ -484,6 +539,8 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                   <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-emerald-500/20 text-emerald-950 font-bold">Actual Receipt Date for Complete Order</th>
                   {/* Auto status column */}
                   <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold">Status (On-time / Delayed)</th>
+                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold text-slate-700 bg-indigo-50/70 border-l border-indigo-100">TAT Planned</th>
+                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold text-slate-700 bg-indigo-50/70 border-r border-indigo-100">TAT Delay</th>
                   {/* Green header column: editable daily */}
                   <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap min-w-[160px] bg-emerald-500/20 text-emerald-950 font-bold">Remarks</th>
                 </>
@@ -536,6 +593,8 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                   <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap">Target Date</th>
                   <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-emerald-500/20 text-emerald-950 font-bold border-l-2 border-emerald-500">Actual Receipt Date</th>
                   <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold">Status (Auto)</th>
+                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold text-slate-700 bg-indigo-50/70 border-l border-indigo-100">TAT Planned</th>
+                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold text-slate-700 bg-indigo-50/70 border-r border-indigo-100">TAT Delay</th>
                   <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap min-w-[160px] bg-amber-500/10">Remarks</th>
                 </>
               )}
@@ -628,6 +687,28 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                     <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
                       <StatusBadge status={nl.status} size="sm" />
                     </td>
+
+                    {/* TAT Planned & TAT Delay */}
+                    {(() => {
+                      const nlStartDate = nl.date || (nl as any).createdAt;
+                      const isComplete = Boolean(nl.actualReceiptDate);
+                      const tatStatus = calculateTatStatus({
+                        tatDays: currentTatDays,
+                        startDate: nlStartDate,
+                        endDate: nl.actualReceiptDate,
+                        isCompleted: isComplete,
+                      });
+                      return (
+                        <>
+                          <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
+                            <TatPlannedCell tatDays={currentTatDays} startDate={nlStartDate} />
+                          </td>
+                          <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
+                            <TatDelayCell status={tatStatus} />
+                          </td>
+                        </>
+                      );
+                    })()}
 
                     {/* 10. Remarks */}
                     <td className="px-3 sm:px-4 py-3 text-xs text-slate-700 max-w-[220px] truncate bg-amber-500/5" title={latestRemark}>
@@ -733,6 +814,28 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                     <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
                       <StatusBadge status={mat.status} size="sm" />
                     </td>
+
+                    {/* TAT Planned & TAT Delay */}
+                    {(() => {
+                      const matStartDate = mat.woDate || mat.indentReceiptDate || mat.date || (mat as any).createdAt;
+                      const isComplete = Boolean(mat.actualReceiptDate);
+                      const tatStatus = calculateTatStatus({
+                        tatDays: currentTatDays,
+                        startDate: matStartDate,
+                        endDate: mat.actualReceiptDate,
+                        isCompleted: isComplete,
+                      });
+                      return (
+                        <>
+                          <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
+                            <TatPlannedCell tatDays={currentTatDays} startDate={matStartDate} />
+                          </td>
+                          <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
+                            <TatDelayCell status={tatStatus} />
+                          </td>
+                        </>
+                      );
+                    })()}
 
                     {/* 13. Remarks (Yellow column / Editable) */}
                     <td className="px-3 sm:px-4 py-3 text-xs text-slate-700 max-w-[220px] truncate bg-amber-500/5" title={latestRemark}>
@@ -876,6 +979,28 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                     <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
                       <StatusBadge status={dl.status} size="sm" />
                     </td>
+
+                    {/* TAT Planned & TAT Delay */}
+                    {(() => {
+                      const dlStartDate = dl.woDate || dl.indentReceiptDate || dl.date || (dl as any).createdAt;
+                      const isComplete = Boolean(dl.actualReceiptDate);
+                      const tatStatus = calculateTatStatus({
+                        tatDays: currentTatDays,
+                        startDate: dlStartDate,
+                        endDate: dl.actualReceiptDate,
+                        isCompleted: isComplete,
+                      });
+                      return (
+                        <>
+                          <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
+                            <TatPlannedCell tatDays={currentTatDays} startDate={dlStartDate} />
+                          </td>
+                          <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
+                            <TatDelayCell status={tatStatus} />
+                          </td>
+                        </>
+                      );
+                    })()}
 
                     {/* 20. Remarks (Green background column / Editable daily) */}
                     <td className="px-3 sm:px-4 py-3 text-xs text-slate-700 max-w-[220px] truncate bg-emerald-500/10" title={latestRemark}>

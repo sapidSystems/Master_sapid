@@ -9,6 +9,7 @@ export default function KanbanCard({
   badgeColor = "bg-gray-100 text-gray-700 border-gray-200",
   status,
   statusColor = "bg-gray-100 text-gray-700",
+  cardStyle = "",
   datePrimary,
   dateSecondary,
   datePrimaryLabel = "Due",
@@ -20,10 +21,13 @@ export default function KanbanCard({
   customSlot,
   className = "",
 }) {
+  const defaultCardStyle = "bg-white border border-gray-200/90 shadow-xs hover:shadow-md hover:border-brand-300";
+  const activeCardStyle = cardStyle || defaultCardStyle;
+
   return (
     <div
       onClick={onClick}
-      className={`group relative bg-white rounded-xl border border-gray-200/90 p-4 shadow-xs hover:shadow-md hover:border-brand-300 transition-all duration-200 cursor-pointer flex flex-col gap-2.5 ${className}`}
+      className={`group relative rounded-xl p-4 transition-all duration-200 cursor-pointer flex flex-col gap-2.5 ${activeCardStyle} ${className}`}
     >
       {/* Top Header Row */}
       <div className="flex items-center justify-between gap-2">

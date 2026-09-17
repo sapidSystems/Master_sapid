@@ -2,7 +2,8 @@ import supabase from "../../SupabaseClient";
 
 export const fetchNotificationsApi = async (role, userId) => {
   try {
-    const roleLower = role.toLowerCase();
+    const roleLower = (role || "").toLowerCase();
+    const currentUserName = (localStorage.getItem("user-name") || "").toLowerCase();
     
     // 1. Fetch relevant notifications
     let query = supabase
@@ -11,8 +12,16 @@ export const fetchNotificationsApi = async (role, userId) => {
       .order("created_at", { ascending: false });
 
     // Hierarchy filter
-    if (roleLower !== "admin" && localStorage.getItem("user-name")?.toLowerCase() !== "admin") {
-      query = query.in("role_target", ["all", roleLower]);
+    if (roleLower !== "admin" && currentUserName !== "admin") {
+      const allowedTargets = ["all", roleLower];
+      if (currentUserName) {
+        allowedTargets.push(currentUserName);
+        allowedTargets.push(`@${currentUserName}`);
+      }
+      if (userId) {
+        allowedTargets.push(`user_${userId}`);
+      }
+      query = query.in("role_target", allowedTargets);
     }
 
     const { data: notifications, error: nError } = await query;

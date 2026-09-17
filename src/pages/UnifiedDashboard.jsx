@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import AdminLayout from "../components/layout/AdminLayout";
 import useUnifiedCounts from "../hooks/useUnifiedCounts";
@@ -8,18 +8,17 @@ import {
   procurementConfig,
   productionConfig,
   sampleConfig,
-  checklistConfig,
 } from "../components/kanban/systemConfigs";
 import {
-  ClipboardList,
   Database,
   TrendingUp,
   Zap,
   ArrowRight,
-  Sparkles,
   CheckCircle2,
   Clock,
   ChevronRight,
+  ChevronDown,
+  Layers,
   RefreshCw,
   SlidersHorizontal,
 } from "lucide-react";
@@ -29,16 +28,13 @@ export default function UnifiedDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const systemQuery = searchParams.get("system");
 
-  // Selected system state (defaults to 'procurement' or system from query param)
+  // Selected system state (defaults to 'sample' or system from query param)
   const [activeSystem, setActiveSystem] = useState(() => {
-    if (systemQuery && ALL_SYSTEM_CONFIGS[systemQuery]) {
+    if (systemQuery && ALL_SYSTEM_CONFIGS[systemQuery] && systemQuery !== "checklist") {
       return systemQuery;
     }
-    return "checklist";
+    return "sample";
   });
-
-  const username = localStorage.getItem("user-name") || "User";
-  const userRole = localStorage.getItem("role") || "Staff";
 
   // Single source of truth for counts
   const { menuCounts, systemTotals, loading: countsLoading, refreshCounts } = useUnifiedCounts();
@@ -46,16 +42,33 @@ export default function UnifiedDashboard() {
   // Active board state keyed by system to prevent cross-system item mismatches
   const [systemData, setSystemData] = useState({});
   const [isBoardLoading, setIsBoardLoading] = useState(false);
+  const [isSystemDropdownOpen, setIsSystemDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsSystemDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Sync activeSystem with query params
   useEffect(() => {
-    if (systemQuery && ALL_SYSTEM_CONFIGS[systemQuery] && systemQuery !== activeSystem) {
+    if (systemQuery && ALL_SYSTEM_CONFIGS[systemQuery] && systemQuery !== "checklist" && systemQuery !== activeSystem) {
       setActiveSystem(systemQuery);
     }
-  }, [systemQuery]);
+  }, [systemQuery, activeSystem]);
 
   // Load items for the active system
   const loadActiveSystemItems = useCallback(async (sysKey) => {
+    if (sysKey === "checklist") {
+      setActiveSystem("sample");
+      return;
+    }
     const config = ALL_SYSTEM_CONFIGS[sysKey];
     if (!config || !config.fetchItems) return;
 
@@ -85,23 +98,8 @@ export default function UnifiedDashboard() {
     await loadActiveSystemItems(activeSystem);
   };
 
-  // Systems Definition for the 4 Tiles
+  // Systems Definition for the 3 Tiles (Sample, Production, Procurement)
   const systemTiles = [
-    {
-      id: "checklist",
-      name: "Checklist",
-      shortName: "Checklist",
-      icon: ClipboardList,
-      count: systemTotals.checklist,
-      badgeLabel: "Pending Tasks",
-      colorClass: "from-purple-600 to-indigo-600 text-purple-600",
-      bgLight: "bg-purple-50/70 border-purple-200/80 hover:border-purple-400",
-      badgeColor: "bg-purple-100 text-purple-800 border-purple-200",
-      iconBg: "bg-purple-600 text-white",
-      description: "Routine tasks, maintenance, repairs, and approvals.",
-      stagesCount: "5 Stages",
-      stagePreview: "Today • Pending • Overdue • Approval • Done",
-    },
     {
       id: "sample",
       name: "Sample System",
@@ -149,143 +147,155 @@ export default function UnifiedDashboard() {
     },
   ];
 
-  const activeConfig = ALL_SYSTEM_CONFIGS[activeSystem] || checklistConfig;
+  const activeConfig = ALL_SYSTEM_CONFIGS[activeSystem] || sampleConfig;
 
   return (
     <AdminLayout>
       <div className="w-full min-h-screen bg-slate-50/50 p-4 sm:p-6 lg:p-8 space-y-6">
-        {/* Top Header / Welcome Banner */}
-        <div className="bg-white rounded-3xl border border-slate-200/80 p-6 shadow-soft-sm relative overflow-hidden">
-          <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-gradient-to-bl from-purple-100/50 via-blue-100/30 to-transparent rounded-full pointer-events-none blur-2xl"></div>
-
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 mb-1.5">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">
-                  <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-                  Unified App Home
-                </span>
-                <span className="text-xs text-slate-400 font-medium">
-                  {new Date().toLocaleDateString("en-US", {
-                    weekday: "long",
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                Welcome back, <span className="capitalize">{username}</span>
-              </h1>
-              <p className="text-sm text-slate-500 mt-1 max-w-2xl">
-                Unified overview of all operational pipelines. Select a system tile to inspect its Kanban board or jump directly to details.
-              </p>
-            </div>
-
-            {/* Total Pending Counter Pill */}
-            <div className="flex items-center gap-3">
-              <div className="bg-slate-900 text-white px-5 py-3.5 rounded-2xl shadow-soft-md flex items-center gap-4">
+        {/* Top Header Bar: Total Active Items on the left, Core Operational Systems Dropdown on the right */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 sm:p-4 shadow-soft-sm relative z-30">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            {/* Left Side: Total Active Items & Core Operational Systems Title */}
+            <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
+              {/* Total Active Items Badge */}
+              <div className="bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-soft-sm flex items-center gap-3.5">
                 <div>
-                  <div className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                     Total Active Items
                   </div>
-                  <div className="text-2xl font-black tracking-tight">
-                    {systemTotals.total}
+                  <div className="text-xl sm:text-2xl font-black tracking-tight leading-none mt-0.5">
+                    {(systemTotals.sample || 0) + (systemTotals.production || 0) + (systemTotals.procurement || 0)}
                   </div>
                 </div>
                 <button
                   onClick={handleRefreshAll}
                   disabled={countsLoading || isBoardLoading}
-                  className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors disabled:opacity-50"
+                  className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors disabled:opacity-50"
                   title="Refresh counts and boards"
                 >
                   <RefreshCw
-                    className={`w-4 h-4 ${countsLoading || isBoardLoading ? "animate-spin" : ""}`}
+                    className={`w-3.5 h-3.5 ${countsLoading || isBoardLoading ? "animate-spin" : ""}`}
                   />
                 </button>
               </div>
-            </div>
-          </div>
-        </div>
 
-        {/* Step 1: 4 System Tiles (Home Dashboard) */}
-        <div>
-          <div className="flex items-center justify-between mb-3 px-1">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              Core Operational Systems
-            </h2>
-            <span className="text-xs text-slate-400">
-              Click any tile to open its Kanban board
-            </span>
-          </div>
+              {/* Subtle Divider */}
+              <div className="hidden sm:block h-8 w-px bg-slate-200"></div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {systemTiles.map((sys) => {
-              const isSelected = activeSystem === sys.id;
-              const Icon = sys.icon;
-
-              return (
-                <div
-                  key={sys.id}
-                  onClick={() => handleSelectSystem(sys.id)}
-                  className={`group relative rounded-2xl p-5 border transition-all duration-200 cursor-pointer flex flex-col justify-between ${
-                    isSelected
-                      ? "bg-white border-brand-500 shadow-md ring-2 ring-brand-500/20"
-                      : `${sys.bgLight} bg-white shadow-soft-sm hover:shadow-md hover:-translate-y-0.5`
-                  }`}
-                >
-                  <div>
-                    {/* Tile Header: Icon & Count Badge */}
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <div
-                        className={`w-11 h-11 rounded-xl flex items-center justify-center shadow-soft-sm ${sys.iconBg}`}
-                      >
-                        <Icon className="w-5 h-5" />
-                      </div>
-
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black border shadow-2xs ${
-                            sys.count > 0 ? "bg-rose-50 text-rose-700 border-rose-200" : "bg-slate-100 text-slate-600 border-slate-200"
-                          }`}
-                        >
-                          <span className={`w-1.5 h-1.5 rounded-full ${sys.count > 0 ? "bg-rose-500" : "bg-slate-400"}`}></span>
-                          {sys.count}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* System Name */}
-                    <h3 className="text-base font-bold text-slate-900 group-hover:text-brand-600 transition-colors leading-snug">
-                      {sys.name}
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-1 line-clamp-2">
-                      {sys.description}
-                    </p>
-                  </div>
-
-                  {/* Tile Footer */}
-                  <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs">
-                    <span className="text-[11px] font-semibold text-slate-500 bg-slate-100/90 px-2 py-0.5 rounded-md">
-                      {sys.stagesCount}
-                    </span>
-
-                    <span
-                      className={`inline-flex items-center gap-1 font-bold text-xs transition-colors ${
-                        isSelected ? "text-brand-600" : "text-slate-500 group-hover:text-brand-600"
-                      }`}
-                    >
-                      <span>{isSelected ? "Active Board" : "Open Board"}</span>
-                      <ArrowRight
-                        className={`w-3.5 h-3.5 transition-transform group-hover:translate-x-1 ${
-                          isSelected ? "translate-x-0.5" : ""
-                        }`}
-                      />
-                    </span>
-                  </div>
+              {/* Core Operational Systems Heading */}
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-2xs">
+                  <Layers className="w-4 h-4" />
                 </div>
-              );
-            })}
+                <div>
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    Core Operational Systems
+                  </h2>
+                  <p className="text-sm font-bold text-slate-800 leading-tight">
+                    Select a pipeline to inspect
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Side: Dropdown Selector Component */}
+            <div className="relative" ref={dropdownRef}>
+              {(() => {
+                const currentSystem = systemTiles.find((s) => s.id === activeSystem) || systemTiles[0];
+                const CurrentIcon = currentSystem.icon;
+
+                return (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setIsSystemDropdownOpen((prev) => !prev)}
+                      className="flex items-center justify-between gap-3 min-w-[280px] sm:min-w-[340px] bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-xl px-4 py-2.5 text-left transition-all shadow-2xs hover:border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${currentSystem.iconBg}`}>
+                          <CurrentIcon className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold text-slate-900 truncate">
+                            {currentSystem.name}
+                          </div>
+                          <div className="text-[11px] text-slate-500 truncate">
+                            {currentSystem.stagesCount} • {currentSystem.count || 0} active
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-black bg-rose-50 text-rose-700 border border-rose-200">
+                          {currentSystem.count}
+                        </span>
+                        <ChevronDown
+                          className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${
+                            isSystemDropdownOpen ? "rotate-180 text-brand-600" : ""
+                          }`}
+                        />
+                      </div>
+                    </button>
+
+                    {/* Dropdown Options Popup */}
+                    {isSystemDropdownOpen && (
+                      <div className="absolute right-0 mt-2 w-full sm:w-[360px] bg-white rounded-2xl border border-slate-200 shadow-xl p-1.5 space-y-1 z-50 animate-in fade-in-0 zoom-in-95 duration-150">
+                        <div className="px-3 py-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 mb-1">
+                          Select Pipeline
+                        </div>
+                        {systemTiles.map((sys) => {
+                          const isSelected = activeSystem === sys.id;
+                          const Icon = sys.icon;
+                          return (
+                            <button
+                              key={sys.id}
+                              type="button"
+                              onClick={() => {
+                                handleSelectSystem(sys.id);
+                                setIsSystemDropdownOpen(false);
+                              }}
+                              className={`flex items-center justify-between w-full p-2.5 rounded-xl text-left transition-all ${
+                                isSelected
+                                  ? "bg-indigo-50/80 text-indigo-950 font-semibold border border-indigo-100"
+                                  : "hover:bg-slate-50 text-slate-700 hover:text-slate-900"
+                              }`}
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${sys.iconBg}`}>
+                                  <Icon className="w-4 h-4" />
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="text-xs font-bold truncate flex items-center gap-2">
+                                    <span>{sys.name}</span>
+                                    {isSelected && (
+                                      <span className="text-[10px] text-indigo-600 font-bold bg-white px-1.5 py-0.5 rounded-md border border-indigo-200">
+                                        Active
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[11px] text-slate-500 line-clamp-1">
+                                    {sys.description}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                                <span className="text-[11px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
+                                  {sys.count}
+                                </span>
+                                {isSelected && (
+                                  <CheckCircle2 className="w-4 h-4 text-indigo-600" />
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
           </div>
         </div>
 
