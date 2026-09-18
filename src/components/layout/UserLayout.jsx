@@ -94,27 +94,27 @@ const UserLayout = ({ children }) => {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-green-50 to-teal-50 dark:from-gray-900 dark:to-teal-950">
+    <div className="flex h-screen overflow-hidden bg-[#FAF6F0] selection:bg-gold-200 selection:text-leather-950">
       {/* Sidebar for desktop */}
-      <aside className="hidden w-64 flex-shrink-0 border-r border-green-200 dark:border-teal-800 bg-white dark:bg-gray-950 md:flex md:flex-col">
-        <div className="flex h-14 items-center border-b border-green-200 dark:border-teal-800 px-4 bg-gradient-to-r from-green-100 to-teal-100 dark:from-green-900 dark:to-teal-900">
+      <aside className="hidden w-64 flex-shrink-0 border-r border-leather-200 bg-white md:flex md:flex-col">
+        <div className="flex h-14 items-center border-b border-gold-400/20 px-4 bg-gradient-to-r from-leather-800 to-leather-700">
           <Link
             to={isAdmin ? "/admin/dashboard" : "/user/dashboard"}
-            className="flex items-center gap-2 font-semibold text-green-700 dark:text-green-300"
+            className="flex items-center gap-2.5 font-bold text-cream-100"
           >
-            <img src={aceLogo} alt="TaskDesk Logo" className="h-8 w-8 rounded-full object-cover border border-green-200" />
-            <span>TaskDesk</span>
+            <img src={aceLogo} alt="Sapid Design Logo" className="h-8 w-8 rounded-full object-cover border border-gold-400/50 ring-1 ring-gold-400/30" />
+            <span className="tracking-wide font-serif">Sapid Design</span>
           </Link>
         </div>
-        <nav className="flex-1 overflow-y-auto p-2">
+        <nav className="flex-1 overflow-y-auto thin-scrollbar p-2">
           <ul className="space-y-1">
             {routes.map((route) => (
               <li key={route.href}>
                 <Link
                   to={route.href}
-                  className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${location.pathname === route.href
-                    ? "bg-gradient-to-r from-green-100 to-teal-100 text-green-700 dark:from-green-900 dark:to-teal-900 dark:text-green-300"
-                    : "text-gray-700 hover:bg-green-50 dark:text-gray-300 dark:hover:bg-gray-800"
+                  className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all ${location.pathname === route.href
+                    ? "bg-gradient-to-r from-leather-800 to-leather-700 text-cream-100 shadow-xs border-l-4 border-gold-400 font-semibold"
+                    : "text-leather-900 hover:bg-cream-100 hover:text-leather-950"
                     }`}
                 >
                   {getIcon(route.icon)}
@@ -124,10 +124,10 @@ const UserLayout = ({ children }) => {
             ))}
           </ul>
         </nav>
-        <div className="border-t border-green-200 dark:border-teal-800 p-4 bg-gradient-to-r from-green-50 to-teal-50 dark:from-green-950 dark:to-teal-950">
+        <div className="border-t border-leather-200 p-4 bg-cream-100/60">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-gradient-to-r from-green-500 to-teal-500 flex items-center justify-center overflow-hidden border border-green-100">
+              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-leather-700 to-leather-800 flex items-center justify-center overflow-hidden border border-gold-400/40 text-cream-100 shadow-xs">
                 {profileImage ? (
                   <img
                     src={profileImage}
@@ -139,23 +139,24 @@ const UserLayout = ({ children }) => {
                     }}
                   />
                 ) : (
-                  <span className="text-sm font-medium text-white">
+                  <span className="text-sm font-bold text-cream-100">
                     {username ? username.charAt(0).toUpperCase() : 'U'}
                   </span>
                 )}
               </div>
               <div>
-                <p className="text-sm font-medium text-green-700 dark:text-green-300">
+                <p className="text-sm font-bold text-leather-900">
                   {isAdmin ? 'Admin' : 'Staff Member'}
                 </p>
-                <p className="text-xs text-green-600 dark:text-green-400">
+                <p className="text-xs text-leather-600">
                   {username}
                 </p>
               </div>
             </div>
             <button
               onClick={handleLogout}
-              className="text-green-700 hover:text-green-900 dark:text-green-300 dark:hover:text-green-100 p-1 rounded-md hover:bg-green-100 dark:hover:bg-green-800 transition-colors"
+              className="text-leather-700 hover:text-leather-950 p-1.5 rounded-lg hover:bg-cream-200 transition-colors"
+              title="Log out"
             >
               <LogOut className="h-4 w-4" />
               <span className="sr-only">Log out</span>
@@ -166,33 +167,33 @@ const UserLayout = ({ children }) => {
 
       {/* Mobile sidebar backdrop */}
       <div
-        className={`fixed inset-0 z-50 bg-black bg-opacity-50 md:hidden ${isMobileMenuOpen ? "block" : "hidden"}`}
+        className={`fixed inset-0 z-50 bg-leather-950/60 backdrop-blur-xs md:hidden ${isMobileMenuOpen ? "block" : "hidden"}`}
         onClick={() => setIsMobileMenuOpen(false)}
       ></div>
 
       {/* Mobile sidebar */}
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-950 transform ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"} transition-transform duration-200 ease-in-out md:hidden`}
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white transform ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"} transition-transform duration-200 ease-in-out md:hidden shadow-2xl flex flex-col`}
       >
-        <div className="flex h-14 items-center border-b border-green-200 dark:border-teal-800 px-4 bg-gradient-to-r from-green-100 to-teal-100 dark:from-green-900 dark:to-teal-900">
+        <div className="flex h-14 items-center border-b border-gold-400/20 px-4 bg-gradient-to-r from-leather-800 to-leather-700">
           <Link
             to={isAdmin ? "/admin/dashboard" : "/user/dashboard"}
-            className="flex items-center gap-2 font-semibold text-green-700 dark:text-green-300"
+            className="flex items-center gap-2.5 font-bold text-cream-100"
             onClick={() => setIsMobileMenuOpen(false)}
           >
-            <img src={aceLogo} alt="TaskDesk Logo" className="h-8 w-8 rounded-full object-cover border border-green-200" />
-            <span>TaskDesk</span>
+            <img src={aceLogo} alt="Sapid Design Logo" className="h-8 w-8 rounded-full object-cover border border-gold-400/50 ring-1 ring-gold-400/30" />
+            <span className="tracking-wide font-serif">Sapid Design</span>
           </Link>
         </div>
-        <nav className="flex-1 overflow-y-auto p-2 bg-white dark:bg-gray-950">
+        <nav className="flex-1 overflow-y-auto thin-scrollbar p-2 bg-white">
           <ul className="space-y-1">
             {routes.map((route) => (
               <li key={route.href}>
                 <Link
                   to={route.href}
-                  className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${location.pathname === route.href
-                    ? "bg-gradient-to-r from-green-100 to-teal-100 text-green-700 dark:from-green-900 dark:to-teal-900 dark:text-green-300"
-                    : "text-gray-700 hover:bg-green-50 dark:text-gray-300 dark:hover:bg-gray-800"
+                  className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all ${location.pathname === route.href
+                    ? "bg-gradient-to-r from-leather-800 to-leather-700 text-cream-100 shadow-xs border-l-4 border-gold-400 font-semibold"
+                    : "text-leather-900 hover:bg-cream-100 hover:text-leather-950"
                     }`}
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
@@ -203,30 +204,30 @@ const UserLayout = ({ children }) => {
             ))}
           </ul>
         </nav>
-        <div className="border-t border-green-200 dark:border-teal-800 p-4 bg-gradient-to-r from-green-50 to-teal-50 dark:from-green-950 dark:to-teal-950">
+        <div className="border-t border-leather-200 p-4 bg-cream-100/60">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-gradient-to-r from-green-500 to-teal-500 flex items-center justify-center overflow-hidden border border-green-100">
+              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-leather-700 to-leather-800 flex items-center justify-center overflow-hidden border border-gold-400/40 text-cream-100 shadow-xs">
                 {profileImage ? (
                   <img src={profileImage} alt={username} className="h-full w-full object-cover" />
                 ) : (
-                  <span className="text-sm font-medium text-white">
+                  <span className="text-sm font-bold text-cream-100">
                     {username ? username.charAt(0).toUpperCase() : 'U'}
                   </span>
                 )}
               </div>
               <div>
-                <p className="text-sm font-medium text-green-700 dark:text-green-300">
+                <p className="text-sm font-bold text-leather-900">
                   {isAdmin ? 'Admin' : 'Staff Member'}
                 </p>
-                <p className="text-xs text-green-600 dark:text-green-400">
+                <p className="text-xs text-leather-600">
                   {username}
                 </p>
               </div>
             </div>
             <button
               onClick={handleLogout}
-              className="text-green-700 hover:text-green-900 dark:text-green-300 dark:hover:text-green-100 p-1 rounded-md hover:bg-green-100 dark:hover:bg-green-800 transition-colors"
+              className="text-leather-700 hover:text-leather-950 p-1.5 rounded-lg hover:bg-cream-200 transition-colors"
             >
               <LogOut className="h-4 w-4" />
               <span className="sr-only">Log out</span>
@@ -236,31 +237,31 @@ const UserLayout = ({ children }) => {
       </div>
 
       {/* Main content */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-14 items-center justify-between border-b border-green-200 dark:border-teal-800 bg-white dark:bg-gray-950 px-4 md:px-6">
+      <div className="flex flex-1 flex-col overflow-hidden bg-[#FAF6F0]">
+        <header className="flex h-14 items-center justify-between border-b border-leather-200 bg-white px-4 md:px-6 shadow-xs">
           <button
-            className="md:hidden text-green-700 dark:text-green-300 p-1 rounded-md hover:bg-green-100 dark:hover:bg-green-800"
+            className="md:hidden text-leather-800 p-1.5 rounded-lg hover:bg-cream-100 transition-colors"
             onClick={() => setIsMobileMenuOpen(true)}
           >
             <Menu className="h-5 w-5" />
             <span className="sr-only">Toggle menu</span>
           </button>
-          <h1 className="text-lg font-semibold text-green-700 dark:text-green-300">
+          <h1 className="text-lg font-bold text-leather-900 font-serif">
             {isAdmin ? 'Admin Dashboard' : 'Staff Dashboard'}
           </h1>
         </header>
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+        <main className="flex-1 overflow-y-auto thin-scrollbar p-4 md:p-6 bg-[#FAF6F0]">
           {children}
         </main>
 
-        <div className="bg-gradient-to-r from-green-600 to-teal-600 h-5 flex items-center justify-center px-4 shadow-md z-40">
+        <div className="bg-gradient-to-r from-leather-950 via-leather-900 to-leather-950 h-5 flex items-center justify-center px-4 shadow-md z-40 border-t border-gold-500/30">
           <a
             href="https://www.botivate.in"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[9px] text-white/90 font-medium tracking-[0.2em] uppercase hover:underline hover:text-white transition-colors"
+            className="text-[9px] text-cream-200 font-medium tracking-[0.2em] uppercase hover:underline hover:text-gold-300 transition-colors"
           >
-            Powered by <span className="font-bold">Botivate</span>
+            Powered by <span className="font-bold text-gold-400">Botivate</span>
           </a>
         </div>
       </div>

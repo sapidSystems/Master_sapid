@@ -93,16 +93,16 @@ export default function KanbanCard({
       {/* Dates & Assignee Footer */}
       <div className="flex items-center justify-between pt-1 text-xs text-gray-500 mt-auto border-t border-gray-50">
         <div className="flex items-center gap-3">
-          {datePrimary && (
-            <div className="flex items-center gap-1 text-[11px]" title={`${datePrimaryLabel}: ${datePrimary}`}>
-              <Calendar className="w-3.5 h-3.5 text-gray-400" />
-              <span>{datePrimary}</span>
-            </div>
-          )}
           {dateSecondary && (
             <div className="flex items-center gap-1 text-[11px]" title={`${dateSecondaryLabel}: ${dateSecondary}`}>
               <Clock className="w-3.5 h-3.5 text-gray-400" />
               <span>{dateSecondary}</span>
+            </div>
+          )}
+          {datePrimary && (
+            <div className="flex items-center gap-1 text-[11px]" title={`${datePrimaryLabel}: ${datePrimary}`}>
+              <Calendar className="w-3.5 h-3.5 text-gray-400" />
+              <span>{datePrimary}</span>
             </div>
           )}
         </div>

@@ -137,23 +137,23 @@ export default function MobileBottomNav({
       style={{
         paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)'
       }}
-      className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200/90 shadow-[0_-4px_20px_rgba(0,0,0,0.07)]"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-leather-200/90 shadow-[0_-4px_20px_rgba(74,46,31,0.08)]"
     >
       <div className="flex items-stretch h-14">
         {/* SEPARATE CONTROL FOR SYSTEM SWITCHING (LEVEL 1 LAUNCHER TOGGLE) */}
-        <div className="flex items-center pl-1.5 pr-2 border-r border-slate-200/80 my-1.5 flex-shrink-0">
+        <div className="flex items-center pl-1.5 pr-2 border-r border-leather-200/80 my-1.5 flex-shrink-0">
           <button
             type="button"
             onClick={onOpenLauncher}
             className={`group flex flex-col items-center justify-center h-full px-2.5 rounded-xl transition-all active:scale-95 cursor-pointer ${
               isLauncherOpen
-                ? 'bg-slate-900 text-white shadow-xs font-bold'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                ? 'bg-leather-800 text-cream-100 shadow-xs font-bold border border-gold-400/30'
+                : 'text-leather-700 hover:text-leather-950 hover:bg-cream-100'
             }`}
             title="Switch Systems"
             aria-label="Switch Systems"
           >
-            <LayoutGrid size={19} strokeWidth={isLauncherOpen ? 2.5 : 2} />
+            <LayoutGrid size={19} strokeWidth={isLauncherOpen ? 2.5 : 2} className={isLauncherOpen ? 'text-gold-300' : 'text-gold-600'} />
             <span className="text-[10px] font-bold tracking-tight mt-0.5 whitespace-nowrap">
               Systems
             </span>
@@ -180,18 +180,18 @@ export default function MobileBottomNav({
                   systemPages.length <= 4 ? 'flex-1 min-w-0' : 'min-w-[62px]'
                 } ${
                   isActive
-                    ? 'text-blue-600'
-                    : 'text-slate-500 hover:text-slate-800'
+                    ? 'text-leather-900'
+                    : 'text-leather-600 hover:text-leather-900'
                 }`}
               >
                 <div
                   className={`relative flex items-center justify-center w-9 h-6 rounded-lg transition-all ${
                     isActive
-                      ? 'bg-blue-50 text-blue-600 font-bold scale-105 shadow-xs'
-                      : 'text-slate-400 group-hover:text-slate-600'
+                      ? 'bg-cream-100 text-leather-800 border border-gold-400/40 font-bold scale-105 shadow-xs'
+                      : 'text-leather-400 group-hover:text-leather-600'
                   }`}
                 >
-                  <PageIcon size={18} strokeWidth={isActive ? 2.5 : 1.9} />
+                  <PageIcon size={18} strokeWidth={isActive ? 2.5 : 1.9} className={isActive ? 'text-leather-800' : ''} />
                   {page.badge && (
                     <span className="absolute -top-1 -right-1 min-w-[15px] h-[15px] px-0.5 text-[9px] font-extrabold text-white bg-rose-500 rounded-full flex items-center justify-center shadow-xs">
                       {page.badge}
@@ -201,14 +201,14 @@ export default function MobileBottomNav({
 
                 <span
                   className={`text-[10px] tracking-tight leading-tight mt-0.5 truncate max-w-[76px] ${
-                    isActive ? 'font-black text-blue-600' : 'font-medium text-slate-500'
+                    isActive ? 'font-black text-leather-900' : 'font-medium text-leather-600'
                   }`}
                 >
                   {page.label}
                 </span>
 
                 {isActive && (
-                  <span className="w-1.5 h-1 rounded-full bg-blue-600 mt-0.5" />
+                  <span className="w-1.5 h-1 rounded-full bg-gold-500 mt-0.5" />
                 )}
               </Link>
             );

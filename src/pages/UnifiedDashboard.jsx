@@ -5,22 +5,16 @@ import useUnifiedCounts from "../hooks/useUnifiedCounts";
 import KanbanBoard from "../components/kanban/KanbanBoard";
 import {
   ALL_SYSTEM_CONFIGS,
-  procurementConfig,
-  productionConfig,
   sampleConfig,
 } from "../components/kanban/systemConfigs";
 import {
   Database,
   TrendingUp,
   Zap,
-  ArrowRight,
   CheckCircle2,
-  Clock,
-  ChevronRight,
   ChevronDown,
   Layers,
   RefreshCw,
-  SlidersHorizontal,
 } from "lucide-react";
 
 export default function UnifiedDashboard() {
@@ -300,44 +294,10 @@ export default function UnifiedDashboard() {
         </div>
 
         {/* Step 2: Per-System Kanban Board View */}
-        <div className="bg-white rounded-3xl border border-slate-200/80 p-5 sm:p-6 shadow-soft-sm space-y-4">
-          {/* Board Selector Tabs */}
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
-            <div className="flex items-center gap-1.5 bg-slate-100/80 p-1 rounded-2xl overflow-x-auto max-w-full">
-              {systemTiles.map((sys) => {
-                const isSelected = activeSystem === sys.id;
-                const Icon = sys.icon;
-                return (
-                  <button
-                    key={sys.id}
-                    onClick={() => handleSelectSystem(sys.id)}
-                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                      isSelected
-                        ? "bg-white text-slate-900 shadow-soft-sm"
-                        : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
-                    }`}
-                  >
-                    <Icon className={`w-3.5 h-3.5 ${isSelected ? "text-brand-600" : "text-slate-400"}`} />
-                    <span>{sys.shortName}</span>
-                    <span
-                      className={`ml-1 text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                        isSelected ? "bg-brand-50 text-brand-700" : "bg-slate-200/70 text-slate-600"
-                      }`}
-                    >
-                      {sys.count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <span className="text-xs text-slate-400 font-medium hidden sm:inline">
-              Showing pipeline stages for <strong className="text-slate-700">{activeConfig.title}</strong>
-            </span>
-          </div>
-
+        <div className="bg-white rounded-3xl border border-slate-200/80 p-5 sm:p-6 shadow-soft-sm">
           {/* Config-Driven Reusable Kanban Board Component */}
           <KanbanBoard
+            pipelineId={activeSystem}
             title={activeConfig.title}
             subtitle={activeConfig.subtitle}
             systemIcon={activeConfig.icon}

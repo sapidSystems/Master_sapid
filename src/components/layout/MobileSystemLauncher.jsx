@@ -77,10 +77,10 @@ export default function MobileSystemLauncher({
       subtitle: 'All Pipelines & Home',
       href: '/dashboard',
       icon: LayoutGrid,
-      iconColor: 'text-indigo-600',
-      bgColor: 'bg-indigo-50',
-      borderColor: 'border-indigo-200/70',
-      activeBorder: 'ring-2 ring-indigo-500 border-indigo-500',
+      iconColor: 'text-leather-800',
+      bgColor: 'bg-cream-100',
+      borderColor: 'border-leather-200',
+      activeBorder: 'ring-2 ring-gold-400 border-leather-700',
       badge: null,
       isActive: location.pathname === '/dashboard',
       accessible: true
@@ -91,10 +91,10 @@ export default function MobileSystemLauncher({
       subtitle: 'Operations & Tasks',
       href: '/dashboard/admin',
       icon: ClipboardList,
-      iconColor: 'text-purple-600',
-      bgColor: 'bg-purple-50',
-      borderColor: 'border-purple-200/70',
-      activeBorder: 'ring-2 ring-purple-500 border-purple-500',
+      iconColor: 'text-leather-700',
+      bgColor: 'bg-cream-100',
+      borderColor: 'border-leather-200',
+      activeBorder: 'ring-2 ring-gold-400 border-leather-700',
       badge:
         ((menuCounts.delegation || 0) +
           (menuCounts.task || 0) +
@@ -109,10 +109,10 @@ export default function MobileSystemLauncher({
       subtitle: 'Sampling & R&D',
       href: '/dashboard/sample-dashboard',
       icon: Database,
-      iconColor: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-      borderColor: 'border-blue-200/70',
-      activeBorder: 'ring-2 ring-blue-500 border-blue-500',
+      iconColor: 'text-gold-700',
+      bgColor: 'bg-gold-50/70',
+      borderColor: 'border-gold-200',
+      activeBorder: 'ring-2 ring-gold-400 border-gold-600',
       badge: menuCounts.sampleManagement || null,
       isActive: isSamplePath(location.pathname),
       accessible: hasAccess('/dashboard/sample-dashboard') || hasAccess('/dashboard/sample-management')
@@ -123,10 +123,10 @@ export default function MobileSystemLauncher({
       subtitle: 'Bulk Orders & Plan',
       href: '/dashboard/bulk-dashboard',
       icon: TrendingUp,
-      iconColor: 'text-emerald-600',
-      bgColor: 'bg-emerald-50',
-      borderColor: 'border-emerald-200/70',
-      activeBorder: 'ring-2 ring-emerald-500 border-emerald-500',
+      iconColor: 'text-leather-700',
+      bgColor: 'bg-cream-100',
+      borderColor: 'border-leather-200',
+      activeBorder: 'ring-2 ring-gold-400 border-leather-700',
       badge: menuCounts.productionPlanning || null,
       isActive: isBulkPath(location.pathname),
       accessible: hasAccess('/dashboard/bulk-dashboard') || hasAccess('/dashboard/bulk-order')
@@ -137,10 +137,10 @@ export default function MobileSystemLauncher({
       subtitle: 'Materials & MIS',
       href: '/dashboard/procurement',
       icon: Boxes,
-      iconColor: 'text-amber-600',
-      bgColor: 'bg-amber-50',
-      borderColor: 'border-amber-200/70',
-      activeBorder: 'ring-2 ring-amber-500 border-amber-500',
+      iconColor: 'text-gold-700',
+      bgColor: 'bg-gold-50/70',
+      borderColor: 'border-gold-200',
+      activeBorder: 'ring-2 ring-gold-400 border-gold-600',
       badge: ((menuCounts?.procurementNewLeather || 0) + (menuCounts?.procurementDailyLeather || 0) + (menuCounts?.procurementMaterial || 0)) || null,
       isActive: isProcurementPath(location.pathname),
       accessible: hasAccess('/dashboard/procurement') || hasAccess('/dashboard/procurement/new-leather') || hasAccess('/dashboard/procurement/daily-leather') || hasAccess('/dashboard/procurement/material')
@@ -151,10 +151,10 @@ export default function MobileSystemLauncher({
       subtitle: 'Master Config',
       href: '/dashboard/setting',
       icon: Settings,
-      iconColor: 'text-slate-600',
-      bgColor: 'bg-slate-100',
-      borderColor: 'border-slate-200/70',
-      activeBorder: 'ring-2 ring-slate-500 border-slate-500',
+      iconColor: 'text-leather-600',
+      bgColor: 'bg-cream-50',
+      borderColor: 'border-leather-200',
+      activeBorder: 'ring-2 ring-leather-500 border-leather-700',
       badge: null,
       isActive: location.pathname === '/dashboard/setting',
       accessible: isAdmin
@@ -172,12 +172,12 @@ export default function MobileSystemLauncher({
     <div className={`w-full bg-white ${isModal ? 'p-4 sm:p-5' : 'p-3.5'}`}>
       {/* Optional Modal Header */}
       {isModal && (
-        <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+        <div className="flex items-center justify-between pb-3 mb-3 border-b border-leather-100">
           <div>
-            <h2 className="text-base font-extrabold text-slate-900 tracking-tight">
+            <h2 className="text-base font-extrabold text-leather-900 tracking-tight font-serif">
               Systems Launcher
             </h2>
-            <p className="text-[11px] text-slate-500 font-medium">
+            <p className="text-[11px] text-leather-600 font-medium">
               Select a system to navigate
             </p>
           </div>
@@ -185,7 +185,7 @@ export default function MobileSystemLauncher({
             <button
               onClick={onClose}
               type="button"
-              className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              className="p-2 rounded-xl text-leather-400 hover:text-leather-700 hover:bg-cream-100 transition-colors"
               aria-label="Close launcher"
             >
               <X size={18} />
@@ -203,15 +203,15 @@ export default function MobileSystemLauncher({
               key={system.id}
               type="button"
               onClick={() => handleTileClick(system.href)}
-              className={`group relative flex flex-col items-center justify-center p-3 rounded-2xl bg-white border text-center transition-all duration-150 active:scale-95 shadow-sm hover:shadow-md aspect-square min-h-[76px] min-w-[76px] cursor-pointer ${
+              className={`group relative flex flex-col items-center justify-center p-3 rounded-2xl bg-white border text-center transition-all duration-150 active:scale-95 shadow-xs hover:shadow-md aspect-square min-h-[76px] min-w-[76px] cursor-pointer ${
                 system.isActive
-                  ? `${system.activeBorder} bg-slate-50/50`
-                  : 'border-slate-200/80 hover:border-slate-300'
+                  ? `${system.activeBorder} bg-cream-50/70`
+                  : 'border-leather-200/80 hover:border-gold-300'
               }`}
             >
               {/* Badge for Pending Items */}
               {system.badge !== null && system.badge > 0 && (
-                <span className="absolute top-2 right-2 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-rose-500 rounded-full shadow-sm">
+                <span className="absolute top-2 right-2 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-rose-500 rounded-full shadow-xs">
                   {system.badge}
                 </span>
               )}
@@ -224,18 +224,18 @@ export default function MobileSystemLauncher({
               </div>
 
               {/* System Name */}
-              <span className="text-xs font-bold text-slate-800 tracking-tight leading-tight line-clamp-1 w-full">
+              <span className="text-xs font-bold text-leather-900 tracking-tight leading-tight line-clamp-1 w-full font-serif">
                 {system.name}
               </span>
 
               {/* Subtitle */}
-              <span className="text-[10px] text-slate-400 font-medium mt-0.5 line-clamp-1 w-full">
+              <span className="text-[10px] text-leather-500 font-medium mt-0.5 line-clamp-1 w-full">
                 {system.subtitle}
               </span>
 
               {/* Active Indicator Dot */}
               {system.isActive && (
-                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-600" />
+                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-gold-500" />
               )}
             </button>
           );
@@ -243,11 +243,11 @@ export default function MobileSystemLauncher({
       </div>
 
       {/* Quick Status Bar */}
-      <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+      <div className="mt-4 pt-3 border-t border-leather-100 flex items-center justify-between text-[11px] text-leather-500">
         <span className="font-semibold uppercase tracking-wider text-[10px]">
           SAPID Enterprise
         </span>
-        <span className="flex items-center gap-1 text-slate-500 font-medium">
+        <span className="flex items-center gap-1 text-leather-600 font-medium">
           Tap any tile to launch <ChevronRight size={12} />
         </span>
       </div>

@@ -126,7 +126,7 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
       // Accordion behavior: opening a submenu closes all other submenus
       setIsChecklistSubmenuOpen(clickedRoute.label === "Checklist");
       setIsSampleSubmenuOpen(clickedRoute.label === "Sample System");
-      setIsBulkSubmenuOpen(clickedRoute.label === "Production Planning and Monitoring");
+      setIsBulkSubmenuOpen(clickedRoute.label === "Production Planning" || clickedRoute.label === "Production Planning and Monitoring");
       setIsProcurementSubmenuOpen(clickedRoute.label === "Procurement System");
     } else {
       // Closing this specific submenu
@@ -852,7 +852,7 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
       ]
     },
     {
-      label: "Production Planning and Monitoring",
+      label: "Production Planning",
       icon: TrendingUp,
       showFor: ["admin", "user", "HOD"],
       isSubmenu: true,
@@ -983,17 +983,17 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
 
   return (
     <div
-      className={`flex h-screen overflow-hidden bg-white md:bg-gradient-to-br md:from-blue-50 md:to-purple-50`}
+      className={`flex h-screen overflow-hidden bg-[#FAF6F0] selection:bg-gold-200 selection:text-leather-950`}
     >
       {/* Sidebar for desktop */}
-      <aside className="hidden w-64 flex-shrink-0 border-r border-blue-200 bg-white md:flex md:flex-col">
-        <div className="flex h-14 items-center border-b border-blue-200 px-4 bg-gradient-to-r from-blue-100 to-purple-100">
+      <aside className="hidden w-64 flex-shrink-0 border-r border-leather-200 bg-white md:flex md:flex-col">
+        <div className="flex h-14 items-center border-b border-gold-400/20 px-4 bg-gradient-to-r from-leather-800 to-leather-700">
           <Link
             to="/dashboard"
-            className="flex items-center gap-2 font-semibold text-blue-700"
+            className="flex items-center gap-2.5 font-bold text-cream-100"
           >
-            <img src={aceLogo} alt="TaskDesk Logo" className="h-8 w-8 rounded-full object-cover border border-blue-200" />
-            <span>TaskDesk</span>
+            <img src={aceLogo} alt="Sapid Design Logo" className="h-8 w-8 rounded-full object-cover border border-gold-400/50 ring-1 ring-gold-400/30" />
+            <span className="tracking-wide font-serif">Sapid Design</span>
           </Link>
         </div>
         <nav className="flex-1 overflow-y-auto thin-scrollbar p-2">
@@ -1004,14 +1004,14 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
                   <div className="flex flex-col">
                     <button
                       onClick={() => handleToggleSubmenu(route)}
-                      className={`flex items-center justify-between w-full rounded-md px-3 py-2 text-sm font-medium text-left transition-colors ${route.active
-                        ? "bg-gradient-to-r from-blue-100 to-purple-100 text-blue-700"
-                        : "text-gray-700 hover:bg-blue-50"
+                      className={`flex items-center justify-between w-full rounded-xl px-3 py-2 text-sm font-medium text-left transition-all ${route.active
+                        ? "bg-gradient-to-r from-leather-800 to-leather-700 text-cream-100 shadow-xs border-l-4 border-gold-400 font-semibold"
+                        : "text-leather-900 hover:bg-cream-100 hover:text-leather-950"
                         }`}
                     >
                       <div className="flex items-center gap-3">
                         <route.icon
-                          className={`h-4 w-4 ${route.active ? "text-blue-600" : ""}`}
+                          className={`h-4 w-4 ${route.active ? "text-gold-300" : "text-leather-500"}`}
                         />
                         <div className="flex items-center justify-between w-full">
                           <span>{route.label}</span>
@@ -1029,14 +1029,14 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
                       )}
                     </button>
                     {route.isOpen && (
-                      <ul className="mt-1 ml-4 space-y-1 border-l-2 border-blue-50 pl-2">
+                      <ul className="mt-1 ml-4 space-y-1 border-l-2 border-leather-200 pl-2">
                         {route.subItems.map((sub) => (
                           <li key={sub.label}>
                             <Link
                               to={sub.href}
-                              className={`flex items-center justify-between rounded-md px-3 py-1.5 text-xs font-medium text-left transition-colors ${sub.active
-                                ? "text-blue-700 bg-blue-50 font-semibold"
-                                : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                              className={`flex items-center justify-between rounded-lg px-3 py-1.5 text-xs font-medium text-left transition-colors ${sub.active
+                                ? "text-leather-950 bg-cream-100 font-bold border-l-2 border-gold-500"
+                                : "text-leather-600 hover:text-leather-950 hover:bg-cream-50"
                                 }`}
                             >
                               <span className="text-left">{sub.label}</span>
@@ -1054,13 +1054,13 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
                 ) : (
                   <Link
                     to={route.href}
-                    className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${route.active
-                      ? "bg-gradient-to-r from-blue-100 to-purple-100 text-blue-700"
-                      : "text-gray-700 hover:bg-blue-50"
+                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all ${route.active
+                      ? "bg-gradient-to-r from-leather-800 to-leather-700 text-cream-100 shadow-xs border-l-4 border-gold-400 font-semibold"
+                      : "text-leather-900 hover:bg-cream-100 hover:text-leather-950"
                       }`}
                   >
                     <route.icon
-                      className={`h-4 w-4 ${route.active ? "text-blue-600" : ""}`}
+                      className={`h-4 w-4 ${route.active ? "text-gold-300" : "text-leather-500"}`}
                     />
                     <div className="flex items-center justify-between w-full">
                       <span>{route.label}</span>
@@ -1076,22 +1076,22 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
             ))}
           </ul>
         </nav>
-        <div className="border-t border-blue-200 p-4 bg-gradient-to-r from-blue-50 to-purple-50">
+        <div className="border-t border-leather-200 p-4 bg-cream-100/60">
           <div className="flex flex-col">
             {/* User info section */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-full gradient-bg flex items-center justify-center overflow-hidden border border-blue-100">
+                <div className="h-8 w-8 rounded-full gradient-bg flex items-center justify-center overflow-hidden border border-gold-400/40 text-cream-100 shadow-xs">
                   {profileImage ? (
                     <img src={profileImage} alt={username} className="h-full w-full object-cover" />
                   ) : (
-                    <span className="text-sm font-medium text-black">
+                    <span className="text-sm font-bold text-cream-100">
                       {username ? username.charAt(0).toUpperCase() : "U"}
                     </span>
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-blue-700 truncate">
+                  <p className="text-sm font-bold text-leather-900 truncate">
                     {username || "User"}{" "}
                     {userRole.toLowerCase() === "admin"
                       ? isSuperAdmin
@@ -1101,7 +1101,7 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
                         ? "(HOD)"
                         : ""}
                   </p>
-                  <p className="text-xs text-blue-600 truncate">
+                  <p className="text-xs text-leather-600 truncate">
                     {userEmail || "user@example.com"}
                   </p>
                 </div>
@@ -1111,7 +1111,7 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
               {toggleDarkMode && (
                 <button
                   onClick={toggleDarkMode}
-                  className="text-blue-700 hover:text-blue-900 p-1 rounded-full hover:bg-blue-100"
+                  className="text-leather-700 hover:text-leather-950 p-1.5 rounded-full hover:bg-cream-200 transition-colors"
                 >
                   {darkMode ? (
                     <svg
@@ -1155,9 +1155,9 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
             <div className="mt-2 flex justify-center">
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-1 text-blue-700 hover:text-blue-900 px-2 py-1 rounded hover:bg-blue-100 text-sm"
+                className="flex items-center gap-1.5 text-leather-700 hover:text-leather-950 px-2.5 py-1 rounded-lg hover:bg-cream-200 text-xs font-semibold transition-colors"
               >
-                <LogOut className="h-4 w-4" />
+                <LogOut className="h-3.5 w-3.5" />
                 <span>Logout</span>
               </button>
             </div>
@@ -1169,38 +1169,38 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
       <button
         type="button"
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        className="md:hidden absolute left-3.5 top-3.5 z-[110] text-slate-700 p-2 rounded-xl bg-white border border-slate-200/80 shadow-soft hover:bg-slate-50 flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+        className="md:hidden absolute left-3.5 top-3.5 z-[110] text-leather-800 p-2 rounded-xl bg-white border border-leather-200 shadow-soft hover:bg-cream-50 flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
         aria-label="Toggle Systems Launcher"
       >
-        <LayoutGrid className="h-4 w-4 text-blue-600" />
-        <span className="text-[11px] font-bold text-slate-700 hidden xs:inline">Systems</span>
+        <LayoutGrid className="h-4 w-4 text-gold-600" />
+        <span className="text-[11px] font-bold text-leather-800 hidden xs:inline">Systems</span>
       </button>
 
       {/* Mobile System Launcher Drawer / Modal (Level 1 System Home Screen) */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-[100] md:hidden">
           <div
-            className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity"
+            className="fixed inset-0 bg-leather-950/60 backdrop-blur-xs transition-opacity"
             onClick={() => setIsMobileMenuOpen(false)}
           ></div>
           <div className="fixed inset-y-0 left-0 w-[88%] max-w-sm bg-white shadow-2xl flex flex-col z-10 overflow-hidden">
             {/* Drawer Header */}
-            <div className="flex h-16 items-center justify-between border-b border-slate-100 px-4 bg-white">
+            <div className="flex h-16 items-center justify-between border-b border-leather-100 px-4 bg-white">
               <Link
                 to="/dashboard"
-                className="flex items-center gap-2.5 font-bold text-slate-900"
+                className="flex items-center gap-2.5 font-bold text-leather-900"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                <img src={aceLogo} alt="TaskDesk Logo" className="h-8 w-8 rounded-full object-cover border border-slate-200" />
+                <img src={aceLogo} alt="Sapid Design Logo" className="h-8 w-8 rounded-full object-cover border border-gold-400/40" />
                 <div className="flex flex-col">
-                  <span className="text-sm font-extrabold tracking-tight">SAPID ERP</span>
-                  <span className="text-[10px] font-medium text-slate-400 -mt-0.5">Systems Launcher</span>
+                  <span className="text-sm font-extrabold tracking-tight font-serif">Sapid Design</span>
+                  <span className="text-[10px] font-medium text-leather-500 -mt-0.5">Systems Launcher</span>
                 </div>
               </Link>
               <button
                 type="button"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg text-leather-400 hover:text-leather-800 hover:bg-cream-100 transition-colors cursor-pointer"
                 aria-label="Close launcher"
               >
                 <X className="h-5 w-5" />
@@ -1209,7 +1209,7 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
 
             {/* Scrollable Body: ONLY system names & tiles (No page-level detail) */}
             <div className="flex-1 overflow-y-auto thin-scrollbar p-3 space-y-4 bg-white">
-              <div className="rounded-2xl border border-slate-100 bg-slate-50/40 p-1">
+              <div className="rounded-2xl border border-leather-100 bg-cream-50/40 p-1">
                 <MobileSystemLauncher
                   menuCounts={menuCounts}
                   onClose={() => setIsMobileMenuOpen(false)}
@@ -1220,10 +1220,10 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
             </div>
 
             {/* Drawer Footer with User Info and Logout */}
-            <div className="border-t border-slate-100 p-3.5 bg-slate-50">
+            <div className="border-t border-leather-100 p-3.5 bg-cream-50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="h-9 w-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm overflow-hidden flex-shrink-0">
+                  <div className="h-9 w-9 rounded-full bg-leather-800 text-cream-100 border border-gold-400/30 flex items-center justify-center font-bold text-sm overflow-hidden flex-shrink-0">
                     {profileImage ? (
                       <img src={profileImage} alt={username} className="h-full w-full object-cover" />
                     ) : (
@@ -1231,10 +1231,10 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-slate-800 truncate">
+                    <p className="text-xs font-bold text-leather-900 truncate">
                       {username || "User"}
                     </p>
-                    <p className="text-[11px] text-slate-500 truncate">
+                    <p className="text-[11px] text-leather-600 truncate">
                       {userEmail || "user@example.com"}
                     </p>
                   </div>
@@ -1242,7 +1242,7 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="flex items-center gap-1 text-rose-600 hover:text-rose-700 px-2.5 py-1.5 rounded-lg hover:bg-rose-50 text-xs font-bold transition-colors cursor-pointer"
+                  className="flex items-center gap-1 text-rose-700 hover:text-rose-900 px-2.5 py-1.5 rounded-lg hover:bg-rose-50 text-xs font-bold transition-colors cursor-pointer"
                 >
                   <LogOut className="h-4 w-4" />
                   <span>Logout</span>
@@ -1254,23 +1254,23 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
       )}
 
       {/* Main content */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-16 items-center justify-between border-b border-purple-100 bg-white px-4 md:px-6 shadow-sm z-30">
+      <div className="flex flex-1 flex-col overflow-hidden bg-[#FAF6F0]">
+        <header className="flex h-16 items-center justify-between border-b border-leather-200 bg-white px-4 md:px-6 shadow-xs z-30">
           <div className="flex md:hidden w-8"></div>
           <div className="flex flex-col items-center">
-            <h1 className="text-lg font-bold bg-gradient-to-r from-blue-700 to-purple-700 bg-clip-text text-transparent">
-              TaskDesk
+            <h1 className="text-xl font-bold bg-gradient-to-r from-leather-900 via-leather-700 to-gold-600 bg-clip-text text-transparent font-serif tracking-wide">
+              Sapid Design
             </h1>
-            <p className="text-[10px] text-gray-400 font-medium uppercase tracking-[0.2em] -mt-1 hidden xs:block">
-              TaskDesk
+            <p className="text-[10px] text-leather-600 font-semibold uppercase tracking-[0.25em] -mt-0.5 hidden xs:block">
+              Sapid Design
             </p>
           </div>
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex flex-col items-end mr-1">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Welcome</span>
-              <span className="text-sm font-black text-purple-700 -mt-1">Hello, {username || 'User'}</span>
+              <span className="text-[10px] font-bold text-leather-500 uppercase tracking-widest">Welcome</span>
+              <span className="text-sm font-bold text-leather-900 -mt-1">Hello, {username || 'User'}</span>
             </div>
-            <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-blue-500 to-purple-600 flex items-center justify-center shadow-lg border-2 border-white ring-2 ring-purple-100/50 overflow-hidden">
+            <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-leather-800 to-leather-700 flex items-center justify-center shadow-md border-2 border-white ring-2 ring-gold-400/30 overflow-hidden">
               {profileImage ? (
                 <img
                   src={profileImage}
@@ -1282,24 +1282,24 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
                   }}
                 />
               ) : (
-                <span className="text-white text-sm font-black uppercase">{username ? username.charAt(0) : 'U'}</span>
+                <span className="text-cream-100 text-sm font-bold uppercase">{username ? username.charAt(0) : 'U'}</span>
               )}
             </div>
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto thin-scrollbar overflow-x-hidden px-4 pb-4 md:px-6 md:pb-6 bg-white md:bg-gradient-to-br md:from-blue-50/50 md:to-purple-50/50 pb-20 md:pb-6">
+        <main className="flex-1 overflow-y-auto thin-scrollbar overflow-x-hidden px-4 pb-4 md:px-6 md:pb-6 bg-[#FAF6F0] pb-20 md:pb-6">
           {children}
         </main>
 
-        <div className="hidden md:flex bg-gradient-to-r from-blue-600 to-purple-600 h-5 items-center justify-center px-4 shadow-md z-40">
+        <div className="hidden md:flex bg-gradient-to-r from-leather-950 via-leather-900 to-leather-950 h-5 items-center justify-center px-4 shadow-md z-40 border-t border-gold-500/30">
           <a
             href="https://www.botivate.in"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[9px] text-white/90 font-medium tracking-[0.2em] uppercase hover:underline hover:text-white transition-colors"
+            className="text-[9px] text-cream-200 font-medium tracking-[0.2em] uppercase hover:underline hover:text-gold-300 transition-colors"
           >
-            Powered by <span className="font-bold">Botivate</span>
+            Powered by <span className="font-bold text-gold-400">Botivate</span>
           </a>
         </div>
 
@@ -1312,11 +1312,11 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
 
         {/* User Popup */}
         {isUserPopupOpen && (
-          <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 backdrop-blur-md p-4 transition-all duration-300">
-            <div className="bg-white rounded-[2rem] w-full max-w-[340px] shadow-[0_20px_50px_rgba(0,0,0,0.15)] overflow-hidden animate-in fade-in zoom-in-95 duration-300 border border-white/50">
+          <div className="fixed inset-0 z-[120] flex items-center justify-center bg-leather-950/60 backdrop-blur-xs p-4 transition-all duration-300">
+            <div className="bg-white rounded-3xl w-full max-w-[340px] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-300 border border-leather-200">
               {/* Header Gradient */}
-              <div className="h-32 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 relative">
-                <div className="absolute inset-0 bg-white/10 backdrop-blur-[2px]"></div>
+              <div className="h-32 bg-gradient-to-br from-leather-900 via-leather-800 to-leather-700 relative border-b border-gold-400/30">
+                <div className="absolute inset-0 bg-white/5 backdrop-blur-[1px]"></div>
                 <button
                   onClick={() => setIsUserPopupOpen(false)}
                   className="absolute top-4 right-4 p-2 bg-black/20 hover:bg-black/40 rounded-full text-white transition-all hover:rotate-90 z-10"
@@ -1328,12 +1328,12 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
               {/* Profile Info */}
               <div className="px-8 pb-8 text-center bg-white">
                 <div className="relative -mt-16 mb-6 flex justify-center">
-                  <div className="h-28 w-28 rounded-full bg-white p-1.5 shadow-2xl ring-4 ring-white/30">
-                    <div className="h-full w-full rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center overflow-hidden border-2 border-white shadow-inner">
+                  <div className="h-28 w-28 rounded-full bg-white p-1.5 shadow-2xl ring-4 ring-gold-400/30">
+                    <div className="h-full w-full rounded-full bg-gradient-to-tr from-leather-800 to-leather-700 flex items-center justify-center overflow-hidden border-2 border-white shadow-inner">
                       {profileImage ? (
                         <img src={profileImage} alt={username} className="h-full w-full object-cover transform hover:scale-110 transition-transform duration-500" />
                       ) : (
-                        <span className="text-4xl font-black text-white uppercase tracking-tighter">
+                        <span className="text-4xl font-bold text-cream-100 uppercase tracking-tighter">
                           {username ? username.charAt(0) : "U"}
                         </span>
                       )}
@@ -1343,35 +1343,35 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
 
                 <div className="space-y-4 mb-8">
                   <div>
-                    <h3 className="text-2xl font-black text-gray-900 tracking-tight mb-1">
+                    <h3 className="text-2xl font-bold text-leather-950 tracking-tight mb-1 font-serif">
                       {username || "User"}
                     </h3>
                     <div className="flex justify-center flex-wrap gap-2">
-                      <span className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] px-3 py-1 bg-indigo-50 rounded-full border border-indigo-100/50">
+                      <span className="text-[10px] font-bold text-leather-800 uppercase tracking-[0.2em] px-3 py-1 bg-cream-100 rounded-full border border-gold-400/40">
                         {userRole?.toLowerCase() === "admin" ? (isSuperAdmin ? "Super Admin" : "Administrator") : userRole?.toLowerCase() === "hod" ? "HOD / Supervisor" : "Staff"}
                       </span>
                     </div>
                   </div>
 
-                  <div className="py-3 px-4 bg-gray-50 rounded-2xl flex items-center justify-center gap-2 border border-gray-100">
-                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                    <span className="text-xs font-bold text-gray-500 truncate">{userEmail || "user@example.com"}</span>
+                  <div className="py-3 px-4 bg-cream-50 rounded-2xl flex items-center justify-center gap-2 border border-leather-200">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <span className="text-xs font-semibold text-leather-600 truncate">{userEmail || "user@example.com"}</span>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <button
                     onClick={() => setIsUserPopupOpen(false)}
-                    className="flex justify-center items-center py-3.5 px-4 rounded-2xl text-xs font-black text-gray-400 border-2 border-gray-50 hover:bg-gray-50 hover:text-gray-600 transition-all active:scale-95 uppercase tracking-widest"
+                    className="flex justify-center items-center py-3.5 px-4 rounded-2xl text-xs font-bold text-leather-600 border border-leather-200 hover:bg-cream-50 hover:text-leather-900 transition-all active:scale-95 uppercase tracking-wider"
                   >
                     Cancel
                   </button>
 
                   <button
                     onClick={handleLogout}
-                    className="flex justify-center items-center gap-2 py-3.5 px-4 rounded-2xl text-xs font-black text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-[0_10px_20px_-5px_rgba(79,70,229,0.4)] hover:shadow-indigo-200 transition-all active:scale-95 uppercase tracking-widest"
+                    className="flex justify-center items-center gap-2 py-3.5 px-4 rounded-2xl text-xs font-bold text-cream-100 bg-gradient-to-r from-leather-800 to-leather-700 hover:from-leather-900 hover:to-leather-800 border border-gold-500/30 shadow-md hover:shadow-gold-300/20 transition-all active:scale-95 uppercase tracking-wider"
                   >
-                    Logout <LogOut size={14} strokeWidth={3} />
+                    Logout <LogOut size={14} strokeWidth={2.5} />
                   </button>
                 </div>
               </div>
