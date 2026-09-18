@@ -13,9 +13,14 @@ const DEFAULT_COUNTS = {
   procurementMaterial: 0,
 };
 
+// Module-level cache to persist counts across unmount/remount on navigation
+let cachedCounts = null;
+let lastFetchTime = 0;
+export const CACHE_TTL = 30000; // 30 seconds
+
 export function useUnifiedCounts(userParam, roleParam) {
-  const [menuCounts, setMenuCounts] = useState(DEFAULT_COUNTS);
-  const [loading, setLoading] = useState(true);
+  const [menuCounts, setMenuCounts] = useState(cachedCounts || DEFAULT_COUNTS);
+  const [loading, setLoading] = useState(!cachedCounts);
   const isFetchingRef = useRef(false);
 
   const fetchCounts = useCallback(async () => {
@@ -409,7 +414,7 @@ export function useUnifiedCounts(userParam, roleParam) {
         console.error("Error fetching procurement counts:", err);
       }
 
-      setMenuCounts({
+      const newCounts = {
         quickTask: pendingChecklistCount,
         delegation: delegationCount || 0,
         task: taskCount,
@@ -419,7 +424,11 @@ export function useUnifiedCounts(userParam, roleParam) {
         procurementNewLeather: procurementNewLeatherCount || 0,
         procurementDailyLeather: procurementDailyLeatherCount || 0,
         procurementMaterial: procurementMaterialCount || 0,
-      });
+      };
+
+      cachedCounts = newCounts;
+      lastFetchTime = Date.now();
+      setMenuCounts(newCounts);
     } catch (err) {
       console.error("Error in useUnifiedCounts:", err);
     } finally {
@@ -429,7 +438,12 @@ export function useUnifiedCounts(userParam, roleParam) {
   }, [userParam, roleParam]);
 
   useEffect(() => {
-    fetchCounts();
+    const isCacheValid = cachedCounts && Date.now() - lastFetchTime < CACHE_TTL;
+    if (!isCacheValid) {
+      fetchCounts();
+    } else {
+      setLoading(false);
+    }
 
     const handleProcurementUpdate = () => fetchCounts();
     const handleFocus = () => fetchCounts();

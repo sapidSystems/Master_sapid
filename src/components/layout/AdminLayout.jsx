@@ -99,7 +99,8 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
   const [pageAccess, setPageAccess] = useState({});
 
   const [isUserPopupOpen, setIsUserPopupOpen] = useState(false);
-  const [menuCounts, setMenuCounts] = useState({
+  const { menuCounts: unifiedCounts } = useUnifiedCounts(username, userRole);
+  const [menuCounts, setMenuCounts] = useState(() => unifiedCounts || {
     quickTask: null,
     delegation: null,
     task: null,
@@ -110,8 +111,6 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
     procurementDailyLeather: null,
     procurementMaterial: null
   });
-
-  const { menuCounts: unifiedCounts } = useUnifiedCounts(username, userRole);
 
   useEffect(() => {
     if (unifiedCounts) {
