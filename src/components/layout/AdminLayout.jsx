@@ -15,6 +15,7 @@ import {
   Database,
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
   Zap,
   Settings,
   CirclePlus,
@@ -88,6 +89,23 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
   const { list: notifications } = useSelector((state) => state.notifications);
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("sidebar_collapsed") === "true";
+    } catch (e) {
+      return false;
+    }
+  });
+
+  const toggleSidebar = () => {
+    setIsCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("sidebar_collapsed", String(next));
+      } catch (e) {}
+      return next;
+    });
+  };
   const [isChecklistSubmenuOpen, setIsChecklistSubmenuOpen] = useState(() => isChecklistPath(location.pathname));
   const [isSampleSubmenuOpen, setIsSampleSubmenuOpen] = useState(() => isSamplePath(location.pathname));
   const [isBulkSubmenuOpen, setIsBulkSubmenuOpen] = useState(() => isBulkPath(location.pathname));
@@ -997,183 +1015,327 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
       className={`flex h-screen overflow-hidden bg-[#FAF6F0] selection:bg-gold-200 selection:text-leather-950`}
     >
       {/* Sidebar for desktop */}
-      <aside className="hidden w-64 flex-shrink-0 border-r border-leather-200 bg-white md:flex md:flex-col">
-        <div className="flex h-14 items-center border-b border-gold-400/20 px-4 bg-gradient-to-r from-leather-800 to-leather-700">
-          <Link
-            to="/dashboard"
-            className="flex items-center gap-2.5 font-bold text-cream-100"
-          >
-            <img src={aceLogo} alt="Sapid Design Logo" className="h-8 w-8 rounded-full object-cover border border-gold-400/50 ring-1 ring-gold-400/30" />
-            <span className="tracking-wide font-serif">Sapid Design</span>
-          </Link>
-        </div>
+      <aside
+        className={`hidden flex-shrink-0 border-r border-leather-200 bg-white md:flex md:flex-col transition-all duration-300 ease-in-out ${
+          isCollapsed ? "w-16" : "w-64"
+        }`}
+      >
+        {/* Sidebar Header */}
+        {isCollapsed ? (
+          <div className="flex h-14 items-center justify-center border-b border-gold-400/20 px-2 bg-gradient-to-r from-leather-800 to-leather-700">
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              className="p-2 rounded-xl text-cream-200 hover:text-white hover:bg-leather-700/80 transition-colors flex items-center justify-center cursor-pointer"
+              title="Expand sidebar"
+              aria-label="Expand sidebar"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          </div>
+        ) : (
+          <div className="flex h-14 items-center justify-between border-b border-gold-400/20 px-3.5 bg-gradient-to-r from-leather-800 to-leather-700">
+            <Link
+              to="/dashboard"
+              className="flex items-center gap-2.5 font-bold text-cream-100 min-w-0"
+              title="Sapid Design"
+            >
+              <img
+                src={aceLogo}
+                alt="Sapid Design Logo"
+                className="h-8 w-8 rounded-full object-cover border border-gold-400/50 ring-1 ring-gold-400/30 shrink-0"
+              />
+              <span className="tracking-wide font-serif truncate text-sm">Sapid Design</span>
+            </Link>
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              className="p-1.5 rounded-lg text-cream-200 hover:text-white hover:bg-leather-700/80 transition-colors shrink-0 cursor-pointer"
+              title="Collapse sidebar"
+              aria-label="Collapse sidebar"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Sidebar Nav */}
         <nav className="flex-1 overflow-y-auto thin-scrollbar p-2">
-          <ul className="space-y-1">
-            {accessibleRoutes.map((route) => (
-              <li key={route.label}>
-                {route.isSubmenu ? (
-                  <div className="flex flex-col">
-                    <button
-                      onClick={() => handleToggleSubmenu(route)}
-                      className={`flex items-center justify-between w-full rounded-xl px-3 py-2 text-sm font-medium text-left transition-all ${route.active
+          {isCollapsed ? (
+            <ul className="space-y-2">
+              {accessibleRoutes.map((route) => {
+                const targetHref = route.isSubmenu ? (route.subItems?.[0]?.href || "/dashboard") : route.href;
+                return (
+                  <li key={route.label} className="flex justify-center">
+                    <Link
+                      to={targetHref}
+                      title={route.badge ? `${route.label} (${route.badge})` : route.label}
+                      className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all relative ${
+                        route.active
+                          ? "bg-gradient-to-r from-leather-800 to-leather-700 text-cream-100 shadow-xs border-l-2 border-gold-400 font-semibold"
+                          : "text-leather-700 hover:bg-cream-100 hover:text-leather-950"
+                      }`}
+                    >
+                      <route.icon
+                        className={`h-5 w-5 ${route.active ? "text-gold-300" : "text-leather-600"}`}
+                      />
+                      {route.badge && (
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-[16px] flex items-center justify-center px-1 shadow-xs ring-1 ring-white">
+                          {route.badge}
+                        </span>
+                      )}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <ul className="space-y-1">
+              {accessibleRoutes.map((route) => (
+                <li key={route.label}>
+                  {route.isSubmenu ? (
+                    <div className="flex flex-col">
+                      <button
+                        onClick={() => handleToggleSubmenu(route)}
+                        className={`flex items-center justify-between w-full rounded-xl px-3 py-2 text-sm font-medium text-left transition-all cursor-pointer ${route.active
+                          ? "bg-gradient-to-r from-leather-800 to-leather-700 text-cream-100 shadow-xs border-l-4 border-gold-400 font-semibold"
+                          : "text-leather-900 hover:bg-cream-100 hover:text-leather-950"
+                          }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <route.icon
+                            className={`h-4 w-4 ${route.active ? "text-gold-300" : "text-leather-500"}`}
+                          />
+                          <div className="flex items-center justify-between w-full">
+                            <span>{route.label}</span>
+                            {route.badge && (
+                              <span className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                                {route.badge}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {route.isOpen ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                      </button>
+                      {route.isOpen && (
+                        <ul className="mt-1 ml-4 space-y-1 border-l-2 border-leather-200 pl-2">
+                          {route.subItems.map((sub) => (
+                            <li key={sub.label}>
+                              <Link
+                                to={sub.href}
+                                className={`flex items-center justify-between rounded-lg px-3 py-1.5 text-xs font-medium text-left transition-colors ${sub.active
+                                  ? "text-leather-950 bg-cream-100 font-bold border-l-2 border-gold-500"
+                                  : "text-leather-600 hover:text-leather-950 hover:bg-cream-50"
+                                  }`}
+                              >
+                                <span className="text-left">{sub.label}</span>
+                                {sub.badge && (
+                                  <span className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                                    {sub.badge}
+                                  </span>
+                                )}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  ) : (
+                    <Link
+                      to={route.href}
+                      className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all ${route.active
                         ? "bg-gradient-to-r from-leather-800 to-leather-700 text-cream-100 shadow-xs border-l-4 border-gold-400 font-semibold"
                         : "text-leather-900 hover:bg-cream-100 hover:text-leather-950"
                         }`}
                     >
-                      <div className="flex items-center gap-3">
-                        <route.icon
-                          className={`h-4 w-4 ${route.active ? "text-gold-300" : "text-leather-500"}`}
-                        />
-                        <div className="flex items-center justify-between w-full">
-                          <span>{route.label}</span>
-                          {route.badge && (
-                            <span className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-                              {route.badge}
-                            </span>
-                          )}
-                        </div>
+                      <route.icon
+                        className={`h-4 w-4 ${route.active ? "text-gold-300" : "text-leather-500"}`}
+                      />
+                      <div className="flex items-center justify-between w-full">
+                        <span>{route.label}</span>
+                        {route.badge && (
+                          <span className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                            {route.badge}
+                          </span>
+                        )}
                       </div>
-                      {route.isOpen ? (
-                        <ChevronDown className="h-4 w-4" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4" />
-                      )}
-                    </button>
-                    {route.isOpen && (
-                      <ul className="mt-1 ml-4 space-y-1 border-l-2 border-leather-200 pl-2">
-                        {route.subItems.map((sub) => (
-                          <li key={sub.label}>
-                            <Link
-                              to={sub.href}
-                              className={`flex items-center justify-between rounded-lg px-3 py-1.5 text-xs font-medium text-left transition-colors ${sub.active
-                                ? "text-leather-950 bg-cream-100 font-bold border-l-2 border-gold-500"
-                                : "text-leather-600 hover:text-leather-950 hover:bg-cream-50"
-                                }`}
-                            >
-                              <span className="text-left">{sub.label}</span>
-                              {sub.badge && (
-                                <span className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-                                  {sub.badge}
-                                </span>
-                              )}
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
+                    </Link>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </nav>
+
+        {/* Sidebar Footer */}
+        {isCollapsed ? (
+          <div className="border-t border-leather-200 p-2 bg-cream-100/60 flex flex-col items-center gap-2.5">
+            {/* Profile Avatar */}
+            <button
+              type="button"
+              onClick={() => setIsUserPopupOpen(true)}
+              className="h-8 w-8 rounded-full gradient-bg flex items-center justify-center overflow-hidden border border-gold-400/40 text-cream-100 shadow-xs hover:ring-2 hover:ring-gold-400/50 transition-all cursor-pointer"
+              title={`${username || "User"} (${userRole || "Member"})`}
+              aria-label="Open user profile"
+            >
+              {profileImage ? (
+                <img src={profileImage} alt={username} className="h-full w-full object-cover" />
+              ) : (
+                <span className="text-xs font-bold text-cream-100">
+                  {username ? username.charAt(0).toUpperCase() : "U"}
+                </span>
+              )}
+            </button>
+
+            {/* Dark mode toggle (if available) */}
+            {toggleDarkMode && (
+              <button
+                type="button"
+                onClick={toggleDarkMode}
+                className="text-leather-700 hover:text-leather-950 p-1.5 rounded-lg hover:bg-cream-200 transition-colors cursor-pointer"
+                title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+                aria-label="Toggle dark mode"
+              >
+                {darkMode ? (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+                    />
+                  </svg>
+                ) : (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                    />
+                  </svg>
+                )}
+              </button>
+            )}
+
+            {/* Logout button */}
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="text-leather-700 hover:text-red-700 p-1.5 rounded-lg hover:bg-cream-200 transition-colors cursor-pointer"
+              title="Logout"
+              aria-label="Logout"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <div className="border-t border-leather-200 p-4 bg-cream-100/60">
+            <div className="flex flex-col">
+              {/* User info section */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-full gradient-bg flex items-center justify-center overflow-hidden border border-gold-400/40 text-cream-100 shadow-xs">
+                    {profileImage ? (
+                      <img src={profileImage} alt={username} className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="text-sm font-bold text-cream-100">
+                        {username ? username.charAt(0).toUpperCase() : "U"}
+                      </span>
                     )}
                   </div>
-                ) : (
-                  <Link
-                    to={route.href}
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all ${route.active
-                      ? "bg-gradient-to-r from-leather-800 to-leather-700 text-cream-100 shadow-xs border-l-4 border-gold-400 font-semibold"
-                      : "text-leather-900 hover:bg-cream-100 hover:text-leather-950"
-                      }`}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold text-leather-900 truncate">
+                      {username || "User"}{" "}
+                      {userRole.toLowerCase() === "admin"
+                        ? isSuperAdmin
+                          ? "(Super Admin)"
+                          : "(Admin)"
+                        : userRole.toLowerCase() === "hod"
+                          ? "(HOD)"
+                          : ""}
+                    </p>
+                    <p className="text-xs text-leather-600 truncate">
+                      {userEmail || "user@example.com"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Dark mode toggle (if available) */}
+                {toggleDarkMode && (
+                  <button
+                    onClick={toggleDarkMode}
+                    className="text-leather-700 hover:text-leather-950 p-1.5 rounded-full hover:bg-cream-200 transition-colors cursor-pointer"
+                    title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+                    aria-label="Toggle dark mode"
                   >
-                    <route.icon
-                      className={`h-4 w-4 ${route.active ? "text-gold-300" : "text-leather-500"}`}
-                    />
-                    <div className="flex items-center justify-between w-full">
-                      <span>{route.label}</span>
-                      {route.badge && (
-                        <span className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-                          {route.badge}
-                        </span>
-                      )}
-                    </div>
-                  </Link>
-                )}
-              </li>
-            ))}
-          </ul>
-        </nav>
-        <div className="border-t border-leather-200 p-4 bg-cream-100/60">
-          <div className="flex flex-col">
-            {/* User info section */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-full gradient-bg flex items-center justify-center overflow-hidden border border-gold-400/40 text-cream-100 shadow-xs">
-                  {profileImage ? (
-                    <img src={profileImage} alt={username} className="h-full w-full object-cover" />
-                  ) : (
-                    <span className="text-sm font-bold text-cream-100">
-                      {username ? username.charAt(0).toUpperCase() : "U"}
+                    {darkMode ? (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-4 w-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+                        />
+                      </svg>
+                    ) : (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-4 w-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                        />
+                      </svg>
+                    )}
+                    <span className="sr-only">
+                      {darkMode ? "Light mode" : "Dark mode"}
                     </span>
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-leather-900 truncate">
-                    {username || "User"}{" "}
-                    {userRole.toLowerCase() === "admin"
-                      ? isSuperAdmin
-                        ? "(Super Admin)"
-                        : "(Admin)"
-                      : userRole.toLowerCase() === "hod"
-                        ? "(HOD)"
-                        : ""}
-                  </p>
-                  <p className="text-xs text-leather-600 truncate">
-                    {userEmail || "user@example.com"}
-                  </p>
-                </div>
+                  </button>
+                )}
               </div>
 
-              {/* Dark mode toggle (if available) */}
-              {toggleDarkMode && (
+              {/* Logout button positioned below user info */}
+              <div className="mt-2 flex justify-center">
                 <button
-                  onClick={toggleDarkMode}
-                  className="text-leather-700 hover:text-leather-950 p-1.5 rounded-full hover:bg-cream-200 transition-colors"
+                  onClick={handleLogout}
+                  className="flex items-center gap-1.5 text-leather-700 hover:text-leather-950 px-2.5 py-1 rounded-lg hover:bg-cream-200 text-xs font-semibold transition-colors cursor-pointer"
                 >
-                  {darkMode ? (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-                      />
-                    </svg>
-                  ) : (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-                      />
-                    </svg>
-                  )}
-                  <span className="sr-only">
-                    {darkMode ? "Light mode" : "Dark mode"}
-                  </span>
+                  <LogOut className="h-3.5 w-3.5" />
+                  <span>Logout</span>
                 </button>
-              )}
-            </div>
-
-            {/* Logout button positioned below user info */}
-            <div className="mt-2 flex justify-center">
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-1.5 text-leather-700 hover:text-leather-950 px-2.5 py-1 rounded-lg hover:bg-cream-200 text-xs font-semibold transition-colors"
-              >
-                <LogOut className="h-3.5 w-3.5" />
-                <span>Logout</span>
-              </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </aside>
 
       {/* Mobile System Launcher Toggle Button */}

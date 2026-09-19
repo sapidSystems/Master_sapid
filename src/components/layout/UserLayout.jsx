@@ -4,12 +4,29 @@ import aceLogo from "../assets/nutech.jpeg";
 import { useState, useEffect } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import supabase from "../../SupabaseClient";
-import { Home, ClipboardList, CheckSquare, User as UserIcon, LogOut, Menu, X } from "lucide-react"
+import { Home, ClipboardList, CheckSquare, User as UserIcon, LogOut, Menu, X, ChevronLeft, ChevronRight } from "lucide-react"
 
 const UserLayout = ({ children }) => {
   const navigate = useNavigate()
   const location = useLocation()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("sidebar_collapsed") === "true"
+    } catch (e) {
+      return false
+    }
+  })
+
+  const toggleSidebar = () => {
+    setIsCollapsed((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem("sidebar_collapsed", String(next))
+      } catch (e) {}
+      return next
+    })
+  }
   const [username, setUsername] = useState("")
   const [isAdmin, setIsAdmin] = useState(false)
   const [profileImage, setProfileImage] = useState("")
@@ -96,73 +113,167 @@ const UserLayout = ({ children }) => {
   return (
     <div className="flex h-screen overflow-hidden bg-[#FAF6F0] selection:bg-gold-200 selection:text-leather-950">
       {/* Sidebar for desktop */}
-      <aside className="hidden w-64 flex-shrink-0 border-r border-leather-200 bg-white md:flex md:flex-col">
-        <div className="flex h-14 items-center border-b border-gold-400/20 px-4 bg-gradient-to-r from-leather-800 to-leather-700">
-          <Link
-            to={isAdmin ? "/admin/dashboard" : "/user/dashboard"}
-            className="flex items-center gap-2.5 font-bold text-cream-100"
-          >
-            <img src={aceLogo} alt="Sapid Design Logo" className="h-8 w-8 rounded-full object-cover border border-gold-400/50 ring-1 ring-gold-400/30" />
-            <span className="tracking-wide font-serif">Sapid Design</span>
-          </Link>
-        </div>
-        <nav className="flex-1 overflow-y-auto thin-scrollbar p-2">
-          <ul className="space-y-1">
-            {routes.map((route) => (
-              <li key={route.href}>
-                <Link
-                  to={route.href}
-                  className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all ${location.pathname === route.href
-                    ? "bg-gradient-to-r from-leather-800 to-leather-700 text-cream-100 shadow-xs border-l-4 border-gold-400 font-semibold"
-                    : "text-leather-900 hover:bg-cream-100 hover:text-leather-950"
-                    }`}
-                >
-                  {getIcon(route.icon)}
-                  {route.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-        <div className="border-t border-leather-200 p-4 bg-cream-100/60">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-leather-700 to-leather-800 flex items-center justify-center overflow-hidden border border-gold-400/40 text-cream-100 shadow-xs">
-                {profileImage ? (
-                  <img
-                    src={profileImage}
-                    alt={username}
-                    className="h-full w-full object-cover"
-                    onError={() => {
-                      console.error("❌ UserLayout Image Failed:", profileImage);
-                      setProfileImage("");
-                    }}
-                  />
-                ) : (
-                  <span className="text-sm font-bold text-cream-100">
-                    {username ? username.charAt(0).toUpperCase() : 'U'}
-                  </span>
-                )}
-              </div>
-              <div>
-                <p className="text-sm font-bold text-leather-900">
-                  {isAdmin ? 'Admin' : 'Staff Member'}
-                </p>
-                <p className="text-xs text-leather-600">
-                  {username}
-                </p>
-              </div>
-            </div>
+      <aside
+        className={`hidden flex-shrink-0 border-r border-leather-200 bg-white md:flex md:flex-col transition-all duration-300 ease-in-out ${
+          isCollapsed ? "w-16" : "w-64"
+        }`}
+      >
+        {/* Sidebar Header */}
+        {isCollapsed ? (
+          <div className="flex h-14 items-center justify-center border-b border-gold-400/20 px-2 bg-gradient-to-r from-leather-800 to-leather-700">
             <button
-              onClick={handleLogout}
-              className="text-leather-700 hover:text-leather-950 p-1.5 rounded-lg hover:bg-cream-200 transition-colors"
-              title="Log out"
+              type="button"
+              onClick={toggleSidebar}
+              className="p-2 rounded-xl text-cream-200 hover:text-white hover:bg-leather-700/80 transition-colors flex items-center justify-center cursor-pointer"
+              title="Expand sidebar"
+              aria-label="Expand sidebar"
             >
-              <LogOut className="h-4 w-4" />
-              <span className="sr-only">Log out</span>
+              <ChevronRight className="h-5 w-5" />
             </button>
           </div>
-        </div>
+        ) : (
+          <div className="flex h-14 items-center justify-between border-b border-gold-400/20 px-3.5 bg-gradient-to-r from-leather-800 to-leather-700">
+            <Link
+              to={isAdmin ? "/admin/dashboard" : "/user/dashboard"}
+              className="flex items-center gap-2.5 font-bold text-cream-100 min-w-0"
+              title="Sapid Design"
+            >
+              <img
+                src={aceLogo}
+                alt="Sapid Design Logo"
+                className="h-8 w-8 rounded-full object-cover border border-gold-400/50 ring-1 ring-gold-400/30 shrink-0"
+              />
+              <span className="tracking-wide font-serif truncate text-sm">Sapid Design</span>
+            </Link>
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              className="p-1.5 rounded-lg text-cream-200 hover:text-white hover:bg-leather-700/80 transition-colors shrink-0 cursor-pointer"
+              title="Collapse sidebar"
+              aria-label="Collapse sidebar"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Sidebar Nav */}
+        <nav className="flex-1 overflow-y-auto thin-scrollbar p-2">
+          {isCollapsed ? (
+            <ul className="space-y-2">
+              {routes.map((route) => (
+                <li key={route.href} className="flex justify-center">
+                  <Link
+                    to={route.href}
+                    title={route.label}
+                    className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all relative ${
+                      location.pathname === route.href
+                        ? "bg-gradient-to-r from-leather-800 to-leather-700 text-cream-100 shadow-xs border-l-2 border-gold-400 font-semibold"
+                        : "text-leather-700 hover:bg-cream-100 hover:text-leather-950"
+                    }`}
+                  >
+                    <span className={location.pathname === route.href ? "text-gold-300" : "text-leather-600"}>
+                      {getIcon(route.icon)}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <ul className="space-y-1">
+              {routes.map((route) => (
+                <li key={route.href}>
+                  <Link
+                    to={route.href}
+                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all ${
+                      location.pathname === route.href
+                        ? "bg-gradient-to-r from-leather-800 to-leather-700 text-cream-100 shadow-xs border-l-4 border-gold-400 font-semibold"
+                        : "text-leather-900 hover:bg-cream-100 hover:text-leather-950"
+                    }`}
+                  >
+                    {getIcon(route.icon)}
+                    {route.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </nav>
+
+        {/* Sidebar Footer */}
+        {isCollapsed ? (
+          <div className="border-t border-leather-200 p-2 bg-cream-100/60 flex flex-col items-center gap-2.5">
+            <div
+              className="h-8 w-8 rounded-full bg-gradient-to-br from-leather-700 to-leather-800 flex items-center justify-center overflow-hidden border border-gold-400/40 text-cream-100 shadow-xs"
+              title={`${username} (${isAdmin ? 'Admin' : 'Staff Member'})`}
+            >
+              {profileImage ? (
+                <img
+                  src={profileImage}
+                  alt={username}
+                  className="h-full w-full object-cover"
+                  onError={() => {
+                    console.error("❌ UserLayout Image Failed:", profileImage);
+                    setProfileImage("");
+                  }}
+                />
+              ) : (
+                <span className="text-xs font-bold text-cream-100">
+                  {username ? username.charAt(0).toUpperCase() : 'U'}
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="text-leather-700 hover:text-red-700 p-1.5 rounded-lg hover:bg-cream-200 transition-colors cursor-pointer"
+              title="Log out"
+              aria-label="Log out"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <div className="border-t border-leather-200 p-4 bg-cream-100/60">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-leather-700 to-leather-800 flex items-center justify-center overflow-hidden border border-gold-400/40 text-cream-100 shadow-xs">
+                  {profileImage ? (
+                    <img
+                      src={profileImage}
+                      alt={username}
+                      className="h-full w-full object-cover"
+                      onError={() => {
+                        console.error("❌ UserLayout Image Failed:", profileImage);
+                        setProfileImage("");
+                      }}
+                    />
+                  ) : (
+                    <span className="text-sm font-bold text-cream-100">
+                      {username ? username.charAt(0).toUpperCase() : 'U'}
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-leather-900">
+                    {isAdmin ? 'Admin' : 'Staff Member'}
+                  </p>
+                  <p className="text-xs text-leather-600">
+                    {username}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="text-leather-700 hover:text-leather-950 p-1.5 rounded-lg hover:bg-cream-200 transition-colors cursor-pointer"
+                title="Log out"
+              >
+                <LogOut className="h-4 w-4" />
+                <span className="sr-only">Log out</span>
+              </button>
+            </div>
+          </div>
+        )}
       </aside>
 
       {/* Mobile sidebar backdrop */}
