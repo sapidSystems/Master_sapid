@@ -5,6 +5,7 @@ import "./index.css"
 import LoginPage from "./pages/LoginPage"
 import UnifiedDashboard from "./pages/UnifiedDashboard"
 import RecordDetailPage from "./pages/RecordDetailPage"
+import { hasAnyReportAccess } from "./utils/reportPermissions"
 import AdminDashboard from "./pages/admin/Dashboard"
 import AdminAssignTask from "./pages/admin/AssignTask"
 import ChecklistTask from "./pages/admin/ChecklistTask"     // New
@@ -57,7 +58,14 @@ const ProtectedRoute = ({ children }) => {
     const pageAccess = JSON.parse(localStorage.getItem("page_access") || "{}");
     const path = location.pathname;
 
-    if (path === "/dashboard" || path.match(/^\/dashboard\/(procurement|production|sample|checklist)\/[^/]+$/)) {
+    if (path === "/dashboard") {
+        if (!hasAnyReportAccess(pageAccess, role)) {
+            return <Navigate to="/dashboard/admin" replace />;
+        }
+        return children;
+    }
+
+    if (path.match(/^\/dashboard\/(procurement|production|sample|checklist)\/[^/]+$/)) {
         return children;
     }
 

@@ -216,6 +216,8 @@ export const procurementConfig = {
           colour: row.colour,
           quantity: row.quantity,
           unit: row.unit || "sqft",
+          customer: row.buyer_code || "",
+          vendor: row.tannery || "",
           raw: row,
         });
       });
@@ -232,6 +234,8 @@ export const procurementConfig = {
           colour: row.colour,
           quantity: row.quantity,
           unit: "sqft",
+          customer: row.buyer_code || "",
+          vendor: row.tannery || "",
           raw: row,
         });
       });
@@ -247,6 +251,8 @@ export const procurementConfig = {
           actualDate: row.actual_receipt_date,
           quantity: row.quantity,
           unit: row.unit || "units",
+          customer: row.buyer_code || "",
+          vendor: row.supplier || "",
           raw: row,
         });
       });
@@ -262,6 +268,8 @@ export const procurementConfig = {
           actualDate: row.actual_receipt_date,
           quantity: row.quantity,
           unit: row.unit || "pcs",
+          customer: row.buyer_code || "",
+          vendor: row.supplier || "",
           raw: row,
         });
       });
@@ -475,6 +483,9 @@ export const productionConfig = {
           isDelayed,
           addedBy: row.added_by,
           remarks: row.remarks,
+          customer: row.buyer || "",
+          vendor: row.vendor || row.supplier || "",
+          targetDate: activeStageObj?.plannedDate || row.wo_despatch_date || null,
           raw: row,
         };
       });
@@ -565,15 +576,6 @@ export const sampleConfig = {
       emptyMessage: "No samples pending handover",
     },
     {
-      id: "in_progress",
-      title: "In Development",
-      subtitle: "Fabrication & pattern making",
-      accentColor: "bg-amber-500",
-      badgeBg: "bg-amber-100 text-amber-700",
-      icon: Clock,
-      emptyMessage: "No samples in development",
-    },
-    {
       id: "ready",
       title: "Completed / Ready",
       subtitle: "Awaiting dispatch to buyer",
@@ -596,8 +598,7 @@ export const sampleConfig = {
   getItemColumnId: (item) => {
     if (item?.dispatchSentDate) return "dispatched";
     if (item?.actualCompletionDate) return "ready";
-    if (item?.expectedCompletionDate) return "in_progress";
-    if (item?.sampleWOHandoverDate) return "handover";
+    if (item?.sampleWOHandoverDate || item?.expectedCompletionDate) return "handover";
     return "enquiry";
   },
 
@@ -614,8 +615,7 @@ export const sampleConfig = {
         let stage = "enquiry";
         if (row.dispatch_sent_date) stage = "dispatched";
         else if (row.actual_completion_date) stage = "ready";
-        else if (row.expected_completion_date) stage = "in_progress";
-        else if (row.sample_wo_handover_date) stage = "handover";
+        else if (row.sample_wo_handover_date || row.expected_completion_date) stage = "handover";
 
         const isDelayed =
           row.requirement_date &&
@@ -639,6 +639,9 @@ export const sampleConfig = {
           isDelayed,
           addedBy: row.added_by,
           remarks: row.remarks,
+          customer: row.buyer_coder || "",
+          vendor: row.vendor || row.supplier || "",
+          targetDate: row.requirement_date || row.expected_completion_date || null,
           raw: row,
         };
       });
@@ -805,6 +808,9 @@ export const checklistConfig = {
           submissionDate: row.submission_date,
           status: row.status,
           stage,
+          customer: row.department || row.name || "",
+          vendor: row.given_by || "",
+          targetDate: row.planned_date || null,
           raw: row,
         };
       });

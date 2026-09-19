@@ -33,6 +33,7 @@ import {
 import MobileSystemLauncher from "./MobileSystemLauncher";
 import MobileBottomNav from "./MobileBottomNav";
 import useUnifiedCounts from "../../hooks/useUnifiedCounts";
+import { hasAnyReportAccess } from "../../utils/reportPermissions";
 
 const isChecklistPath = (path) => {
   const checklistPaths = [
@@ -184,10 +185,19 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
     const storedRoleLower = (storedRole || "user").toLowerCase();
 
     if (storedRoleLower !== "admin") {
-      if (path === "/dashboard" || path.match(/^\/dashboard\/(procurement|production|sample|checklist)\/[^/]+$/)) {
+      const activeAccess = JSON.parse(localStorage.getItem("page_access") || "{}");
+
+      if (path === "/dashboard") {
+        if (!hasAnyReportAccess(activeAccess, storedRoleLower)) {
+          navigate("/dashboard/admin");
+          return;
+        }
         return;
       }
-      const activeAccess = JSON.parse(localStorage.getItem("page_access") || "{}");
+
+      if (path.match(/^\/dashboard\/(procurement|production|sample|checklist)\/[^/]+$/)) {
+        return;
+      }
 
       const exceptionPaths = [
         "/dashboard/admin",
@@ -944,7 +954,9 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
     ];
 
     const hasAccess = (href) => {
-      if (href === "/dashboard" || href.startsWith("/dashboard?")) return true;
+      if (href === "/dashboard" || href.startsWith("/dashboard?")) {
+        return hasAnyReportAccess(pageAccess, userRole);
+      }
       const perm = pageAccess[href];
       if (perm !== undefined && perm !== null) {
         return perm !== "none";

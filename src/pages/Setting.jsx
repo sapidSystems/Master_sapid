@@ -63,6 +63,15 @@ const SYSTEM_PAGE_GROUPS = [
     ]
   },
   {
+    title: "Reports",
+    pages: [
+      { path: "/dashboard", label: "Reports Overview (Dashboard)" },
+      { path: "/dashboard/reports/sample", label: "Sample System Report" },
+      { path: "/dashboard/reports/production", label: "Production Planning Report" },
+      { path: "/dashboard/reports/procurement", label: "Procurement System Report" }
+    ]
+  },
+  {
     title: "Other Settings",
     pages: [
       { path: "/dashboard/setting", label: "Settings" }
@@ -78,7 +87,11 @@ const DEFAULT_USER_PERMISSIONS = {
   "/dashboard/delegation": "write",
   "/dashboard/task": "write",
   "/dashboard/calendar": "write",
-  "/dashboard/training-video": "write"
+  "/dashboard/training-video": "write",
+  "/dashboard": "read",
+  "/dashboard/reports/sample": "read",
+  "/dashboard/reports/production": "read",
+  "/dashboard/reports/procurement": "read"
 };
 
 const parsePageAccess = (accessStr) => {
@@ -2917,8 +2930,46 @@ const Setting = () => {
                             <React.Fragment key={group.title}>
                               {/* Group Header Row */}
                               <tr className="bg-purple-50/40">
-                                <td colSpan="4" className="px-4 py-2.5 text-[10px] font-black text-purple-900 uppercase tracking-widest bg-gradient-to-r from-purple-100/50 via-purple-50/10 to-transparent border-y border-purple-100/30">
-                                  {group.title}
+                                <td colSpan="4" className="px-4 py-2 text-[10px] font-black text-purple-900 uppercase tracking-widest bg-gradient-to-r from-purple-100/50 via-purple-50/10 to-transparent border-y border-purple-100/30">
+                                  <div className="flex items-center justify-between">
+                                    <span>{group.title}</span>
+                                    <div className="flex items-center gap-2 font-sans font-semibold text-[10px] normal-case tracking-normal">
+                                      <span className="text-gray-400">Set section:</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const updated = { ...userForm.page_access };
+                                          group.pages.forEach(p => { updated[p.path] = 'read'; });
+                                          setUserForm(prev => ({ ...prev, page_access: updated }));
+                                        }}
+                                        className="text-purple-700 hover:text-purple-950 hover:underline px-1.5 py-0.5 rounded bg-purple-100/60 transition-colors"
+                                      >
+                                        All Read
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const updated = { ...userForm.page_access };
+                                          group.pages.forEach(p => { updated[p.path] = 'write'; });
+                                          setUserForm(prev => ({ ...prev, page_access: updated }));
+                                        }}
+                                        className="text-purple-700 hover:text-purple-950 hover:underline px-1.5 py-0.5 rounded bg-purple-100/60 transition-colors"
+                                      >
+                                        All Write
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const updated = { ...userForm.page_access };
+                                          group.pages.forEach(p => { updated[p.path] = 'none'; });
+                                          setUserForm(prev => ({ ...prev, page_access: updated }));
+                                        }}
+                                        className="text-gray-600 hover:text-red-700 hover:underline px-1.5 py-0.5 rounded bg-gray-100 transition-colors"
+                                      >
+                                        All None
+                                      </button>
+                                    </div>
+                                  </div>
                                 </td>
                               </tr>
                               {group.pages.map((page) => {

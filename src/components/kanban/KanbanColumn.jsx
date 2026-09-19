@@ -12,6 +12,7 @@ export default function KanbanColumn({
   children,
   onAddClick,
   emptyMessage = "No records in this stage",
+  isFiltered = false,
   className = "",
 }) {
   return (
@@ -56,8 +57,12 @@ export default function KanbanColumn({
         {count === 0 ? (
           <div className="h-44 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 text-slate-400 p-4 text-center">
             <Inbox className="w-7 h-7 text-slate-300 mb-1.5 stroke-[1.5]" />
-            <p className="text-xs font-medium text-slate-500">{emptyMessage}</p>
-            <p className="text-[11px] text-slate-400 mt-0.5">All clear for now</p>
+            <p className="text-xs font-medium text-slate-500">
+              {isFiltered ? "No cards match active filters" : emptyMessage}
+            </p>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              {isFiltered ? "Try clearing or adjusting filters" : "All clear for now"}
+            </p>
           </div>
         ) : (
           children
