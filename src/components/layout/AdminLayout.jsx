@@ -73,7 +73,8 @@ const isSamplePath = (path) => {
 const isBulkPath = (path) => {
   const bulkPaths = [
     "/dashboard/bulk-dashboard",
-    "/dashboard/bulk-order"
+    "/dashboard/bulk-order",
+    "/dashboard/production"
   ];
   return bulkPaths.some(p => path === p || path.startsWith(p + "/"));
 };
@@ -225,8 +226,8 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
 
       const isException = exceptionPaths.some(p => path === p || path.startsWith(p + "/"));
 
-      if (isProcurementPath(path)) {
-        const currentPermission = activeAccess[path];
+      if (isProcurementPath(path) || isBulkPath(path)) {
+        const currentPermission = activeAccess[path] || activeAccess["/dashboard/production"] || activeAccess["/dashboard/bulk-order"] || activeAccess["/dashboard/procurement"];
         if (currentPermission === "none") {
           navigate("/dashboard/admin");
           return;
@@ -889,17 +890,29 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
       active: isBulkPath(location.pathname),
       subItems: [
         {
-          href: "/dashboard/bulk-dashboard",
+          href: "/dashboard/production",
           label: "Dashboard",
-          active: location.pathname === "/dashboard/bulk-dashboard",
+          active: location.pathname === "/dashboard/production" || location.pathname === "/dashboard/production/dashboard" || location.pathname === "/dashboard/bulk-dashboard",
           showFor: ["admin", "user", "HOD"],
         },
         {
-          href: "/dashboard/bulk-order",
-          label: "Production Planning and Monitoring",
-          active: location.pathname === "/dashboard/bulk-order",
+          href: "/dashboard/production/data",
+          label: "Production Data",
+          active: location.pathname === "/dashboard/production/data",
+          showFor: ["admin", "user", "HOD"],
+        },
+        {
+          href: "/dashboard/production/planning",
+          label: "Production Planning",
+          active: location.pathname === "/dashboard/production/planning" || location.pathname === "/dashboard/bulk-order",
           showFor: ["admin", "user", "HOD"],
           badge: menuCounts.productionPlanning || null,
+        },
+        {
+          href: "/dashboard/production/approval",
+          label: "Approval",
+          active: location.pathname === "/dashboard/production/approval",
+          showFor: ["admin", "user", "HOD"],
         }
       ]
     },

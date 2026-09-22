@@ -68,6 +68,8 @@ function toDbRow(item: any): Record<string, any> {
     plannedDeliveryDateLocked: 'planned_delivery_date_locked',
     updateSectionLocked: 'update_section_locked',
     recordIdentifier: 'record_identifier',
+    productionPlanningId: 'production_planning_id',
+    source: 'source',
   };
 
   for (const [jsKey, dbKey] of Object.entries(map)) {
@@ -140,6 +142,9 @@ function fromDbRow(row: any): any {
     supplier: row.supplier,
     // Packaging only
     packagingType: row.packaging_type,
+    // Production Planning Integration
+    productionPlanningId: row.production_planning_id || undefined,
+    source: row.source || 'manual',
   };
 }
 
@@ -716,6 +721,52 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
           setMaterials(prev => prev.map(i => i.id === id ? (merged as MaterialItem) : i)); break;
         case 'packaging':
           setPackaging(prev => prev.map(i => i.id === id ? (merged as PackagingItem) : i)); break;
+      }
+
+      // Requirement 6: Sync Actual Receipt Date back to Production Planning stage
+      if (actualDate && (module === 'daily-leather' || module === 'material' || module === 'packaging')) {
+        const planningId = (merged as any).productionPlanningId || (existing as any).productionPlanningId;
+        const woNo = (merged as any).woNo || (existing as any).woNo;
+
+        const stageTargetName =
+          module === 'daily-leather' ? 'LEATHER IN-HOUSE' :
+          module === 'material' ? 'MATERIALS IN-HOUSE' :
+          module === 'packaging' ? 'PACKING MATERIALS IN-HOUSE' : '';
+
+        if (stageTargetName && (planningId || woNo)) {
+          (async () => {
+            try {
+              let query = supabase.from('sample_system_product_planning').select('id, stages, current_stage');
+              if (planningId) {
+                query = query.eq('id', planningId);
+              } else if (woNo) {
+                query = query.eq('wo_no', woNo);
+              }
+              const { data: planningRows } = await query;
+              if (planningRows && planningRows.length > 0) {
+                for (const row of planningRows) {
+                  let stagesArr = Array.isArray(row.stages) ? [...row.stages] : [];
+                  let changed = false;
+                  stagesArr = stagesArr.map((stg: any) => {
+                    if (stg.name === stageTargetName) {
+                      changed = true;
+                      return { ...stg, actualDate: actualDate };
+                    }
+                    return stg;
+                  });
+                  if (changed) {
+                    await supabase
+                      .from('sample_system_product_planning')
+                      .update({ stages: stagesArr })
+                      .eq('id', row.id);
+                  }
+                }
+              }
+            } catch (syncErr) {
+              console.error('[Procurement] Failed to sync stage actualDate to Production Planning:', syncErr);
+            }
+          })();
+        }
       }
 
       const identifier = (merged as any).woNo || merged.id;

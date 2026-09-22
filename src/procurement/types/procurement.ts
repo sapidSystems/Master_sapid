@@ -22,6 +22,8 @@ export interface BaseProcurementItem {
   remarkHistory: RemarkEntry[];
   createdAt: string;
   updatedAt: string;
+  productionPlanningId?: string;
+  source?: string;
 }
 
 // 1. New Leather Development

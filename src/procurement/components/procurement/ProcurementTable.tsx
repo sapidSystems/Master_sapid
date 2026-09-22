@@ -20,7 +20,7 @@ interface ProcurementTableProps {
   onQuickComplete?: (item: AnyProcurementItem, actualDate: string) => void;
   onViewRemarks: (item: AnyProcurementItem) => void;
   onDelete: (item: AnyProcurementItem) => void;
-  onAddNew: () => void;
+  onAddNew?: () => void;
   hasActiveFilters?: boolean;
   onResetFilters?: () => void;
   canWrite?: boolean;

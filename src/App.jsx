@@ -25,6 +25,12 @@ import ProductionPlanning from "./pages/sample/ProductionPlanning"
 import BulkDashboard from "./pages/sample/BulkDashboard"
 import ProcurementApp from "./procurement/ProcurementApp"
 
+// --- Production Planning & Monitoring System Imports ---
+import ProductionDashboard from "./pages/production/ProductionDashboard"
+import ProductionData from "./pages/production/ProductionData"
+import ProductionPlanningNew from "./pages/production/ProductionPlanningNew"
+import ProductionApproval from "./pages/production/ProductionApproval"
+
 // --- Data & Delegation Imports ---
 import DataPage from "./pages/admin/DataPage"
 import AdminDataPage from "./pages/admin/admin-data-page"
@@ -81,8 +87,9 @@ const ProtectedRoute = ({ children }) => {
     }
 
     const currentPermission = pageAccess[path];
-    if (path.startsWith("/dashboard/procurement")) {
-        if (currentPermission === "none") {
+    if (path.startsWith("/dashboard/procurement") || path.startsWith("/dashboard/production")) {
+        const modulePerm = currentPermission || pageAccess["/dashboard/production"] || pageAccess["/dashboard/bulk-order"] || pageAccess["/dashboard/procurement"];
+        if (modulePerm === "none") {
             return <Navigate to="/dashboard/admin" replace />;
         }
         return children;
@@ -355,21 +362,52 @@ function App() {
                             </ProtectedRoute>
                         }
                     />
+                    {/* --- Production Planning & Monitoring System (4 Pages) --- */}
                     <Route
-                        path="/dashboard/bulk-dashboard"
+                        path="/dashboard/production"
                         element={
                             <ProtectedRoute allowedRoles={["admin", "HOD", "user"]}>
-                                <BulkDashboard />
+                                <ProductionDashboard />
                             </ProtectedRoute>
                         }
                     />
                     <Route
-                        path="/dashboard/bulk-order"
+                        path="/dashboard/production/dashboard"
+                        element={<Navigate to="/dashboard/production" replace />}
+                    />
+                    <Route
+                        path="/dashboard/production/data"
                         element={
                             <ProtectedRoute allowedRoles={["admin", "HOD", "user"]}>
-                                <ProductionPlanning />
+                                <ProductionData />
                             </ProtectedRoute>
                         }
+                    />
+                    <Route
+                        path="/dashboard/production/planning"
+                        element={
+                            <ProtectedRoute allowedRoles={["admin", "HOD", "user"]}>
+                                <ProductionPlanningNew />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/dashboard/production/approval"
+                        element={
+                            <ProtectedRoute allowedRoles={["admin", "HOD", "user"]}>
+                                <ProductionApproval />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    {/* Backwards compatibility for old bulk routes */}
+                    <Route
+                        path="/dashboard/bulk-dashboard"
+                        element={<Navigate to="/dashboard/production" replace />}
+                    />
+                    <Route
+                        path="/dashboard/bulk-order"
+                        element={<Navigate to="/dashboard/production/planning" replace />}
                     />
 
                     {/* --- Procurement System (Sapid Design) Routes --- */}
