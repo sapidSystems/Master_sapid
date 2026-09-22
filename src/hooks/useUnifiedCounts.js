@@ -8,6 +8,7 @@ const DEFAULT_COUNTS = {
   adminApproval: 0,
   sampleManagement: 0,
   productionPlanning: 0,
+  productionApproval: 0,
   procurementNewLeather: 0,
   procurementDailyLeather: 0,
   procurementMaterial: 0,
@@ -333,15 +334,17 @@ export function useUnifiedCounts(userParam, roleParam) {
         console.error("Error fetching sample management count:", err);
       }
 
-      // 6. Production Planning pending count (is_history = false)
+      // 6. Production Planning & Approval pending counts
       let productionPlanningCount = 0;
+      let productionApprovalCount = 0;
       try {
-        const { count: ppCount, error: ppErr } = await supabase
+        const { data: ppData, error: ppErr } = await supabase
           .from("sample_system_product_planning")
-          .select("*", { count: "exact", head: true })
+          .select("id, approval_status, is_history")
           .eq("is_history", false);
-        if (!ppErr) {
-          productionPlanningCount = ppCount ?? 0;
+        if (!ppErr && ppData) {
+          productionPlanningCount = ppData.filter(p => !p.approval_status || p.approval_status === "draft" || p.approval_status === "rejected").length;
+          productionApprovalCount = ppData.filter(p => p.approval_status === "pending_approval").length;
         }
       } catch (err) {
         console.error("Error fetching production planning count:", err);
@@ -421,6 +424,7 @@ export function useUnifiedCounts(userParam, roleParam) {
         adminApproval: approvalCount,
         sampleManagement: sampleManagementCount || 0,
         productionPlanning: productionPlanningCount || 0,
+        productionApproval: productionApprovalCount || 0,
         procurementNewLeather: procurementNewLeatherCount || 0,
         procurementDailyLeather: procurementDailyLeatherCount || 0,
         procurementMaterial: procurementMaterialCount || 0,
@@ -446,20 +450,23 @@ export function useUnifiedCounts(userParam, roleParam) {
     }
 
     const handleProcurementUpdate = () => fetchCounts();
+    const handleProductionUpdate = () => fetchCounts();
     const handleFocus = () => fetchCounts();
 
     window.addEventListener("procurement-updated", handleProcurementUpdate);
+    window.addEventListener("production-updated", handleProductionUpdate);
     window.addEventListener("focus", handleFocus);
 
     return () => {
       window.removeEventListener("procurement-updated", handleProcurementUpdate);
+      window.removeEventListener("production-updated", handleProductionUpdate);
       window.removeEventListener("focus", handleFocus);
     };
   }, [fetchCounts]);
 
   const checklistTotal = (menuCounts.delegation || 0) + (menuCounts.task || 0) + (menuCounts.adminApproval || 0);
   const sampleTotal = menuCounts.sampleManagement || 0;
-  const productionTotal = menuCounts.productionPlanning || 0;
+  const productionTotal = (menuCounts.productionPlanning || 0) + (menuCounts.productionApproval || 0);
   const procurementTotal =
     (menuCounts.procurementNewLeather || 0) +
     (menuCounts.procurementDailyLeather || 0) +

@@ -127,7 +127,7 @@ export default function MobileSystemLauncher({
       bgColor: 'bg-cream-100',
       borderColor: 'border-leather-200',
       activeBorder: 'ring-2 ring-gold-400 border-leather-700',
-      badge: menuCounts.productionPlanning || null,
+      badge: ((menuCounts.productionPlanning || 0) + (menuCounts.productionApproval || 0)) || null,
       isActive: isBulkPath(location.pathname),
       accessible: hasAccess('/dashboard/bulk-dashboard') || hasAccess('/dashboard/bulk-order')
     },

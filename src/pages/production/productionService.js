@@ -1,5 +1,11 @@
 import supabase from '../../SupabaseClient';
 
+export const notifyProductionUpdated = () => {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('production-updated'));
+  }
+};
+
 export const STAGES_LIST = [
   'HANDOVER',
   'LEATHER IN-HOUSE',
@@ -134,6 +140,7 @@ export const createProductionPlan = async (formData, currentUser) => {
     .from('sample_system_product_planning')
     .insert([dbRow]);
   if (error) throw error;
+  notifyProductionUpdated();
   return newLead;
 };
 
@@ -158,6 +165,7 @@ export const updateProductionPlan = async (id, updates) => {
     .update(cleanUpdates)
     .eq('id', id);
   if (error) throw error;
+  notifyProductionUpdated();
   return true;
 };
 
@@ -167,6 +175,7 @@ export const deleteProductionPlan = async (id) => {
     .delete()
     .eq('id', id);
   if (error) throw error;
+  notifyProductionUpdated();
   return true;
 };
 
@@ -185,6 +194,7 @@ export const submitForApproval = async (id, planDate, stageUpdates = null) => {
     .update(updatePayload)
     .eq('id', id);
   if (error) throw error;
+  notifyProductionUpdated();
   return true;
 };
 
@@ -193,15 +203,23 @@ export const approveProductionPlan = async ({ lead, note = '', currentUser }) =>
   const userName = currentUser?.name || 'Admin User';
 
   // 1. Update sample_system_product_planning
+  const updatePayload = {
+    approval_status: 'approved',
+    approval_note: note || 'Approved for procurement',
+    approved_by: userName,
+    approved_at: nowIso,
+    procurement_pushed: true,
+  };
+  if (lead.planDate) {
+    updatePayload.plan_date = lead.planDate;
+  }
+  if (lead.stages && Array.isArray(lead.stages)) {
+    updatePayload.stages = lead.stages;
+  }
+
   const { error: planError } = await supabase
     .from('sample_system_product_planning')
-    .update({
-      approval_status: 'approved',
-      approval_note: note || 'Approved for procurement',
-      approved_by: userName,
-      approved_at: nowIso,
-      procurement_pushed: true,
-    })
+    .update(updatePayload)
     .eq('id', lead.id);
   if (planError) throw planError;
 
@@ -286,6 +304,7 @@ export const approveProductionPlan = async ({ lead, note = '', currentUser }) =>
     supabase.from('procurement_packaging').insert([pkgRow]),
   ]);
 
+  notifyProductionUpdated();
   return true;
 };
 
@@ -318,6 +337,7 @@ export const rejectProductionPlan = async ({ lead, note = '', currentUser }) => 
     console.warn('[productionService] Rejection history insert warning:', histErr);
   }
 
+  notifyProductionUpdated();
   return true;
 };
 

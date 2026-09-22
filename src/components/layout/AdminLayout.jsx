@@ -127,6 +127,7 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
     adminApproval: null,
     sampleManagement: null,
     productionPlanning: null,
+    productionApproval: null,
     procurementNewLeather: null,
     procurementDailyLeather: null,
     procurementMaterial: null
@@ -593,15 +594,17 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
         console.error('Error fetching sample management count:', err);
       }
 
-      // 6. Production Planning pending count (is_history = false)
+      // 6. Production Planning & Approval pending counts
       let productionPlanningCount = 0;
+      let productionApprovalCount = 0;
       try {
-        const { count: ppCount, error: ppErr } = await supabase
+        const { data: ppData, error: ppErr } = await supabase
           .from('sample_system_product_planning')
-          .select('*', { count: 'exact', head: true })
+          .select('id, approval_status, is_history')
           .eq('is_history', false);
-        if (!ppErr) {
-          productionPlanningCount = ppCount ?? 0;
+        if (!ppErr && ppData) {
+          productionPlanningCount = ppData.filter(p => !p.approval_status || p.approval_status === 'draft' || p.approval_status === 'rejected').length;
+          productionApprovalCount = ppData.filter(p => p.approval_status === 'pending_approval').length;
         }
       } catch (err) {
         console.error('Error fetching production planning count:', err);
@@ -681,6 +684,7 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
         adminApproval: approvalCount,
         sampleManagement: sampleManagementCount || 0,
         productionPlanning: productionPlanningCount || 0,
+        productionApproval: productionApprovalCount || 0,
         procurementNewLeather: procurementNewLeatherCount || 0,
         procurementDailyLeather: procurementDailyLeatherCount || 0,
         procurementMaterial: procurementMaterialCount || 0
@@ -703,9 +707,16 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
         fetchSidebarCounts(username, userRole);
       }
     };
+    const handleProductionUpdate = () => {
+      if (username) {
+        fetchSidebarCounts(username, userRole);
+      }
+    };
     window.addEventListener('procurement-updated', handleProcurementUpdate);
+    window.addEventListener('production-updated', handleProductionUpdate);
     return () => {
       window.removeEventListener('procurement-updated', handleProcurementUpdate);
+      window.removeEventListener('production-updated', handleProductionUpdate);
     };
   }, [username, userRole]);
 
@@ -886,7 +897,7 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
       isSubmenu: true,
       isOpen: isBulkSubmenuOpen,
       setIsOpen: setIsBulkSubmenuOpen,
-      badge: menuCounts.productionPlanning || null,
+      badge: ((menuCounts.productionPlanning || 0) + (menuCounts.productionApproval || 0)) || null,
       active: isBulkPath(location.pathname),
       subItems: [
         {
@@ -913,6 +924,7 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
           label: "Approval",
           active: location.pathname === "/dashboard/production/approval",
           showFor: ["admin", "user", "HOD"],
+          badge: menuCounts.productionApproval || null,
         }
       ]
     },
