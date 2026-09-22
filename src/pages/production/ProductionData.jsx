@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  Plus,
   Search,
   Filter,
   X,
@@ -291,12 +292,20 @@ export default function ProductionData() {
                 <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
                 <span>Refresh</span>
               </button>
+
+              <button
+                type="button"
+                onClick={handleOpenAdd}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-black hover:bg-slate-900 active:bg-slate-800 text-white text-sm font-bold rounded-xl shadow-md transition-all cursor-pointer ring-2 ring-black/10"
+              >
+                <Plus className="w-4 h-4 stroke-[3]" />
+                <span>Add Production Data</span>
+              </button>
             </div>
           </div>
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
-
           {/* Filters Bar */}
           <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">

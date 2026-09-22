@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import {
   CheckCircle2,
   XCircle,
@@ -206,12 +207,19 @@ export default function ProductionApproval() {
                 <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
                 <span>Refresh</span>
               </button>
+
+              <Link
+                to="/dashboard/procurement"
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold rounded-xl shadow-md transition-all"
+              >
+                <Zap className="w-4 h-4" />
+                <span>Open Procurement System</span>
+              </Link>
             </div>
           </div>
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
-
           {/* Tab Switcher: Pending vs History */}
           <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
             <button
