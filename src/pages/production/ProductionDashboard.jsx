@@ -15,10 +15,12 @@ import {
   Search,
   Boxes,
   Zap,
-  ChevronRight
+  ChevronRight,
+  Sliders,
+  MessageSquare
 } from 'lucide-react';
 import AdminLayout from '../../components/layout/AdminLayout';
-import { fetchProductionPlans, STAGES_LIST, formatDate } from './productionService';
+import { fetchProductionPlans, STAGES_LIST, formatDate, extractRemarkRecords } from './productionService';
 import { useMagicToast } from '../../context/MagicToastContext';
 
 export default function ProductionDashboard() {
@@ -68,6 +70,26 @@ export default function ProductionDashboard() {
       return true;
     });
   }, [plans, selectedBuyer, searchQuery]);
+
+  // Extract all discrete remarks across plans
+  const remarkRecords = useMemo(() => {
+    return extractRemarkRecords(plans);
+  }, [plans]);
+
+  const filteredRemarkRecords = useMemo(() => {
+    return remarkRecords.filter(r => {
+      if (selectedBuyer !== 'all' && r.buyer !== selectedBuyer) return false;
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const m1 = r.woNo && r.woNo.toLowerCase().includes(q);
+        const m2 = r.buyer && r.buyer.toLowerCase().includes(q);
+        const m3 = r.remark && r.remark.toLowerCase().includes(q);
+        const m4 = r.stageName && r.stageName.toLowerCase().includes(q);
+        if (!m1 && !m2 && !m3 && !m4) return false;
+      }
+      return true;
+    });
+  }, [remarkRecords, selectedBuyer, searchQuery]);
 
   // Metrics
   const metrics = useMemo(() => {
@@ -138,7 +160,7 @@ export default function ProductionDashboard() {
               <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 <span>Production System</span>
                 <span>•</span>
-                <span className="text-brand-600">Module 1 of 4</span>
+                <span className="text-brand-600">Module 1 of 5</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight mt-0.5">
                 Production Planning & Monitoring Dashboard
@@ -152,66 +174,66 @@ export default function ProductionDashboard() {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
           {/* Quick Module Navigation Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
             <Link
               to="/dashboard/production"
-              className="bg-brand-50/60 border-2 border-brand-500/30 p-4 rounded-2xl flex items-center justify-between shadow-xs transition-all"
+              className="bg-brand-50/60 border-2 border-brand-500/30 p-3.5 rounded-2xl flex items-center justify-between shadow-xs transition-all"
             >
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-brand-500 text-white">
-                  <TrendingUp className="w-5 h-5" />
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-2 rounded-xl bg-brand-500 text-white shrink-0">
+                  <TrendingUp className="w-4 h-4" />
                 </div>
-                <div>
-                  <div className="text-xs font-bold text-brand-700 uppercase tracking-wider">Page 1</div>
-                  <div className="text-sm font-bold text-slate-900">Dashboard</div>
+                <div className="min-w-0">
+                  <div className="text-[11px] font-bold text-brand-700 uppercase tracking-wider">Page 1</div>
+                  <div className="text-xs sm:text-sm font-bold text-slate-900 truncate">Dashboard</div>
                 </div>
               </div>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-brand-500/10 text-brand-700">Active</span>
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-brand-500/10 text-brand-700 shrink-0">Active</span>
             </Link>
 
             <Link
               to="/dashboard/production/data"
-              className="bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 p-4 rounded-2xl flex items-center justify-between shadow-xs transition-all group"
+              className="bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 p-3.5 rounded-2xl flex items-center justify-between shadow-xs transition-all group"
             >
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-slate-100 group-hover:bg-slate-200 text-slate-700">
-                  <FileSpreadsheet className="w-5 h-5" />
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-2 rounded-xl bg-slate-100 group-hover:bg-slate-200 text-slate-700 shrink-0">
+                  <FileSpreadsheet className="w-4 h-4" />
                 </div>
-                <div>
-                  <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Page 2</div>
-                  <div className="text-sm font-bold text-slate-900">Production Data</div>
+                <div className="min-w-0">
+                  <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Page 2</div>
+                  <div className="text-xs sm:text-sm font-bold text-slate-900 truncate">Work Order Creation</div>
                 </div>
               </div>
-              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
             </Link>
 
             <Link
               to="/dashboard/production/planning"
-              className="bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 p-4 rounded-2xl flex items-center justify-between shadow-xs transition-all group"
+              className="bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 p-3.5 rounded-2xl flex items-center justify-between shadow-xs transition-all group"
             >
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-slate-100 group-hover:bg-slate-200 text-slate-700">
-                  <Calendar className="w-5 h-5" />
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-2 rounded-xl bg-slate-100 group-hover:bg-slate-200 text-slate-700 shrink-0">
+                  <Calendar className="w-4 h-4" />
                 </div>
-                <div>
-                  <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Page 3</div>
-                  <div className="text-sm font-bold text-slate-900">Production Planning</div>
+                <div className="min-w-0">
+                  <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Page 3</div>
+                  <div className="text-xs sm:text-sm font-bold text-slate-900 truncate">Production Planning</div>
                 </div>
               </div>
-              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
             </Link>
 
             <Link
               to="/dashboard/production/approval"
-              className="bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 p-4 rounded-2xl flex items-center justify-between shadow-xs transition-all group"
+              className="bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 p-3.5 rounded-2xl flex items-center justify-between shadow-xs transition-all group"
             >
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-slate-100 group-hover:bg-slate-200 text-slate-700">
-                  <CheckCircle2 className="w-5 h-5" />
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-2 rounded-xl bg-slate-100 group-hover:bg-slate-200 text-slate-700 shrink-0">
+                  <CheckCircle2 className="w-4 h-4" />
                 </div>
-                <div>
-                  <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Page 4</div>
-                  <div className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                <div className="min-w-0">
+                  <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Page 4</div>
+                  <div className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5 truncate">
                     <span>Approval</span>
                     {metrics.pending > 0 && (
                       <span className="px-1.5 py-0.2 bg-amber-500 text-white rounded-full text-[10px] font-bold">
@@ -221,7 +243,30 @@ export default function ProductionDashboard() {
                   </div>
                 </div>
               </div>
-              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+            </Link>
+
+            <Link
+              to="/dashboard/production/monitoring"
+              className="bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 p-3.5 rounded-2xl flex items-center justify-between shadow-xs transition-all group"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-2 rounded-xl bg-slate-100 group-hover:bg-slate-200 text-slate-700 shrink-0">
+                  <Sliders className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Page 5</div>
+                  <div className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5 truncate">
+                    <span>Monitoring</span>
+                    {metrics.approved > 0 && (
+                      <span className="px-1.5 py-0.2 bg-emerald-500 text-white rounded-full text-[10px] font-bold">
+                        {metrics.approved}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
             </Link>
           </div>
 
@@ -527,6 +572,122 @@ export default function ProductionDashboard() {
                     <tr>
                       <td colSpan={10} className="px-4 py-8 text-center text-slate-400">
                         No production plans found matching the filters.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Production Remarks & Activity Log */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-indigo-600" />
+                  <h3 className="text-base font-bold text-slate-900">Production Remarks & Activity Log</h3>
+                  <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold font-mono">
+                    {remarkRecords.length}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Live report of remarks and notes entered in work order milestones & monitoring
+                </p>
+              </div>
+              <Link
+                to="/dashboard/production/monitoring"
+                className="text-xs font-semibold text-brand-600 hover:text-brand-700 flex items-center gap-1 shrink-0"
+              >
+                <span>Open in Production & Monitoring</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+                    <th className="px-4 py-3">W/O No</th>
+                    <th className="px-4 py-3">Buyer</th>
+                    <th className="px-4 py-3">Milestone / Section</th>
+                    <th className="px-4 py-3">Remark Note</th>
+                    <th className="px-4 py-3">Date Logged</th>
+                    <th className="px-4 py-3">Logged By</th>
+                    <th className="px-4 py-3 text-center">Status</th>
+                    <th className="px-4 py-3 text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                  {filteredRemarkRecords.slice(0, 15).map((record) => (
+                    <tr key={record.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="px-4 py-3 font-bold text-slate-900 font-mono">
+                        {record.woNo}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="px-2 py-0.5 bg-slate-100 rounded-md font-mono text-slate-700 text-[11px]">
+                          {record.buyer || '—'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold inline-flex items-center gap-1 ${
+                          record.type === 'overall'
+                            ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                            : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                        }`}>
+                          {record.type === 'overall' ? (
+                            <FileSpreadsheet className="w-2.5 h-2.5 text-purple-500" />
+                          ) : (
+                            <Layers className="w-2.5 h-2.5 text-indigo-500" />
+                          )}
+                          <span>{record.sourceName}</span>
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 max-w-[340px]">
+                        <div className="bg-slate-50 border border-slate-200/80 rounded-lg p-2 text-slate-800 text-xs">
+                          <div className="flex items-start gap-1.5">
+                            <MessageSquare className="w-3 h-3 text-indigo-500 shrink-0 mt-0.5" />
+                            <span className="italic leading-relaxed font-normal">"{record.remark}"</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-slate-600 font-medium">
+                        {formatDate(record.date)}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">
+                        <div className="inline-flex items-center gap-1 text-xs font-medium text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full">
+                          <div className="w-3.5 h-3.5 rounded-full bg-indigo-500 text-white flex items-center justify-center text-[9px] font-bold uppercase">
+                            {(record.author || 'U').charAt(0)}
+                          </div>
+                          <span>{record.author || 'Supervisor'}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {record.isHistory ? (
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                            Completed
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-bold">
+                            Active
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <Link
+                          to="/dashboard/production/monitoring"
+                          className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-700 inline-flex items-center gap-1 transition-colors"
+                        >
+                          <Sliders className="w-3 h-3" />
+                          <span>View</span>
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredRemarkRecords.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="px-4 py-8 text-center text-slate-400">
+                        No remark records found matching filters.
                       </td>
                     </tr>
                   )}

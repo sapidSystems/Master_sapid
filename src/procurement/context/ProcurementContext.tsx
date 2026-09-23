@@ -11,7 +11,7 @@ import {
   ActivityLogEntry,
   RemarkEntry
 } from '../types/procurement';
-import { calculateStatus, calculateMaterialStatus, addDays, getTodayDateString } from '../utils/dateUtils';
+import { calculateStatus, calculateMaterialStatus, addDays, addWorkingDays, getTodayDateString } from '../utils/dateUtils';
 import { useToast } from './ToastContext';
 import { supabase } from '../utils/supabase';
 
@@ -124,7 +124,6 @@ function fromDbRow(row: any): any {
     indentReceiptDate: row.indent_receipt_date || undefined,
     shipmentDate: row.shipment_date || undefined,
     actualPoReleaseDate: row.actual_po_release_date || undefined,
-    poReleaseTargetDate: row.po_release_target_date || undefined,
     qtyInStock: row.qty_in_stock,
     qtyOrdered: row.qty_ordered,
     poDeliveryDate: row.po_delivery_date || undefined,
@@ -132,8 +131,23 @@ function fromDbRow(row: any): any {
     qtyReceived: row.qty_received,
     poDeliveryDateLocked: row.po_delivery_date_locked !== undefined ? Boolean(row.po_delivery_date_locked) : undefined,
     plannedDeliveryDateLocked: row.planned_delivery_date_locked !== undefined ? Boolean(row.planned_delivery_date_locked) : undefined,
-    // Material / Packaging extra
-    targetStockCheckDate: row.target_stock_check_date || undefined,
+    // Auto-calculate target dates with working days rules (Material: 3wd stock check, 2wd PO; Packaging: 7wd stock check, 2wd PO; Leather: 2wd PO)
+    ...(() => {
+      const indentDate = row.indent_receipt_date || row.wo_date || row.date;
+      const stockCheckDays = row.module === 'packaging' ? 7 : (row.module === 'material' ? 3 : 0);
+      const computedStockCheck = stockCheckDays > 0 && indentDate ? addWorkingDays(indentDate, stockCheckDays) : undefined;
+      const finalStockCheck = row.target_stock_check_date || computedStockCheck;
+
+      const computedPoRelease = row.module === 'daily-leather'
+        ? (indentDate ? addWorkingDays(indentDate, 2) : undefined)
+        : (finalStockCheck ? addWorkingDays(finalStockCheck, 2) : undefined);
+      const finalPoRelease = row.po_release_target_date || computedPoRelease;
+
+      return {
+        targetStockCheckDate: finalStockCheck,
+        poReleaseTargetDate: finalPoRelease,
+      };
+    })(),
     actualStockUpdateDate: row.actual_stock_update_date || undefined,
     expectedMaterialReceiptDate: row.expected_material_receipt_date || undefined,
     updateSectionLocked: row.update_section_locked !== undefined ? Boolean(row.update_section_locked) : undefined,
@@ -256,10 +270,29 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
     try { const s = localStorage.getItem('erp_new_leather'); return s ? JSON.parse(s) : []; } catch { return []; }
   });
   const [dailyLeather, setDailyLeather] = useState<DailyLeatherItem[]>(() => {
-    try { const s = localStorage.getItem('erp_daily_leather'); return s ? JSON.parse(s) : []; } catch { return []; }
+    try {
+      const s = localStorage.getItem('erp_daily_leather');
+      if (!s) return [];
+      const list: DailyLeatherItem[] = JSON.parse(s);
+      return list.map(item => {
+        const base = item.indentReceiptDate || item.woDate || item.date;
+        const poReleaseTargetDate = item.poReleaseTargetDate || (base ? addWorkingDays(base, 2) : undefined);
+        return { ...item, poReleaseTargetDate };
+      });
+    } catch { return []; }
   });
   const [materials, setMaterials] = useState<MaterialItem[]>(() => {
-    try { const s = localStorage.getItem('erp_materials'); return s ? JSON.parse(s) : []; } catch { return []; }
+    try {
+      const s = localStorage.getItem('erp_materials');
+      if (!s) return [];
+      const list: MaterialItem[] = JSON.parse(s);
+      return list.map(item => {
+        const base = item.indentReceiptDate || item.woDate || item.date;
+        const targetStockCheckDate = item.targetStockCheckDate || (base ? addWorkingDays(base, 3) : undefined);
+        const poReleaseTargetDate = item.poReleaseTargetDate || (targetStockCheckDate ? addWorkingDays(targetStockCheckDate, 2) : undefined);
+        return { ...item, targetStockCheckDate, poReleaseTargetDate };
+      });
+    } catch { return []; }
   });
   const [packaging, setPackaging] = useState<PackagingItem[]>(() => {
     try {
@@ -268,12 +301,9 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
       const list: PackagingItem[] = JSON.parse(s);
       return list.map(item => {
         const base = item.indentReceiptDate || item.woDate || item.date;
-        if (base) {
-          const targetStockCheckDate = addDays(base, 7);
-          const poReleaseTargetDate = addDays(targetStockCheckDate, 2);
-          return { ...item, targetStockCheckDate, poReleaseTargetDate };
-        }
-        return item;
+        const targetStockCheckDate = item.targetStockCheckDate || (base ? addWorkingDays(base, 7) : undefined);
+        const poReleaseTargetDate = item.poReleaseTargetDate || (targetStockCheckDate ? addWorkingDays(targetStockCheckDate, 2) : undefined);
+        return { ...item, targetStockCheckDate, poReleaseTargetDate };
       });
     } catch { return []; }
   });
@@ -316,10 +346,10 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
           supabase.from('procurement_activity_logs').select('*').order('timestamp', { ascending: false }).limit(200),
         ]);
 
-        if (nlRes.data)  setNewLeather(nlRes.data.map(r => fromDbRow(r) as NewLeatherItem));
-        if (dlRes.data)  setDailyLeather(dlRes.data.map(r => fromDbRow(r) as DailyLeatherItem));
-        if (matRes.data) setMaterials(matRes.data.map(r => fromDbRow(r) as MaterialItem));
-        if (pkgRes.data) setPackaging(pkgRes.data.map(r => fromDbRow(r) as PackagingItem));
+        if (nlRes.data)  setNewLeather(nlRes.data.map(r => fromDbRow({ ...r, module: 'new-leather' }) as NewLeatherItem));
+        if (dlRes.data)  setDailyLeather(dlRes.data.map(r => fromDbRow({ ...r, module: 'daily-leather' }) as DailyLeatherItem));
+        if (matRes.data) setMaterials(matRes.data.map(r => fromDbRow({ ...r, module: 'material' }) as MaterialItem));
+        if (pkgRes.data) setPackaging(pkgRes.data.map(r => fromDbRow({ ...r, module: 'packaging' }) as PackagingItem));
         if (logRes.data) setActivityLogs(logRes.data.map(fromDbActivityLog));
 
         if (nlRes.error)  console.error('[Procurement] new_leather fetch error:', nlRes.error);
@@ -476,6 +506,7 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
                 timestamp: nowIso
               });
             }
+            const dlBaseDate = data.indentReceiptDate || data.woDate || data.date || getTodayDateString();
             return {
               id: entryId,
               module: 'daily-leather',
@@ -491,6 +522,7 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
               colour: sub.colour,
               quantity: Number(sub.quantity) || 0,
               tannery: sub.tannery,
+              poReleaseTargetDate: data.poReleaseTargetDate || (dlBaseDate ? addWorkingDays(dlBaseDate, 2) : undefined),
               actualPoReleaseDate: data.actualPoReleaseDate || undefined,
               qtyInStock: data.qtyInStock !== undefined ? Number(data.qtyInStock) : undefined,
               qtyOrdered: data.qtyOrdered !== undefined ? Number(data.qtyOrdered) : undefined,
@@ -520,8 +552,8 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
         case 'material': {
           const newId = 'MAT-' + (3000 + materials.length + 1);
           const indentDate = data.indentReceiptDate || data.woDate || data.date || getTodayDateString();
-          const targetStockCheckDate = addDays(indentDate, 3);
-          const poReleaseTargetDate  = addDays(targetStockCheckDate, 2);
+          const targetStockCheckDate = addWorkingDays(indentDate, 3);
+          const poReleaseTargetDate  = addWorkingDays(targetStockCheckDate, 2);
           const expectedMatDate = data.expectedMaterialReceiptDate || data.targetReceiptDate || data.shipmentDate || '';
 
           const newItem: MaterialItem = {
@@ -561,8 +593,8 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
         case 'packaging': {
           const newId = 'PKG-' + (4000 + packaging.length + 1);
           const indentDate = data.indentReceiptDate || data.woDate || data.date || getTodayDateString();
-          const targetStockCheckDate = addDays(indentDate, 7);
-          const poReleaseTargetDate  = addDays(targetStockCheckDate, 2);
+          const targetStockCheckDate = addWorkingDays(indentDate, 7);
+          const poReleaseTargetDate  = addWorkingDays(targetStockCheckDate, 2);
           const expectedMatDate = data.expectedMaterialReceiptDate || data.targetReceiptDate || data.shipmentDate || '';
 
           const newItem: PackagingItem = {
@@ -698,10 +730,15 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
       if (module === 'material' || module === 'packaging') {
         const indentDate = merged.indentReceiptDate || merged.woDate || merged.date;
         const stockCheckDays = module === 'packaging' ? 7 : 3;
-        merged.targetStockCheckDate = addDays(indentDate, stockCheckDays);
-        merged.poReleaseTargetDate  = addDays(merged.targetStockCheckDate, 2);
+        merged.targetStockCheckDate = addWorkingDays(indentDate, stockCheckDays);
+        merged.poReleaseTargetDate  = addWorkingDays(merged.targetStockCheckDate, 2);
         if (merged.expectedMaterialReceiptDate) merged.targetReceiptDate = merged.expectedMaterialReceiptDate;
         newStatus = calculateMaterialStatus(merged.expectedMaterialReceiptDate, merged.actualReceiptDate);
+      } else if (module === 'daily-leather') {
+        const indentDate = merged.indentReceiptDate || merged.woDate || merged.date;
+        if (indentDate && !merged.poReleaseTargetDate) {
+          merged.poReleaseTargetDate = addWorkingDays(indentDate, 2);
+        }
       }
       merged.status = newStatus;
 
@@ -715,8 +752,116 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
       switch (module) {
         case 'new-leather':
           setNewLeather(prev => prev.map(i => i.id === id ? (merged as NewLeatherItem) : i)); break;
-        case 'daily-leather':
-          setDailyLeather(prev => prev.map(i => i.id === id ? (merged as DailyLeatherItem) : i)); break;
+        case 'daily-leather': {
+          setDailyLeather(prev => prev.map(i => i.id === id ? (merged as DailyLeatherItem) : i));
+
+          // Handle multi-entry leather items (add / update / remove)
+          if (updates.deletedLeatherItemIds && updates.deletedLeatherItemIds.length > 0) {
+            (async () => {
+              try {
+                await supabase.from(TABLE['daily-leather']).delete().in('id', updates.deletedLeatherItemIds);
+                setDailyLeather(prev => prev.filter(i => !updates.deletedLeatherItemIds.includes(i.id)));
+              } catch (delErr) {
+                console.warn('Error deleting removed leather items:', delErr);
+              }
+            })();
+          }
+
+          if (updates.leatherItems && Array.isArray(updates.leatherItems)) {
+            // Update any existing sibling entries
+            const existingSiblings = updates.leatherItems.filter(
+              (sub: any) => !sub.isNew && sub.id !== id && !sub.id.startsWith('new-')
+            );
+            for (const sub of existingSiblings) {
+              (async () => {
+                try {
+                  const sibPatch = {
+                    leather_name: sub.leatherName,
+                    colour: sub.colour,
+                    quantity: Number(sub.quantity) || 0,
+                    tannery: sub.tannery,
+                    updated_at: nowIso
+                  };
+                  await supabase.from(TABLE['daily-leather']).update(sibPatch).eq('id', sub.id);
+                  setDailyLeather(prev =>
+                    prev.map(i =>
+                      i.id === sub.id
+                        ? {
+                            ...i,
+                            leatherName: sub.leatherName,
+                            colour: sub.colour,
+                            quantity: Number(sub.quantity) || 0,
+                            tannery: sub.tannery
+                          }
+                        : i
+                    )
+                  );
+                } catch (sibErr) {
+                  console.warn('Error updating sibling leather item:', sibErr);
+                }
+              })();
+            }
+
+            // Insert newly added entries
+            const newSubs = updates.leatherItems.filter((sub: any) => sub.isNew || sub.id.startsWith('new-'));
+            if (newSubs.length > 0) {
+              (async () => {
+                const insertedNewEntries: DailyLeatherItem[] = [];
+                for (let idx = 0; idx < newSubs.length; idx++) {
+                  const sub = newSubs[idx];
+                  const newEntryId = 'DL-' + (Date.now() + idx + 1);
+                  const newEntry: DailyLeatherItem = {
+                    id: newEntryId,
+                    module: 'daily-leather',
+                    woNo: merged.woNo || '',
+                    buyerCode: merged.buyerCode || '',
+                    date: merged.woDate || merged.date || getTodayDateString(),
+                    woDate: merged.woDate || merged.date || getTodayDateString(),
+                    indentReceiptDate: merged.indentReceiptDate || undefined,
+                    shipmentDate: merged.shipmentDate || undefined,
+                    targetReceiptDate:
+                      merged.targetReceiptDate ||
+                      merged.plannedDeliveryDate ||
+                      merged.poDeliveryDate ||
+                      getTodayDateString(),
+                    actualReceiptDate: merged.actualReceiptDate || undefined,
+                    leatherName: sub.leatherName || '',
+                    colour: sub.colour || '',
+                    quantity: Number(sub.quantity) || 0,
+                    tannery: sub.tannery || '',
+                    actualPoReleaseDate: merged.actualPoReleaseDate || undefined,
+                    qtyInStock: merged.qtyInStock !== undefined ? Number(merged.qtyInStock) : undefined,
+                    qtyOrdered: merged.qtyOrdered !== undefined ? Number(merged.qtyOrdered) : undefined,
+                    poDeliveryDate: merged.poDeliveryDate || undefined,
+                    plannedDeliveryDate: merged.plannedDeliveryDate || undefined,
+                    qtyReceived: undefined,
+                    status: merged.status,
+                    remarks: merged.remarks || '',
+                    remarkHistory: merged.remarkHistory || [],
+                    createdAt: nowIso,
+                    updatedAt: nowIso
+                  };
+                  try {
+                    const { error: insErr } = await supabase
+                      .from(TABLE['daily-leather'])
+                      .insert(toDbRow(newEntry));
+                    if (!insErr) {
+                      insertedNewEntries.push(newEntry);
+                    } else {
+                      console.error('Error inserting new leather item:', insErr);
+                    }
+                  } catch (insCatch) {
+                    console.error('Exception inserting new leather item:', insCatch);
+                  }
+                }
+                if (insertedNewEntries.length > 0) {
+                  setDailyLeather(prev => [...insertedNewEntries, ...prev]);
+                }
+              })();
+            }
+          }
+          break;
+        }
         case 'material':
           setMaterials(prev => prev.map(i => i.id === id ? (merged as MaterialItem) : i)); break;
         case 'packaging':

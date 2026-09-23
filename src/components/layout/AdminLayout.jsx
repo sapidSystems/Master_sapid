@@ -128,6 +128,7 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
     sampleManagement: null,
     productionPlanning: null,
     productionApproval: null,
+    productionMonitoring: null,
     procurementNewLeather: null,
     procurementDailyLeather: null,
     procurementMaterial: null
@@ -595,8 +596,10 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
       }
 
       // 6. Production Planning & Approval pending counts
+      // 6. Production Planning, Approval, and Monitoring pending counts
       let productionPlanningCount = 0;
       let productionApprovalCount = 0;
+      let productionMonitoringCount = 0;
       try {
         const { data: ppData, error: ppErr } = await supabase
           .from('sample_system_product_planning')
@@ -605,6 +608,7 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
         if (!ppErr && ppData) {
           productionPlanningCount = ppData.filter(p => !p.approval_status || p.approval_status === 'draft' || p.approval_status === 'rejected').length;
           productionApprovalCount = ppData.filter(p => p.approval_status === 'pending_approval').length;
+          productionMonitoringCount = ppData.filter(p => p.approval_status === 'approved').length;
         }
       } catch (err) {
         console.error('Error fetching production planning count:', err);
@@ -685,6 +689,7 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
         sampleManagement: sampleManagementCount || 0,
         productionPlanning: productionPlanningCount || 0,
         productionApproval: productionApprovalCount || 0,
+        productionMonitoring: productionMonitoringCount || 0,
         procurementNewLeather: procurementNewLeatherCount || 0,
         procurementDailyLeather: procurementDailyLeatherCount || 0,
         procurementMaterial: procurementMaterialCount || 0
@@ -897,7 +902,7 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
       isSubmenu: true,
       isOpen: isBulkSubmenuOpen,
       setIsOpen: setIsBulkSubmenuOpen,
-      badge: ((menuCounts.productionPlanning || 0) + (menuCounts.productionApproval || 0)) || null,
+      badge: ((menuCounts.productionPlanning || 0) + (menuCounts.productionApproval || 0) + (menuCounts.productionMonitoring || 0)) || null,
       active: isBulkPath(location.pathname),
       subItems: [
         {
@@ -908,7 +913,7 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
         },
         {
           href: "/dashboard/production/data",
-          label: "Production Data",
+          label: "Work Order Creation",
           active: location.pathname === "/dashboard/production/data",
           showFor: ["admin", "user", "HOD"],
         },
@@ -925,6 +930,13 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
           active: location.pathname === "/dashboard/production/approval",
           showFor: ["admin", "user", "HOD"],
           badge: menuCounts.productionApproval || null,
+        },
+        {
+          href: "/dashboard/production/monitoring",
+          label: "Production & Monitoring",
+          active: location.pathname === "/dashboard/production/monitoring",
+          showFor: ["admin", "user", "HOD"],
+          badge: menuCounts.productionMonitoring || null,
         }
       ]
     },
@@ -1063,14 +1075,14 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
             <Link
               to="/dashboard"
               className="flex items-center gap-2.5 font-bold text-cream-100 min-w-0"
-              title="Sapid Design"
+              title="Sapid Design's"
             >
               <img
                 src={aceLogo}
-                alt="Sapid Design Logo"
+                alt="Sapid Design's Logo"
                 className="h-8 w-8 rounded-full object-cover border border-gold-400/50 ring-1 ring-gold-400/30 shrink-0"
               />
-              <span className="tracking-wide font-serif truncate text-sm">Sapid Design</span>
+              <span className="tracking-wide font-serif truncate text-sm">Sapid Design's</span>
             </Link>
             <button
               type="button"
@@ -1389,9 +1401,9 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
                 className="flex items-center gap-2.5 font-bold text-leather-900"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                <img src={aceLogo} alt="Sapid Design Logo" className="h-8 w-8 rounded-full object-cover border border-gold-400/40" />
+                <img src={aceLogo} alt="Sapid Design's Logo" className="h-8 w-8 rounded-full object-cover border border-gold-400/40" />
                 <div className="flex flex-col">
-                  <span className="text-sm font-extrabold tracking-tight font-serif">Sapid Design</span>
+                  <span className="text-sm font-extrabold tracking-tight font-serif">Sapid Design's</span>
                   <span className="text-[10px] font-medium text-leather-500 -mt-0.5">Systems Launcher</span>
                 </div>
               </Link>
@@ -1457,10 +1469,10 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
           <div className="flex md:hidden w-8"></div>
           <div className="flex flex-col items-center">
             <h1 className="text-xl font-bold bg-gradient-to-r from-leather-900 via-leather-700 to-gold-600 bg-clip-text text-transparent font-serif tracking-wide">
-              Sapid Design
+              Sapid Design's
             </h1>
             <p className="text-[10px] text-leather-600 font-semibold uppercase tracking-[0.25em] -mt-0.5 hidden xs:block">
-              Sapid Design
+              Sapid Design's
             </p>
           </div>
           <div className="flex items-center gap-3">

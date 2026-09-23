@@ -529,11 +529,26 @@ export const productionConfig = {
           { label: "Current Stage", value: item?.activeStage || columnId },
         ]}
         customSlot={
-          item?.remarks ? (
-            <p className="text-[11px] text-slate-500 line-clamp-1 italic">
-              "{item.remarks}"
-            </p>
-          ) : null
+          (() => {
+            const stagesList = item?.raw?.stages || [];
+            const stagesWithRemarks = stagesList.filter(s => s?.remarks && String(s.remarks).trim());
+            const latestStageRemark = stagesWithRemarks.length > 0 ? stagesWithRemarks[stagesWithRemarks.length - 1] : null;
+            const remarkText = latestStageRemark?.remarks || item?.remarks;
+            const remarkLocation = latestStageRemark?.name || (item?.remarks ? 'W/O Notes' : null);
+
+            if (!remarkText) return null;
+
+            return (
+              <div className="bg-slate-50 border border-slate-200/80 rounded-lg p-1.5 flex items-start gap-1.5 mt-0.5">
+                <span className="shrink-0 px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[9px] font-bold uppercase tracking-tight">
+                  {remarkLocation}
+                </span>
+                <p className="text-[11px] text-slate-600 line-clamp-1 italic">
+                  "{remarkText}"
+                </p>
+              </div>
+            );
+          })()
         }
         onClick={() => {
           if (navigate && item?.id) {

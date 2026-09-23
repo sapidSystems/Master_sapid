@@ -208,13 +208,13 @@ export default function ProductionPlanningNew() {
               <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 <span>Production System</span>
                 <span>•</span>
-                <span className="text-brand-600">Module 3 of 4</span>
+                <span className="text-brand-600">Module 3 of 5</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight mt-0.5">
                 Production Planning & Scheduling
               </h1>
               <p className="text-sm text-slate-500 mt-1">
-                Receive data from Production Data, assign plan dates, schedule milestones, and submit for approval.
+                Receive data from Work Order Creation, assign plan dates, schedule milestones, and submit for approval.
               </p>
             </div>
 

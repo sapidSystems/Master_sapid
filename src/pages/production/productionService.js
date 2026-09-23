@@ -1,4 +1,5 @@
 import supabase from '../../SupabaseClient';
+import { addWorkingDays } from '../../procurement/utils/dateUtils';
 
 export const notifyProductionUpdated = () => {
   if (typeof window !== 'undefined') {
@@ -43,6 +44,67 @@ export const getTodayDate = () => {
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+};
+
+/**
+ * Extract all remark records across plans (both overall W/O remarks and stage-level remarks)
+ * Each entry is a discrete history record.
+ */
+export const extractRemarkRecords = (plans) => {
+  if (!Array.isArray(plans)) return [];
+  const records = [];
+
+  plans.forEach(plan => {
+    if (!plan) return;
+
+    // 1. Overall W/O Remarks
+    if (plan.remarks && String(plan.remarks).trim()) {
+      const firstStage = Array.isArray(plan.stages) ? plan.stages[0] : null;
+      records.push({
+        id: `${plan.id}-overall`,
+        planId: plan.id,
+        woNo: plan.woNo || '—',
+        buyer: plan.buyer || '—',
+        type: 'overall',
+        sourceName: 'W/O Notes',
+        stageName: 'Overall Remarks',
+        remark: String(plan.remarks).trim(),
+        date: firstStage?.woRemarkDate || plan.remarkDate || plan.woDate || plan.created_at || plan.timestamp || '',
+        author: firstStage?.woRemarkAuthor || plan.remarkAuthor || plan.addedBy || 'Merchandiser',
+        isHistory: Boolean(plan.isHistory),
+        plan
+      });
+    }
+
+    // 2. Stage-level Remarks
+    const stages = plan.stages || [];
+    stages.forEach((stage, idx) => {
+      if (stage && stage.remarks && String(stage.remarks).trim()) {
+        records.push({
+          id: `${plan.id}-stage-${idx}`,
+          planId: plan.id,
+          woNo: plan.woNo || '—',
+          buyer: plan.buyer || '—',
+          type: 'stage',
+          sourceName: stage.name || `Stage ${idx + 1}`,
+          stageName: stage.name || `Stage ${idx + 1}`,
+          remark: String(stage.remarks).trim(),
+          date: stage.remarkDate || stage.actualDate || stage.plannedDate || plan.woDate || plan.created_at || '',
+          author: stage.remarkAuthor || plan.addedBy || 'Stage Supervisor',
+          isHistory: Boolean(plan.isHistory),
+          stage,
+          plan
+        });
+      }
+    });
+  });
+
+  // Sort newest by date first
+  return records.sort((a, b) => {
+    const da = a.date ? new Date(a.date).getTime() : 0;
+    const db = b.date ? new Date(b.date).getTime() : 0;
+    return db - da;
+  });
 };
 
 export const mapDbToLead = (dbRow) => {
@@ -156,6 +218,7 @@ export const updateProductionPlan = async (id, updates) => {
   if (updates.stages !== undefined) cleanUpdates.stages = updates.stages;
   if (updates.currentStage !== undefined) cleanUpdates.current_stage = updates.currentStage;
   if (updates.isHistory !== undefined) cleanUpdates.is_history = updates.isHistory;
+  if (updates.historyTimestamp !== undefined) cleanUpdates.history_timestamp = updates.historyTimestamp;
   if (updates.planDate !== undefined) cleanUpdates.plan_date = updates.planDate || null;
   if (updates.approvalStatus !== undefined) cleanUpdates.approval_status = updates.approvalStatus;
   if (updates.approvalNote !== undefined) cleanUpdates.approval_note = updates.approvalNote;
@@ -262,6 +325,16 @@ export const approveProductionPlan = async ({ lead, note = '', currentUser }) =>
     updated_at: nowIso
   };
 
+  // Calculate target dates according to manufacturing working days
+  const indentBase = lead.wResDate || lead.woDate || effectiveDate;
+  const matStockCheck = addWorkingDays(indentBase, 3);
+  const matPoRelease = addWorkingDays(matStockCheck, 2);
+
+  const pkgStockCheck = addWorkingDays(indentBase, 7);
+  const pkgPoRelease = addWorkingDays(pkgStockCheck, 2);
+
+  const dlPoRelease = addWorkingDays(indentBase, 2);
+
   // 3a. Daily Leather
   const dlRow = {
     ...baseProcurementRow,
@@ -271,6 +344,7 @@ export const approveProductionPlan = async ({ lead, note = '', currentUser }) =>
     colour: 'Standard',
     quantity: Number(lead.qty) || 0,
     tannery: 'Pending Selection',
+    po_release_target_date: dlPoRelease,
   };
 
   // 3b. Daily Material
@@ -283,6 +357,8 @@ export const approveProductionPlan = async ({ lead, note = '', currentUser }) =>
     quantity: Number(lead.qty) || 0,
     unit: 'pcs',
     supplier: 'Pending Selection',
+    target_stock_check_date: matStockCheck,
+    po_release_target_date: matPoRelease,
   };
 
   // 3c. Daily Packaging
@@ -295,6 +371,8 @@ export const approveProductionPlan = async ({ lead, note = '', currentUser }) =>
     quantity: Number(lead.qty) || 0,
     unit: 'pcs',
     supplier: 'Pending Selection',
+    target_stock_check_date: pkgStockCheck,
+    po_release_target_date: pkgPoRelease,
   };
 
   // Insert into all 3 procurement tables

@@ -367,8 +367,8 @@ export const ModuleView: React.FC<ModuleViewProps> = ({ module }) => {
           </p>
         </div>
 
-        {/* Primary Add Button (Only for New Leather Dev; other 3 modules receive data via Production Planning Approval) */}
-        {canWrite && currentActiveModule === 'new-leather' && (
+        {/* Primary Add Button */}
+        {canWrite && (
           <button
             type="button"
             onClick={() => setCreateModalOpen(true)}
@@ -377,12 +377,6 @@ export const ModuleView: React.FC<ModuleViewProps> = ({ module }) => {
             <Plus className="w-4 h-4 stroke-[3]" />
             <span>{config.addLabel}</span>
           </button>
-        )}
-        {currentActiveModule !== 'new-leather' && (
-          <div className="self-start sm:self-auto inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium rounded-lg">
-            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-            <span>Synced from Production Planning Approval</span>
-          </div>
         )}
       </div>
 

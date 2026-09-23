@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Edit3, Trash2, ArrowUpDown, Clock, User, ShieldCheck, MessageSquare } from 'lucide-react';
 import { ModuleType, AnyProcurementItem, NewLeatherItem, DailyLeatherItem, MaterialItem, PackagingItem } from '../../types/procurement';
 import { StatusBadge } from '../common/StatusBadge';
-import { formatDate, formatDateTime, getDaysDiffText } from '../../utils/dateUtils';
+import { formatDate, formatDateTime, getDaysDiffText, addWorkingDays } from '../../utils/dateUtils';
 import { EmptyState } from '../common/EmptyState';
 import {
   fetchTatConfigs,
@@ -124,37 +124,37 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
           <table className="w-full text-left border-collapse text-xs sm:text-sm">
             <thead className="sticky top-0 z-20 bg-slate-100/95 backdrop-blur-xs text-slate-700 border-b border-slate-200 text-[11px] sm:text-xs uppercase font-semibold tracking-wider">
               <tr>
-                <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-emerald-500/10 text-emerald-900">Update Date & Time</th>
-                <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap">Updated By</th>
+                <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom font-bold bg-emerald-500/10 text-emerald-900 min-w-[105px]">Update Date<br />& Time</th>
+                <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom font-bold min-w-[85px]">Updated<br />By</th>
                 {module === 'packaging' ? (
                   <>
-                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-amber-500/10 text-amber-900">Work Order No.</th>
-                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-amber-500/10 text-amber-900">Buyer Code</th>
-                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-amber-500/10 text-amber-900">Work Order Date</th>
-                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-amber-500/10 text-amber-900">Work Order & Indent Receipt Date</th>
-                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-amber-500/10 text-amber-900">Work Order Shipment Date</th>
-                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold text-slate-700">Target Stock Check Date (within 7 working days)</th>
-                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-emerald-500/20 text-emerald-950 font-bold">Actual Stock Update Date (as recd from Packing Dept)</th>
-                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold text-slate-700">PO Release Target Date (within 2 working days)</th>
-                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-emerald-500/20 text-emerald-950 font-bold">Actual PO Release Date</th>
-                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-orange-500/20 text-orange-950 font-bold">Expected Material Receipt Date</th>
-                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-emerald-500/20 text-emerald-950 font-bold">Actual Material Receipt Date</th>
-                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold">Status (On-time / Delayed)</th>
+                    <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[95px] bg-amber-500/10 text-amber-900">Work Order<br />No.</th>
+                    <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[80px] bg-amber-500/10 text-amber-900">Buyer<br />Code</th>
+                    <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[95px] bg-amber-500/10 text-amber-900">Work Order<br />Date</th>
+                    <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[125px] bg-amber-500/10 text-amber-900">Work Order &<br />Indent Receipt Date</th>
+                    <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[105px] bg-amber-500/10 text-amber-900">Work Order<br />Shipment Date</th>
+                    <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[110px] font-bold text-slate-700">Target Stock<br />Check Date</th>
+                    <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[110px] bg-emerald-500/20 text-emerald-950 font-bold">Actual Stock<br />Update Date</th>
+                    <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[105px] font-bold text-slate-700">PO Release<br />Target Date</th>
+                    <th scope="col" className="px-2.5 sm:px-3 py-2.5 whitespace-normal leading-tight align-bottom min-w-[100px] bg-emerald-500/20 text-emerald-950 font-bold">Actual PO<br />Release Date</th>
+                    <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[115px] bg-orange-500/20 text-orange-950 font-bold">Expected Material<br />Receipt Date</th>
+                    <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[115px] bg-emerald-500/20 text-emerald-950 font-bold">Actual Material<br />Receipt Date</th>
+                    <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[80px] font-bold">Status</th>
                   </>
                 ) : module === 'material' ? (
                   <>
-                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-amber-500/10 text-amber-900">Work Order No.</th>
-                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-amber-500/10 text-amber-900">Buyer Code</th>
-                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-amber-500/10 text-amber-900">Work Order Date</th>
-                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-amber-500/10 text-amber-900">Work Order & Indent Receipt Date</th>
-                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-amber-500/10 text-amber-900">Work Order Shipment Date</th>
-                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold text-slate-700">Target Stock Check Date (within 3 working days)</th>
-                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-emerald-500/20 text-emerald-950 font-bold">Actual Stock Update Date (as recd from Material Store)</th>
-                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold text-slate-700">PO Release Target Date (within 2 working days)</th>
-                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-emerald-500/20 text-emerald-950 font-bold">Actual PO Release Date</th>
-                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-orange-500/20 text-orange-950 font-bold">Expected Material Receipt Date</th>
-                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-emerald-500/20 text-emerald-950 font-bold">Actual Material Receipt Date</th>
-                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold">Status (On-time / Delayed)</th>
+                    <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[95px] bg-amber-500/10 text-amber-900">Work Order<br />No.</th>
+                    <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[80px] bg-amber-500/10 text-amber-900">Buyer<br />Code</th>
+                    <th scope="col" className="px-2.5 sm:px-3 py-2.5 leading-tight whitespace-normal align-bottom min-w-[95px] bg-amber-500/10 text-amber-900">Work Order<br />Date</th>
+                    <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[125px] bg-amber-500/10 text-amber-900">Work Order &<br />Indent Receipt Date</th>
+                    <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[105px] bg-amber-500/10 text-amber-900">Work Order<br />Shipment Date</th>
+                    <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[110px] font-bold text-slate-700">Target Stock<br />Check Date</th>
+                    <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[110px] bg-emerald-500/20 text-emerald-950 font-bold">Actual Stock<br />Update Date</th>
+                    <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[105px] font-bold text-slate-700">PO Release<br />Target Date</th>
+                    <th scope="col" className="px-2.5 sm:px-3 py-2.5 whitespace-normal leading-tight align-bottom min-w-[100px] bg-emerald-500/20 text-emerald-950 font-bold">Actual PO<br />Release Date</th>
+                    <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[115px] bg-orange-500/20 text-orange-950 font-bold">Expected Material<br />Receipt Date</th>
+                    <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[115px] bg-emerald-500/20 text-emerald-950 font-bold">Actual Material<br />Receipt Date</th>
+                    <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[80px] font-bold">Status</th>
                   </>
                 ) : module === 'daily-leather' ? (
                   <>
@@ -163,7 +163,7 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                     <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-amber-500/10 text-amber-900">Work Order Date</th>
                     <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-amber-500/10 text-amber-900">Work Order & Indent Receipt Date</th>
                     <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-amber-500/10 text-amber-900">Work Order Shipment Date</th>
-                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold text-slate-700">PO Release Target Date (within 2 working days)</th>
+                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold text-slate-700">PO Release Target Date</th>
                     <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-emerald-500/20 text-emerald-950 font-bold">Actual PO Release Date</th>
                     <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-amber-500/10 text-amber-900">Leather Name</th>
                     <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-amber-500/10 text-amber-900">Colour</th>
@@ -176,7 +176,7 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                     <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-emerald-500/20 text-emerald-950 font-bold text-right">Qty Received (sqft)</th>
                     <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold text-right">Due Qty (sqft)</th>
                     <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-emerald-500/20 text-emerald-950 font-bold">Actual Receipt Date for Complete Order</th>
-                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold">Status (On-time / Delayed)</th>
+                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold">Status</th>
                   </>
                 ) : module === 'new-leather' ? (
                   <>
@@ -203,9 +203,9 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                     <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold">Status (On-time / Delayed)</th>
                   </>
                 )}
+                <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap min-w-[240px] bg-amber-500/10">Remarks / History Log</th>
                 <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-purple-500/10 text-purple-900 font-bold">TAT Planned</th>
                 <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-purple-500/10 text-purple-900 font-bold">TAT Delay</th>
-                <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap min-w-[240px] bg-amber-500/10">Remarks / History Log</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-800">
@@ -247,15 +247,25 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                         <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-slate-600 bg-amber-500/5">
                           {formatDate(item.shipmentDate)}
                         </td>
-                        <td className="px-3 sm:px-4 py-3 whitespace-nowrap font-semibold text-slate-700">
-                          {formatDate(item.targetStockCheckDate)}
-                        </td>
-                        <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-emerald-700 font-medium bg-emerald-500/10">
-                          {formatDate(item.actualStockUpdateDate)}
-                        </td>
-                        <td className="px-3 sm:px-4 py-3 whitespace-nowrap font-semibold text-slate-700">
-                          {formatDate(item.poReleaseTargetDate)}
-                        </td>
+                        {(() => {
+                          const hBaseDate = item.indentReceiptDate || item.woDate || item.date;
+                          const hStockCheckDays = module === 'packaging' ? 7 : 3;
+                          const hTargetStockCheck = item.targetStockCheckDate || (hBaseDate ? addWorkingDays(hBaseDate, hStockCheckDays) : '');
+                          const hPoReleaseTarget = item.poReleaseTargetDate || (hTargetStockCheck ? addWorkingDays(hTargetStockCheck, 2) : '');
+                          return (
+                            <>
+                              <td className="px-3 sm:px-4 py-3 whitespace-nowrap font-semibold text-slate-700">
+                                {formatDate(hTargetStockCheck)}
+                              </td>
+                              <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-emerald-700 font-medium bg-emerald-500/10">
+                                {formatDate(item.actualStockUpdateDate)}
+                              </td>
+                              <td className="px-3 sm:px-4 py-3 whitespace-nowrap font-semibold text-slate-700">
+                                {formatDate(hPoReleaseTarget)}
+                              </td>
+                            </>
+                          );
+                        })()}
                         <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-emerald-700 font-medium bg-emerald-500/10">
                           {formatDate(item.actualPoReleaseDate)}
                         </td>
@@ -289,7 +299,7 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                           {formatDate(item.shipmentDate)}
                         </td>
                         <td className="px-3 sm:px-4 py-3 whitespace-nowrap font-semibold text-slate-700">
-                          {formatDate(item.poReleaseTargetDate)}
+                          {formatDate(item.poReleaseTargetDate || ((item.indentReceiptDate || item.woDate || item.date) ? addWorkingDays(item.indentReceiptDate || item.woDate || item.date, 2) : ''))}
                         </td>
                         <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-emerald-700 font-medium bg-emerald-500/10">
                           {formatDate(item.actualPoReleaseDate)}
@@ -364,31 +374,31 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                         </td>
                       </>
                     )}
-                    {(() => {
-                      const histStartDate = item.date || item.woDate || item.createdAt;
-                      const histEndDate = item.actualReceiptDate || item.actualMaterialReceiptDate || log.timestamp || item.updatedAt;
-                      const histTatStatus = calculateTatStatus({
-                        tatDays: currentTatDays,
-                        startDate: histStartDate,
-                        endDate: histEndDate,
-                        isCompleted: true,
-                      });
-                      return (
-                        <>
-                          <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
-                            <TatPlannedCell tatDays={currentTatDays} startDate={histStartDate} />
-                          </td>
-                          <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
-                            <TatDelayCell status={histTatStatus} />
-                          </td>
-                        </>
-                      );
-                    })()}
-                    <td className="px-3 sm:px-4 py-3 text-xs text-slate-800 font-medium">
-                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/60 leading-relaxed">
-                        {log.logText}
-                      </div>
-                    </td>
+                      <td className="px-3 sm:px-4 py-3 text-xs text-slate-800 font-medium">
+                        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/60 leading-relaxed">
+                          {log.logText}
+                        </div>
+                      </td>
+                      {(() => {
+                        const histStartDate = item.date || item.woDate || item.createdAt;
+                        const histEndDate = item.actualReceiptDate || item.actualMaterialReceiptDate || log.timestamp || item.updatedAt;
+                        const histTatStatus = calculateTatStatus({
+                          tatDays: currentTatDays,
+                          startDate: histStartDate,
+                          endDate: histEndDate,
+                          isCompleted: true,
+                        });
+                        return (
+                          <>
+                            <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
+                              <TatPlannedCell tatDays={currentTatDays} startDate={histStartDate} />
+                            </td>
+                            <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
+                              <TatDelayCell status={histTatStatus} />
+                            </td>
+                          </>
+                        );
+                      })()}
                   </tr>
                 );
               })}
@@ -449,7 +459,7 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
               {/* Sticky Action Column Header (Req #56) */}
               <th 
                 scope="col" 
-                className="sticky left-0 z-30 bg-slate-100 px-3 sm:px-4 py-3 sm:py-3.5 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)] whitespace-nowrap min-w-[110px]"
+                className="sticky left-0 z-30 bg-slate-100 px-2.5 sm:px-3 py-2 sm:py-2.5 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)] align-bottom font-bold whitespace-nowrap min-w-[90px]"
               >
                 Action
               </th>
@@ -457,56 +467,116 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
               {module === 'packaging' ? (
                 <>
                   {/* Yellow header columns: At time of creation */}
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-amber-500/10 text-amber-900">Work Order No.</th>
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-amber-500/10 text-amber-900">Buyer Code</th>
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-amber-500/10 text-amber-900">Work Order Date</th>
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-amber-500/10 text-amber-900">Work Order & Indent Receipt Date</th>
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-amber-500/10 text-amber-900">Work Order Shipment Date</th>
+                  <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[95px] bg-amber-500/10 text-amber-900">
+                    Work Order<br />No.
+                  </th>
+                  <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[80px] bg-amber-500/10 text-amber-900">
+                    Buyer<br />Code
+                  </th>
+                  <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[95px] bg-amber-500/10 text-amber-900">
+                    Work Order<br />Date
+                  </th>
+                  <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[125px] bg-amber-500/10 text-amber-900">
+                    Work Order &<br />Indent Receipt Date
+                  </th>
+                  <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[105px] bg-amber-500/10 text-amber-900">
+                    Work Order<br />Shipment Date
+                  </th>
                   {/* Auto target column */}
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold text-slate-700">Target Stock Check Date (within 7 working days)</th>
+                  <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[110px] font-bold text-slate-700">
+                    Target Stock<br />Check Date
+                  </th>
                   {/* Green header column */}
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-emerald-500/20 text-emerald-950 font-bold">Actual Stock Update Date (as recd from Packing Dept)</th>
+                  <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[110px] bg-emerald-500/20 text-emerald-950 font-bold">
+                    Actual Stock<br />Update Date
+                  </th>
                   {/* Auto target column */}
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold text-slate-700">PO Release Target Date (within 2 working days)</th>
+                  <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[105px] font-bold text-slate-700">
+                    PO Release<br />Target Date
+                  </th>
                   {/* Green header column */}
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-emerald-500/20 text-emerald-950 font-bold">Actual PO Release Date</th>
+                  <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[100px] bg-emerald-500/20 text-emerald-950 font-bold">
+                    Actual PO<br />Release Date
+                  </th>
                   {/* Orange header column */}
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-orange-500/20 text-orange-950 font-bold">Expected Material Receipt Date</th>
+                  <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[115px] bg-orange-500/20 text-orange-950 font-bold">
+                    Expected Material<br />Receipt Date
+                  </th>
                   {/* Green header column */}
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-emerald-500/20 text-emerald-950 font-bold">Actual Material Receipt Date</th>
+                  <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[115px] bg-emerald-500/20 text-emerald-950 font-bold">
+                    Actual Material<br />Receipt Date
+                  </th>
                   {/* Auto status column */}
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold">Status (On-time / Delayed)</th>
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold text-slate-700 bg-indigo-50/70 border-l border-indigo-100">TAT Planned</th>
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold text-slate-700 bg-indigo-50/70 border-r border-indigo-100">TAT Delay</th>
-                  {/* Yellow header column: editable */}
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap min-w-[160px] bg-amber-500/10 text-amber-900">Remarks</th>
+                  <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[80px] font-bold">
+                    Status
+                  </th>
+                  {/* Yellow header column: editable - positioned between Status and TAT Planned */}
+                  <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[120px] bg-amber-500/10 text-amber-900">
+                    Remarks
+                  </th>
+                  <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[75px] font-bold text-slate-700 bg-indigo-50/70 border-l border-indigo-100">
+                    TAT<br />Planned
+                  </th>
+                  <th scope="col" className="px-2.5 sm:px-3 py-2.5 whitespace-normal leading-tight align-bottom min-w-[75px] font-bold text-slate-700 bg-indigo-50/70 border-r border-indigo-100">
+                    TAT<br />Delay
+                  </th>
                 </>
               ) : module === 'material' ? (
                 <>
                   {/* Yellow header columns: At time of creation */}
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-amber-500/10 text-amber-900">Work Order No.</th>
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-amber-500/10 text-amber-900">Buyer Code</th>
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-amber-500/10 text-amber-900">Work Order Date</th>
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-amber-500/10 text-amber-900">Work Order & Indent Receipt Date</th>
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-amber-500/10 text-amber-900">Work Order Shipment Date</th>
+                  <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[95px] bg-amber-500/10 text-amber-900">
+                    Work Order<br />No.
+                  </th>
+                  <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[80px] bg-amber-500/10 text-amber-900">
+                    Buyer<br />Code
+                  </th>
+                  <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[95px] bg-amber-500/10 text-amber-900">
+                    Work Order<br />Date
+                  </th>
+                  <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[125px] bg-amber-500/10 text-amber-900">
+                    Work Order &<br />Indent Receipt Date
+                  </th>
+                  <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[105px] bg-amber-500/10 text-amber-900">
+                    Work Order<br />Shipment Date
+                  </th>
                   {/* Auto target column */}
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold text-slate-700">Target Stock Check Date (within 3 working days)</th>
+                  <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[110px] font-bold text-slate-700">
+                    Target Stock<br />Check Date
+                  </th>
                   {/* Green header column */}
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-emerald-500/20 text-emerald-950 font-bold">Actual Stock Update Date (as recd from Material Store)</th>
+                  <th scope="col" className="px-2.5 sm:px-3 py-2.5 whitespace-normal leading-tight align-bottom min-w-[110px] bg-emerald-500/20 text-emerald-950 font-bold">
+                    Actual Stock<br />Update Date
+                  </th>
                   {/* Auto target column */}
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold text-slate-700">PO Release Target Date (within 2 working days)</th>
+                  <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[105px] font-bold text-slate-700">
+                    PO Release<br />Target Date
+                  </th>
                   {/* Green header column */}
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-emerald-500/20 text-emerald-950 font-bold">Actual PO Release Date</th>
+                  <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[100px] bg-emerald-500/20 text-emerald-950 font-bold">
+                    Actual PO<br />Release Date
+                  </th>
                   {/* Orange header column */}
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-orange-500/20 text-orange-950 font-bold">Expected Material Receipt Date</th>
+                  <th scope="col" className="px-2.5 sm:px-3 py-2.5 whitespace-normal leading-tight align-bottom min-w-[115px] bg-orange-500/20 text-orange-950 font-bold">
+                    Expected Material<br />Receipt Date
+                  </th>
                   {/* Green header column */}
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-emerald-500/20 text-emerald-950 font-bold">Actual Material Receipt Date</th>
+                  <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[115px] bg-emerald-500/20 text-emerald-950 font-bold">
+                    Actual Material<br />Receipt Date
+                  </th>
                   {/* Auto status column */}
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold">Status (On-time / Delayed)</th>
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold text-slate-700 bg-indigo-50/70 border-l border-indigo-100">TAT Planned</th>
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold text-slate-700 bg-indigo-50/70 border-r border-indigo-100">TAT Delay</th>
-                  {/* Yellow header column: editable */}
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap min-w-[160px] bg-amber-500/10 text-amber-900">Remarks</th>
+                  <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[80px] font-bold">
+                    Status
+                  </th>
+                  {/* Yellow header column: editable - positioned between Status and TAT Planned */}
+                  <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[120px] bg-amber-500/10 text-amber-900">
+                    Remarks
+                  </th>
+                  <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[75px] font-bold text-slate-700 bg-indigo-50/70 border-l border-indigo-100">
+                    TAT<br />Planned
+                  </th>
+                  <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[75px] font-bold text-slate-700 bg-indigo-50/70 border-r border-indigo-100">
+                    TAT<br />Delay
+                  </th>
                 </>
               ) : module === 'daily-leather' ? (
                 <>
@@ -517,7 +587,7 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                   <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-amber-500/10 text-amber-900">Work Order & Indent Receipt Date</th>
                   <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-amber-500/10 text-amber-900">Work Order Shipment Date</th>
                   {/* Auto target date column */}
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold text-slate-700">PO Release Target Date (within 2 working days)</th>
+                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold text-slate-700">PO Release Target Date</th>
                   {/* Green header column: daily update */}
                   <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-emerald-500/20 text-emerald-950 font-bold">Actual PO Release Date</th>
                   {/* Yellow header columns: Leather details */}
@@ -538,11 +608,11 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                   {/* Green header column: daily update */}
                   <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-emerald-500/20 text-emerald-950 font-bold">Actual Receipt Date for Complete Order</th>
                   {/* Auto status column */}
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold">Status (On-time / Delayed)</th>
+                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold">Status</th>
+                  {/* Green header column: editable daily - positioned before TAT Planned & after Status */}
+                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap min-w-[160px] bg-emerald-500/20 text-emerald-950 font-bold">Remarks</th>
                   <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold text-slate-700 bg-indigo-50/70 border-l border-indigo-100">TAT Planned</th>
                   <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold text-slate-700 bg-indigo-50/70 border-r border-indigo-100">TAT Delay</th>
-                  {/* Green header column: editable daily */}
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap min-w-[160px] bg-emerald-500/20 text-emerald-950 font-bold">Remarks</th>
                 </>
               ) : (
                 <>
@@ -780,20 +850,31 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                       {formatDate(mat.shipmentDate)}
                     </td>
 
-                    {/* 6. Target Stock Check Date (Auto +3d / +7d) */}
-                    <td className="px-3 sm:px-4 py-3 whitespace-nowrap font-semibold text-slate-700">
-                      {formatDate(mat.targetStockCheckDate)}
-                    </td>
+                    {/* 6. Target Stock Check Date (within 3/7 working days) */}
+                    {(() => {
+                      const matBaseDate = mat.indentReceiptDate || mat.woDate || mat.date;
+                      const stockCheckDays = module === 'packaging' ? 7 : 3;
+                      const targetStockCheck = mat.targetStockCheckDate || (matBaseDate ? addWorkingDays(matBaseDate, stockCheckDays) : '');
+                      const poReleaseTarget = mat.poReleaseTargetDate || (targetStockCheck ? addWorkingDays(targetStockCheck, 2) : '');
 
-                    {/* 7. Actual Stock Update Date (Green column) */}
-                    <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-emerald-700 font-medium bg-emerald-500/10">
-                      {formatDate(mat.actualStockUpdateDate)}
-                    </td>
+                      return (
+                        <>
+                          <td className="px-3 sm:px-4 py-3 whitespace-nowrap font-semibold text-slate-700">
+                            {formatDate(targetStockCheck)}
+                          </td>
 
-                    {/* 8. PO Release Target Date (Auto +2d) */}
-                    <td className="px-3 sm:px-4 py-3 whitespace-nowrap font-semibold text-slate-700">
-                      {formatDate(mat.poReleaseTargetDate)}
-                    </td>
+                          {/* 7. Actual Stock Update Date (Green column) */}
+                          <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-emerald-700 font-medium bg-emerald-500/10">
+                            {formatDate(mat.actualStockUpdateDate)}
+                          </td>
+
+                          {/* 8. PO Release Target Date (within 2 working days) */}
+                          <td className="px-3 sm:px-4 py-3 whitespace-nowrap font-semibold text-slate-700">
+                            {formatDate(poReleaseTarget)}
+                          </td>
+                        </>
+                      );
+                    })()}
 
                     {/* 9. Actual PO Release Date (Green column) */}
                     <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-emerald-700 font-medium bg-emerald-500/10">
@@ -813,6 +894,11 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                     {/* 12. Status (On-time / Delayed) */}
                     <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
                       <StatusBadge status={mat.status} size="sm" />
+                    </td>
+
+                    {/* 13. Remarks (Yellow column / Editable) - positioned between Status and TAT Planned */}
+                    <td className="px-3 sm:px-4 py-3 text-xs text-slate-700 max-w-[220px] truncate bg-amber-500/5" title={latestRemark}>
+                      {latestRemark}
                     </td>
 
                     {/* TAT Planned & TAT Delay */}
@@ -836,11 +922,6 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                         </>
                       );
                     })()}
-
-                    {/* 13. Remarks (Yellow column / Editable) */}
-                    <td className="px-3 sm:px-4 py-3 text-xs text-slate-700 max-w-[220px] truncate bg-amber-500/5" title={latestRemark}>
-                      {latestRemark}
-                    </td>
                   </tr>
                 );
               }
@@ -910,9 +991,9 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                       {formatDate(dl.shipmentDate)}
                     </td>
 
-                    {/* 6. PO Release Target Date (Auto +2d) */}
+                    {/* 6. PO Release Target Date (within 2 working days) */}
                     <td className="px-3 sm:px-4 py-3 whitespace-nowrap font-semibold text-slate-700">
-                      {formatDate(dl.poReleaseTargetDate)}
+                      {formatDate(dl.poReleaseTargetDate || ((dl.indentReceiptDate || dl.woDate || dl.date) ? addWorkingDays(dl.indentReceiptDate || dl.woDate || dl.date, 2) : ''))}
                     </td>
 
                     {/* 7. Actual PO Release Date (Green column) */}
@@ -980,6 +1061,11 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                       <StatusBadge status={dl.status} size="sm" />
                     </td>
 
+                    {/* 20. Remarks (Green background column / Editable daily) - positioned before TAT Planned & after Status */}
+                    <td className="px-3 sm:px-4 py-3 text-xs text-slate-700 max-w-[220px] truncate bg-emerald-500/10" title={latestRemark}>
+                      {latestRemark}
+                    </td>
+
                     {/* TAT Planned & TAT Delay */}
                     {(() => {
                       const dlStartDate = dl.woDate || dl.indentReceiptDate || dl.date || (dl as any).createdAt;
@@ -1001,11 +1087,6 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                         </>
                       );
                     })()}
-
-                    {/* 20. Remarks (Green background column / Editable daily) */}
-                    <td className="px-3 sm:px-4 py-3 text-xs text-slate-700 max-w-[220px] truncate bg-emerald-500/10" title={latestRemark}>
-                      {latestRemark}
-                    </td>
                   </tr>
                 );
               }

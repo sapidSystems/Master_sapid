@@ -76,8 +76,8 @@ export default function ProductionData() {
       const data = await fetchProductionPlans();
       setPlans(data);
     } catch (err) {
-      console.error('Error fetching production plans:', err);
-      showToast('Failed to load production data', 'error');
+      console.error('Error fetching work orders:', err);
+      showToast('Failed to load work order data', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -151,10 +151,10 @@ export default function ProductionData() {
       const newPlan = await createProductionPlan(formData, currentUser);
       setPlans(prev => [newPlan, ...prev]);
       setIsAddModalOpen(false);
-      showToast('Production data added successfully!', 'success');
+      showToast('Work order created successfully!', 'success');
     } catch (err) {
-      console.error('Error creating plan:', err);
-      showToast('Failed to add production data', 'error');
+      console.error('Error creating work order:', err);
+      showToast('Failed to create work order', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -182,10 +182,10 @@ export default function ProductionData() {
       await updateProductionPlan(selectedPlan.id, formData);
       setPlans(prev => prev.map(p => (p.id === selectedPlan.id ? { ...p, ...formData } : p)));
       setIsEditModalOpen(false);
-      showToast('Production data updated successfully!', 'success');
+      showToast('Work order updated successfully!', 'success');
     } catch (err) {
-      console.error('Error updating plan:', err);
-      showToast('Failed to update production data', 'error');
+      console.error('Error updating work order:', err);
+      showToast('Failed to update work order', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -272,13 +272,13 @@ export default function ProductionData() {
               <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 <span>Production System</span>
                 <span>•</span>
-                <span className="text-brand-600">Module 2 of 4</span>
+                <span className="text-brand-600">Module 2 of 5</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight mt-0.5">
-                Production Data Registry
+                Work Order Creation
               </h1>
               <p className="text-sm text-slate-500 mt-1">
-                Add and manage work order records, view lifecycle stages, and monitor progress.
+                Create and manage work order records, view lifecycle stages, and initiate production planning.
               </p>
             </div>
 
@@ -299,7 +299,7 @@ export default function ProductionData() {
                 className="inline-flex items-center gap-2 px-4 py-2.5 bg-black hover:bg-slate-900 active:bg-slate-800 text-white text-sm font-bold rounded-xl shadow-md transition-all cursor-pointer ring-2 ring-black/10"
               >
                 <Plus className="w-4 h-4 stroke-[3]" />
-                <span>Add Production Data</span>
+                <span>Create Work Order</span>
               </button>
             </div>
           </div>

@@ -1,7 +1,7 @@
 /**
  * Granular Report Permissions Definition & Helpers
  *
- * Pattern: Consistent with other modules in Sapid Design:
+ * Pattern: Consistent with other modules in Sapid Design's:
  * - Permissions are stored in users.page_access as JSON: { [path]: 'none' | 'read' | 'write' }
  * - Role 'admin' automatically bypasses all restrictions.
  */

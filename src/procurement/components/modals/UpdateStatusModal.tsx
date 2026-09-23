@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit3, X, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
+import { Edit3, X, CheckCircle2, AlertTriangle, Clock, Plus, Trash2 } from 'lucide-react';
 import {
   ModuleType,
   AnyProcurementItem,
@@ -8,7 +8,17 @@ import {
   MaterialItem,
   PackagingItem
 } from '../../types/procurement';
-import { getTodayDateString, addDays } from '../../utils/dateUtils';
+import { getTodayDateString, addDays, addWorkingDays } from '../../utils/dateUtils';
+import { useProcurement } from '../../context/ProcurementContext';
+
+interface EditableLeatherItem {
+  id: string;
+  leatherName: string;
+  colour: string;
+  quantity: number | '';
+  tannery: string;
+  isNew?: boolean;
+}
 
 interface UpdateStatusModalProps {
   isOpen: boolean;
@@ -44,6 +54,11 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
   const [colour, setColour] = useState('');
   const [quantity, setQuantity] = useState<number | ''>('');
   const [tannery, setTannery] = useState('');
+
+  // Daily Leather Multi-Entry Leather Items
+  const { dailyLeather } = useProcurement();
+  const [leatherItems, setLeatherItems] = useState<EditableLeatherItem[]>([]);
+  const [deletedLeatherItemIds, setDeletedLeatherItemIds] = useState<string[]>([]);
 
   // Daily Leather Tracking Parameters
   const [actualPoReleaseDate, setActualPoReleaseDate] = useState('');
@@ -101,6 +116,33 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
         setPoDeliveryDate(dl.poDeliveryDate || '');
         setPlannedDeliveryDate(dl.plannedDeliveryDate || dl.targetReceiptDate || '');
         setQtyReceived('');
+        setDeletedLeatherItemIds([]);
+
+        // Multi-entry leather items initialization: find all sibling rows with this woNo
+        const targetWoNo = (dl.woNo || '').trim().toUpperCase();
+        const siblings = targetWoNo && Array.isArray(dailyLeather)
+          ? dailyLeather.filter(i => (i.woNo || '').trim().toUpperCase() === targetWoNo)
+          : [];
+
+        if (siblings.length > 0) {
+          setLeatherItems(siblings.map(s => ({
+            id: s.id,
+            leatherName: s.leatherName || '',
+            colour: s.colour || '',
+            quantity: s.quantity !== undefined ? s.quantity : '',
+            tannery: s.tannery || '',
+            isNew: false
+          })));
+        } else {
+          setLeatherItems([{
+            id: dl.id || 'sub-1',
+            leatherName: dl.leatherName || '',
+            colour: dl.colour || '',
+            quantity: dl.quantity !== undefined ? dl.quantity : '',
+            tannery: dl.tannery || '',
+            isNew: false
+          }]);
+        }
       } else if (module === 'material') {
         const mat = item as MaterialItem;
         setWoNo(mat.woNo || '');
@@ -151,6 +193,11 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
 
   if (!isOpen || !item) return null;
 
+  const baseIndentDate = indentReceiptDate || date || (item as any)?.indentReceiptDate || (item as any)?.woDate || (item as any)?.date || getTodayDateString();
+  const autoStockCheckDays = module === 'packaging' ? 7 : 3;
+  const autoStockCheckDate = addWorkingDays(baseIndentDate, autoStockCheckDays);
+  const autoPoReleaseDate = addWorkingDays(autoStockCheckDate, 2);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -173,10 +220,24 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
       updates.woDate = date;
       updates.indentReceiptDate = indentReceiptDate || undefined;
       updates.shipmentDate = shipmentDate || undefined;
-      updates.leatherName = leatherName.trim();
-      updates.colour = colour.trim();
-      updates.quantity = quantity !== '' ? Number(quantity) : 0;
-      updates.tannery = tannery.trim();
+      updates.poReleaseTargetDate = (item as any)?.poReleaseTargetDate || addWorkingDays(baseIndentDate, 2);
+
+      const firstItem = leatherItems[0] || { leatherName: '', colour: '', quantity: '', tannery: '' };
+      updates.leatherName = (firstItem.leatherName || '').trim();
+      updates.colour = (firstItem.colour || '').trim();
+      updates.quantity = firstItem.quantity !== '' ? Number(firstItem.quantity) : 0;
+      updates.tannery = (firstItem.tannery || '').trim();
+
+      updates.leatherItems = leatherItems.map(s => ({
+        id: s.id,
+        leatherName: (s.leatherName || '').trim(),
+        colour: (s.colour || '').trim(),
+        quantity: s.quantity !== '' ? Number(s.quantity) : 0,
+        tannery: (s.tannery || '').trim(),
+        isNew: s.isNew
+      }));
+      updates.deletedLeatherItemIds = deletedLeatherItemIds;
+
       updates.actualPoReleaseDate = actualPoReleaseDate || undefined;
       updates.qtyInStock = qtyInStock !== '' ? Number(qtyInStock) : undefined;
       updates.qtyOrdered = qtyOrdered !== '' ? Number(qtyOrdered) : undefined;
@@ -194,6 +255,8 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
       updates.woDate = date;
       updates.indentReceiptDate = indentReceiptDate || undefined;
       updates.shipmentDate = shipmentDate || undefined;
+      updates.targetStockCheckDate = autoStockCheckDate;
+      updates.poReleaseTargetDate = autoPoReleaseDate;
       updates.actualStockUpdateDate = actualStockUpdateDate || undefined;
       updates.actualPoReleaseDate = actualPoReleaseDate || undefined;
       updates.expectedMaterialReceiptDate = expectedMaterialReceiptDate || undefined;
@@ -209,6 +272,8 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
       updates.woDate = date;
       updates.indentReceiptDate = indentReceiptDate || undefined;
       updates.shipmentDate = shipmentDate || undefined;
+      updates.targetStockCheckDate = autoStockCheckDate;
+      updates.poReleaseTargetDate = autoPoReleaseDate;
       updates.actualStockUpdateDate = actualStockUpdateDate || undefined;
       updates.actualPoReleaseDate = actualPoReleaseDate || undefined;
       updates.expectedMaterialReceiptDate = expectedMaterialReceiptDate || undefined;
@@ -232,10 +297,34 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
     setActualReceiptDate(getTodayDateString());
   };
 
-  const baseIndentDate = indentReceiptDate || date || (item as any)?.indentReceiptDate || (item as any)?.woDate || (item as any)?.date || getTodayDateString();
-  const autoStockCheckDays = module === 'packaging' ? 7 : 3;
-  const autoStockCheckDate = addDays(baseIndentDate, autoStockCheckDays);
-  const autoPoReleaseDate = addDays(autoStockCheckDate, 2);
+  const addLeatherItem = () => {
+    setLeatherItems(prev => [
+      ...prev,
+      {
+        id: `new-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        leatherName: '',
+        colour: '',
+        quantity: '',
+        tannery: '',
+        isNew: true
+      }
+    ]);
+  };
+
+  const removeLeatherItem = (idx: number) => {
+    if (leatherItems.length <= 1) return;
+    const toRemove = leatherItems[idx];
+    if (toRemove && !toRemove.isNew && toRemove.id && !toRemove.id.startsWith('new-')) {
+      setDeletedLeatherItemIds(prev => [...prev, toRemove.id]);
+    }
+    setLeatherItems(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const updateLeatherItem = (idx: number, field: keyof EditableLeatherItem, val: any) => {
+    setLeatherItems(prev =>
+      prev.map((item, i) => (i === idx ? { ...item, [field]: val } : item))
+    );
+  };
 
   const getLiveStatus = () => {
     let target = targetReceiptDate;
@@ -546,63 +635,109 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
                 </div>
               </div>
 
-              {/* Read-Only Item Specs Parameters */}
-              <div className="p-3.5 rounded-xl bg-slate-100/70 border border-slate-200 space-y-2">
-                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider block">
-                  Leather Item Parameters (Read-Only)
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              {/* Dynamic Leather Items Section (Multiple Entries: Leather Name, Color, Qty Req, Tannery) */}
+              <div className="p-3.5 sm:p-4 rounded-2xl border border-amber-200/90 bg-amber-50/30 space-y-3.5">
+                <div className="flex items-center justify-between">
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">
-                      Leather Name
-                    </label>
-                    <input
-                      type="text"
-                      disabled
-                      readOnly
-                      value={leatherName}
-                      className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-200 bg-slate-100 text-slate-700 text-xs sm:text-sm font-semibold cursor-not-allowed select-none"
-                    />
+                    <span className="text-xs font-bold text-amber-950 uppercase tracking-wider block">
+                      Leather Items ({leatherItems.length})
+                    </span>
+                    <span className="text-[11px] text-amber-700">
+                      Add, update, or manage multiple leather entries for this work order
+                    </span>
                   </div>
+                  <button
+                    type="button"
+                    onClick={addLeatherItem}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-amber-700 hover:bg-amber-800 shadow-xs transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ Add Leather Item</span>
+                  </button>
+                </div>
 
-                  <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">
-                      Colour
-                    </label>
-                    <input
-                      type="text"
-                      disabled
-                      readOnly
-                      value={colour}
-                      className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-200 bg-slate-100 text-slate-700 text-xs sm:text-sm font-medium cursor-not-allowed select-none"
-                    />
-                  </div>
+                <div className="space-y-3">
+                  {leatherItems.map((sub, idx) => (
+                    <div
+                      key={sub.id || idx}
+                      className="p-3.5 rounded-xl border border-slate-200 bg-white shadow-2xs space-y-3"
+                    >
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <span className="text-xs font-bold text-slate-800">
+                          Leather Item #{idx + 1}
+                        </span>
+                        {leatherItems.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeLeatherItem(idx)}
+                            className="text-rose-500 hover:text-rose-700 p-1 rounded-lg hover:bg-rose-50 transition-colors text-xs inline-flex items-center gap-1 cursor-pointer font-medium"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Remove</span>
+                          </button>
+                        )}
+                      </div>
 
-                  <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">
-                      Qty Required (sqft)
-                    </label>
-                    <input
-                      type="number"
-                      disabled
-                      readOnly
-                      value={quantity}
-                      className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-200 bg-slate-100 text-slate-700 text-xs sm:text-sm font-bold cursor-not-allowed select-none"
-                    />
-                  </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 mb-1">
+                            Leather Name <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="e.g. Smooth Milled Nappa"
+                            value={sub.leatherName}
+                            onChange={(e) => updateLeatherItem(idx, 'leatherName', e.target.value)}
+                            className="w-full min-h-[40px] px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-slate-900 text-xs sm:text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none font-medium"
+                          />
+                        </div>
 
-                  <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">
-                      Tannery
-                    </label>
-                    <input
-                      type="text"
-                      disabled
-                      readOnly
-                      value={tannery}
-                      className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-200 bg-slate-100 text-slate-700 text-xs sm:text-sm font-medium cursor-not-allowed select-none"
-                    />
-                  </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 mb-1">
+                            Color <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="e.g. Jet Black"
+                            value={sub.colour}
+                            onChange={(e) => updateLeatherItem(idx, 'colour', e.target.value)}
+                            className="w-full min-h-[40px] px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-slate-900 text-xs sm:text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none font-medium"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 mb-1">
+                            Qty Req (sq ft) <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            required
+                            min="1"
+                            placeholder="1000"
+                            value={sub.quantity}
+                            onChange={(e) => updateLeatherItem(idx, 'quantity', e.target.value === '' ? '' : Number(e.target.value))}
+                            className="w-full min-h-[40px] px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-slate-900 text-xs sm:text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none font-bold"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 mb-1">
+                            Tannery <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="e.g. Prime Tanners Ltd"
+                            value={sub.tannery}
+                            onChange={(e) => updateLeatherItem(idx, 'tannery', e.target.value)}
+                            className="w-full min-h-[40px] px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-slate-900 text-xs sm:text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none font-medium"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 

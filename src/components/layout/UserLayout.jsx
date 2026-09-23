@@ -136,14 +136,14 @@ const UserLayout = ({ children }) => {
             <Link
               to={isAdmin ? "/admin/dashboard" : "/user/dashboard"}
               className="flex items-center gap-2.5 font-bold text-cream-100 min-w-0"
-              title="Sapid Design"
+              title="Sapid Design's"
             >
               <img
                 src={aceLogo}
-                alt="Sapid Design Logo"
+                alt="Sapid Design's Logo"
                 className="h-8 w-8 rounded-full object-cover border border-gold-400/50 ring-1 ring-gold-400/30 shrink-0"
               />
-              <span className="tracking-wide font-serif truncate text-sm">Sapid Design</span>
+              <span className="tracking-wide font-serif truncate text-sm">Sapid Design's</span>
             </Link>
             <button
               type="button"
@@ -292,8 +292,8 @@ const UserLayout = ({ children }) => {
             className="flex items-center gap-2.5 font-bold text-cream-100"
             onClick={() => setIsMobileMenuOpen(false)}
           >
-            <img src={aceLogo} alt="Sapid Design Logo" className="h-8 w-8 rounded-full object-cover border border-gold-400/50 ring-1 ring-gold-400/30" />
-            <span className="tracking-wide font-serif">Sapid Design</span>
+            <img src={aceLogo} alt="Sapid Design's Logo" className="h-8 w-8 rounded-full object-cover border border-gold-400/50 ring-1 ring-gold-400/30" />
+            <span className="tracking-wide font-serif">Sapid Design's</span>
           </Link>
         </div>
         <nav className="flex-1 overflow-y-auto thin-scrollbar p-2 bg-white">

@@ -30,6 +30,7 @@ import ProductionDashboard from "./pages/production/ProductionDashboard"
 import ProductionData from "./pages/production/ProductionData"
 import ProductionPlanningNew from "./pages/production/ProductionPlanningNew"
 import ProductionApproval from "./pages/production/ProductionApproval"
+import ProductionMonitoring from "./pages/production/ProductionMonitoring"
 
 // --- Data & Delegation Imports ---
 import DataPage from "./pages/admin/DataPage"
@@ -399,6 +400,14 @@ function App() {
                             </ProtectedRoute>
                         }
                     />
+                    <Route
+                        path="/dashboard/production/monitoring"
+                        element={
+                            <ProtectedRoute allowedRoles={["admin", "HOD", "user"]}>
+                                <ProductionMonitoring />
+                            </ProtectedRoute>
+                        }
+                    />
 
                     {/* Backwards compatibility for old bulk routes */}
                     <Route
@@ -410,7 +419,7 @@ function App() {
                         element={<Navigate to="/dashboard/production/planning" replace />}
                     />
 
-                    {/* --- Procurement System (Sapid Design) Routes --- */}
+                    {/* --- Procurement System (Sapid Design's) Routes --- */}
                     <Route
                         path="/dashboard/procurement"
                         element={

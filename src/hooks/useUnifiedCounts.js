@@ -9,6 +9,7 @@ const DEFAULT_COUNTS = {
   sampleManagement: 0,
   productionPlanning: 0,
   productionApproval: 0,
+  productionMonitoring: 0,
   procurementNewLeather: 0,
   procurementDailyLeather: 0,
   procurementMaterial: 0,
@@ -334,9 +335,10 @@ export function useUnifiedCounts(userParam, roleParam) {
         console.error("Error fetching sample management count:", err);
       }
 
-      // 6. Production Planning & Approval pending counts
+      // 6. Production Planning, Approval, and Monitoring pending counts
       let productionPlanningCount = 0;
       let productionApprovalCount = 0;
+      let productionMonitoringCount = 0;
       try {
         const { data: ppData, error: ppErr } = await supabase
           .from("sample_system_product_planning")
@@ -345,6 +347,7 @@ export function useUnifiedCounts(userParam, roleParam) {
         if (!ppErr && ppData) {
           productionPlanningCount = ppData.filter(p => !p.approval_status || p.approval_status === "draft" || p.approval_status === "rejected").length;
           productionApprovalCount = ppData.filter(p => p.approval_status === "pending_approval").length;
+          productionMonitoringCount = ppData.filter(p => p.approval_status === "approved").length;
         }
       } catch (err) {
         console.error("Error fetching production planning count:", err);
@@ -425,6 +428,7 @@ export function useUnifiedCounts(userParam, roleParam) {
         sampleManagement: sampleManagementCount || 0,
         productionPlanning: productionPlanningCount || 0,
         productionApproval: productionApprovalCount || 0,
+        productionMonitoring: productionMonitoringCount || 0,
         procurementNewLeather: procurementNewLeatherCount || 0,
         procurementDailyLeather: procurementDailyLeatherCount || 0,
         procurementMaterial: procurementMaterialCount || 0,
@@ -466,7 +470,7 @@ export function useUnifiedCounts(userParam, roleParam) {
 
   const checklistTotal = (menuCounts.delegation || 0) + (menuCounts.task || 0) + (menuCounts.adminApproval || 0);
   const sampleTotal = menuCounts.sampleManagement || 0;
-  const productionTotal = (menuCounts.productionPlanning || 0) + (menuCounts.productionApproval || 0);
+  const productionTotal = (menuCounts.productionPlanning || 0) + (menuCounts.productionApproval || 0) + (menuCounts.productionMonitoring || 0);
   const procurementTotal =
     (menuCounts.procurementNewLeather || 0) +
     (menuCounts.procurementDailyLeather || 0) +

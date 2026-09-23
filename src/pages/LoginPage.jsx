@@ -110,17 +110,17 @@ const LoginPage = () => {
   return (
     <div className="flex min-h-screen items-center justify-center bg-cream-100 p-4 selection:bg-gold-200 selection:text-leather-950 relative">
       <div className="w-full max-w-md shadow-2xl border border-leather-200 rounded-3xl bg-white overflow-hidden">
-        {/* Header with Sapid Design Logo & Brand Title */}
+        {/* Header with Sapid Design's Logo & Brand Title */}
         <div className="p-6 bg-gradient-to-r from-leather-800 via-leather-700 to-leather-800 text-center border-b border-gold-400/30 relative">
           <div className="flex flex-col items-center justify-center">
             <div className="h-14 w-14 rounded-2xl bg-white/95 p-2 shadow-md border border-gold-300/40 flex items-center justify-center mb-3">
               <img
                 src={sapidLogo}
-                alt="Sapid Design Logo"
+                alt="Sapid Design's Logo"
                 className="h-full w-full object-contain"
               />
             </div>
-            <h2 className="text-2xl font-black text-cream-100 tracking-wide font-serif">Sapid Design</h2>
+            <h2 className="text-2xl font-black text-cream-100 tracking-wide font-serif">Sapid Design's</h2>
             <p className="text-[10px] font-semibold text-gold-300 uppercase tracking-[0.25em] mt-1">Luxury Leather Goods</p>
           </div>
         </div>

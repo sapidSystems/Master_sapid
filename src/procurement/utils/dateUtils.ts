@@ -96,6 +96,40 @@ export function addDays(dateStr?: string, days: number = 0): string {
 }
 
 /**
+ * Adds specified number of working days to YYYY-MM-DD date string
+ * Skips Sundays (day 0) as standard manufacturing off-day.
+ */
+export function addWorkingDays(dateStr?: string, workingDays: number = 0): string {
+  if (!dateStr) return '';
+  if (workingDays <= 0) return dateStr.split('T')[0];
+  try {
+    const cleanStr = dateStr.split('T')[0];
+    const parts = cleanStr.split('-');
+    if (parts.length !== 3) return '';
+    const year = parseInt(parts[0], 10);
+    const monthIndex = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    const d = new Date(year, monthIndex, day);
+    if (isNaN(d.getTime())) return '';
+
+    let added = 0;
+    while (added < workingDays) {
+      d.setDate(d.getDate() + 1);
+      // Skip Sunday (0)
+      if (d.getDay() !== 0) {
+        added++;
+      }
+    }
+    const resYear = d.getFullYear();
+    const resMonth = (d.getMonth() + 1).toString().padStart(2, '0');
+    const resDay = d.getDate().toString().padStart(2, '0');
+    return `${resYear}-${resMonth}-${resDay}`;
+  } catch {
+    return '';
+  }
+}
+
+/**
  * Calculates status for Daily Material & Daily Packaging Procurement items
  * Rule: Expected Material Receipt Date <= Actual Material Receipt Date ? 'on-time' : 'delayed'
  */
