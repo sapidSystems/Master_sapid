@@ -137,7 +137,7 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                     <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[110px] bg-emerald-500/20 text-emerald-950 font-bold">Actual Stock<br />Update Date</th>
                     <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[105px] font-bold text-slate-700">PO Release<br />Target Date</th>
                     <th scope="col" className="px-2.5 sm:px-3 py-2.5 whitespace-normal leading-tight align-bottom min-w-[100px] bg-emerald-500/20 text-emerald-950 font-bold">Actual PO<br />Release Date</th>
-                    <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[115px] bg-orange-500/20 text-orange-950 font-bold">Expected Material<br />Receipt Date</th>
+                    <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[115px] bg-orange-500/20 text-orange-950 font-bold">Planned Material<br />Receipt Date</th>
                     <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[115px] bg-emerald-500/20 text-emerald-950 font-bold">Actual Material<br />Receipt Date</th>
                     <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[80px] font-bold">Status</th>
                   </>
@@ -152,7 +152,7 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                     <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[110px] bg-emerald-500/20 text-emerald-950 font-bold">Actual Stock<br />Update Date</th>
                     <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[105px] font-bold text-slate-700">PO Release<br />Target Date</th>
                     <th scope="col" className="px-2.5 sm:px-3 py-2.5 whitespace-normal leading-tight align-bottom min-w-[100px] bg-emerald-500/20 text-emerald-950 font-bold">Actual PO<br />Release Date</th>
-                    <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[115px] bg-orange-500/20 text-orange-950 font-bold">Expected Material<br />Receipt Date</th>
+                    <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[115px] bg-orange-500/20 text-orange-950 font-bold">Planned Material<br />Receipt Date</th>
                     <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[115px] bg-emerald-500/20 text-emerald-950 font-bold">Actual Material<br />Receipt Date</th>
                     <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[80px] font-bold">Status</th>
                   </>
@@ -172,10 +172,10 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                     <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-emerald-500/20 text-emerald-950 font-bold text-right">Qty In Stock</th>
                     <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-emerald-500/20 text-emerald-950 font-bold text-right">Qty Ordered (sqft)</th>
                     <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-orange-500/20 text-orange-950 font-bold">PO Delivery Date</th>
-                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-orange-500/20 text-orange-950 font-bold">Planned Delivery Date</th>
+                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-normal leading-tight align-bottom min-w-[120px] bg-orange-500/20 text-orange-950 font-bold">Planned Material<br />Receipt Date</th>
                     <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-emerald-500/20 text-emerald-950 font-bold text-right">Qty Received (sqft)</th>
                     <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold text-right">Due Qty (sqft)</th>
-                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-emerald-500/20 text-emerald-950 font-bold">Actual Receipt Date for Complete Order</th>
+                    <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-normal leading-tight align-bottom min-w-[140px] bg-emerald-500/20 text-emerald-950 font-bold">Actual Receipt Date<br />for Complete Order</th>
                     <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold">Status</th>
                   </>
                 ) : module === 'new-leather' ? (
@@ -500,7 +500,7 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                   </th>
                   {/* Orange header column */}
                   <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[115px] bg-orange-500/20 text-orange-950 font-bold">
-                    Expected Material<br />Receipt Date
+                    Planned Material<br />Receipt Date
                   </th>
                   {/* Green header column */}
                   <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[115px] bg-emerald-500/20 text-emerald-950 font-bold">
@@ -557,7 +557,7 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                   </th>
                   {/* Orange header column */}
                   <th scope="col" className="px-2.5 sm:px-3 py-2.5 whitespace-normal leading-tight align-bottom min-w-[115px] bg-orange-500/20 text-orange-950 font-bold">
-                    Expected Material<br />Receipt Date
+                    Planned Material<br />Receipt Date
                   </th>
                   {/* Green header column */}
                   <th scope="col" className="px-2.5 sm:px-3 py-2 sm:py-2.5 whitespace-normal leading-tight align-bottom min-w-[115px] bg-emerald-500/20 text-emerald-950 font-bold">
@@ -600,13 +600,13 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                   <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-emerald-500/20 text-emerald-950 font-bold text-right">Qty Ordered (sqft)</th>
                   {/* Orange header columns: user can update once, only Admin can change */}
                   <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-orange-500/20 text-orange-950 font-bold">PO Delivery Date</th>
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-orange-500/20 text-orange-950 font-bold">Planned Delivery Date</th>
+                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-normal leading-tight align-bottom min-w-[120px] bg-orange-500/20 text-orange-950 font-bold">Planned Material<br />Receipt Date</th>
                   {/* Green header columns: daily update */}
                   <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-emerald-500/20 text-emerald-950 font-bold text-right">Qty Received (sqft)</th>
                   {/* Auto calculated column */}
                   <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold text-right">Due Qty (sqft)</th>
                   {/* Green header column: daily update */}
-                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap bg-emerald-500/20 text-emerald-950 font-bold">Actual Receipt Date for Complete Order</th>
+                  <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-normal leading-tight align-bottom min-w-[140px] bg-emerald-500/20 text-emerald-950 font-bold">Actual Receipt Date<br />for Complete Order</th>
                   {/* Auto status column */}
                   <th scope="col" className="px-3 sm:px-4 py-3 sm:py-3.5 whitespace-nowrap font-bold">Status</th>
                   {/* Green header column: editable daily - positioned before TAT Planned & after Status */}
@@ -881,7 +881,7 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                       {formatDate(mat.actualPoReleaseDate)}
                     </td>
 
-                    {/* 10. Expected Material Receipt Date (Orange column) */}
+                    {/* 10. Planned Material Receipt Date (Orange column) */}
                     <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-orange-700 font-medium bg-orange-500/10">
                       {formatDate(mat.expectedMaterialReceiptDate || mat.targetReceiptDate)}
                     </td>

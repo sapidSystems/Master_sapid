@@ -868,8 +868,8 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
           setPackaging(prev => prev.map(i => i.id === id ? (merged as PackagingItem) : i)); break;
       }
 
-      // Requirement 6: Sync Actual Receipt Date back to Production Planning stage
-      if (actualDate && (module === 'daily-leather' || module === 'material' || module === 'packaging')) {
+      // Requirement 6: Sync Actual Receipt Date & Remark back to Production Planning stage
+      if (module === 'daily-leather' || module === 'material' || module === 'packaging') {
         const planningId = (merged as any).productionPlanningId || (existing as any).productionPlanningId;
         const woNo = (merged as any).woNo || (existing as any).woNo;
 
@@ -878,7 +878,9 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
           module === 'material' ? 'MATERIALS IN-HOUSE' :
           module === 'packaging' ? 'PACKING MATERIALS IN-HOUSE' : '';
 
-        if (stageTargetName && (planningId || woNo)) {
+        const latestRemarkText = (updates.newRemark && updates.newRemark.trim()) || (merged.remarks || '');
+
+        if (stageTargetName && (planningId || woNo) && (actualDate || latestRemarkText)) {
           (async () => {
             try {
               let query = supabase.from('sample_system_product_planning').select('id, stages, current_stage');
@@ -895,7 +897,15 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
                   stagesArr = stagesArr.map((stg: any) => {
                     if (stg.name === stageTargetName) {
                       changed = true;
-                      return { ...stg, actualDate: actualDate };
+                      return {
+                        ...stg,
+                        ...(actualDate ? { actualDate } : {}),
+                        ...(latestRemarkText ? {
+                          remarks: latestRemarkText,
+                          remarkDate: nowIso,
+                          remarkAuthor: currentUser ? currentUser.name : 'Procurement'
+                        } : {})
+                      };
                     }
                     return stg;
                   });
@@ -997,6 +1007,57 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
       }
 
       await logActivity('ADD_REMARK', module, identifier, `Added remark: "${newRemark.text.substring(0, 50)}..."`);
+
+      // Sync Remark back to Production Planning stage if applicable
+      if (module === 'daily-leather' || module === 'material' || module === 'packaging') {
+        const planningId = (existing as any).productionPlanningId;
+        const woNo = (existing as any).woNo;
+        const stageTargetName =
+          module === 'daily-leather' ? 'LEATHER IN-HOUSE' :
+          module === 'material' ? 'MATERIALS IN-HOUSE' :
+          module === 'packaging' ? 'PACKING MATERIALS IN-HOUSE' : '';
+
+        if (stageTargetName && (planningId || woNo)) {
+          (async () => {
+            try {
+              let query = supabase.from('sample_system_product_planning').select('id, stages, current_stage');
+              if (planningId) {
+                query = query.eq('id', planningId);
+              } else if (woNo) {
+                query = query.eq('wo_no', woNo);
+              }
+              const { data: planningRows } = await query;
+              if (planningRows && planningRows.length > 0) {
+                for (const row of planningRows) {
+                  let stagesArr = Array.isArray(row.stages) ? [...row.stages] : [];
+                  let changed = false;
+                  stagesArr = stagesArr.map((stg: any) => {
+                    if (stg.name === stageTargetName) {
+                      changed = true;
+                      return {
+                        ...stg,
+                        remarks: newRemark.text,
+                        remarkDate: newRemark.timestamp,
+                        remarkAuthor: newRemark.author
+                      };
+                    }
+                    return stg;
+                  });
+                  if (changed) {
+                    await supabase
+                      .from('sample_system_product_planning')
+                      .update({ stages: stagesArr })
+                      .eq('id', row.id);
+                  }
+                }
+              }
+            } catch (syncErr) {
+              console.error('[Procurement] Failed to sync remark to Production Planning:', syncErr);
+            }
+          })();
+        }
+      }
+
       showToast('Remark history saved', 'success');
       return true;
     } catch (err) {

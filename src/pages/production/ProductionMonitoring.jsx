@@ -17,7 +17,8 @@ import {
   ArrowRight,
   TrendingUp,
   FileSpreadsheet,
-  MessageSquare
+  MessageSquare,
+  Lock
 } from 'lucide-react';
 import AdminLayout from '../../components/layout/AdminLayout';
 import {
@@ -26,7 +27,11 @@ import {
   formatDate,
   getTodayDate,
   STAGES_LIST,
-  extractRemarkRecords
+  extractRemarkRecords,
+  getProcurementModuleConfig,
+  fetchProcurementDataForOrders,
+  fetchProcurementForSinglePlan,
+  mergeProcurementIntoStages
 } from './productionService';
 import { useMagicToast } from '../../context/MagicToastContext';
 
@@ -73,7 +78,19 @@ export default function ProductionMonitoring() {
     try {
       setIsLoading(true);
       const data = await fetchProductionPlans();
-      setPlans(data);
+      // Fetch procurement information across daily leather, material, and packaging
+      const procLookup = await fetchProcurementDataForOrders(data);
+      // Merge procurement actual dates and latest remarks into each plan
+      const mergedPlans = data.map(plan => {
+        const procInfo = procLookup.getInfoForPlan(plan);
+        const mergedStages = mergeProcurementIntoStages(plan.stages || [], procInfo);
+        return {
+          ...plan,
+          stages: mergedStages,
+          _procurementInfo: procInfo
+        };
+      });
+      setPlans(mergedPlans);
     } catch (err) {
       console.error('Error fetching production plans:', err);
       showToast('Failed to load production monitoring records', 'error');
@@ -207,34 +224,75 @@ export default function ProductionMonitoring() {
   }, [approvedPlans, activePlans, historyPlans]);
 
   // Open Update Modal
-  const handleOpenUpdate = (plan) => {
+  const handleOpenUpdate = async (plan) => {
     setSelectedPlan(plan);
     setModalDespatchDate(plan.woDespatchDate || '');
     setModalRemarks(plan.remarks || '');
     setIsEditingDespatch(false);
 
+    let procInfo = plan._procurementInfo;
     const existingStages = plan.stages || [];
-    const stagesArr = STAGES_LIST.map((name) => {
-      const found = existingStages.find(s => s.name === name);
-      return {
-        name,
-        plannedDate: found?.plannedDate || '',
-        actualDate: found?.actualDate || '',
-        remarks: found?.remarks || '',
-        remarkDate: found?.remarkDate || '',
-        remarkAuthor: found?.remarkAuthor || '',
-        woRemarkDate: found?.woRemarkDate || '',
-        woRemarkAuthor: found?.woRemarkAuthor || ''
-      };
-    });
-    setModalStages(stagesArr);
+    const buildStagesArr = (info) => {
+      return STAGES_LIST.map((name) => {
+        const found = existingStages.find(s => s.name === name);
+        const procCfg = getProcurementModuleConfig(name);
+        const isProcLocked = Boolean(procCfg);
+        const modData = (isProcLocked && info) ? info[procCfg.module] : null;
+
+        const actualDate = (isProcLocked && modData?.actualDate)
+          ? modData.actualDate
+          : (found?.actualDate || '');
+
+        const remarks = (isProcLocked && modData?.remark)
+          ? modData.remark
+          : (found?.remarks || '');
+
+        const remarkDate = (isProcLocked && modData?.remarkDate)
+          ? modData.remarkDate
+          : (found?.remarkDate || '');
+
+        const remarkAuthor = (isProcLocked && modData?.remarkAuthor)
+          ? modData.remarkAuthor
+          : (found?.remarkAuthor || '');
+
+        return {
+          name,
+          plannedDate: found?.plannedDate || '',
+          actualDate,
+          remarks,
+          remarkDate,
+          remarkAuthor,
+          woRemarkDate: found?.woRemarkDate || '',
+          woRemarkAuthor: found?.woRemarkAuthor || '',
+          isProcurementLocked: isProcLocked,
+          procurementConfig: procCfg
+        };
+      });
+    };
+
+    setModalStages(buildStagesArr(procInfo));
     setIsUpdateModalOpen(true);
+
+    // Refresh procurement data asynchronously for this plan to ensure freshness
+    try {
+      const freshInfo = await fetchProcurementForSinglePlan(plan);
+      if (freshInfo) {
+        setModalStages(buildStagesArr(freshInfo));
+      }
+    } catch (fetchErr) {
+      console.warn('Could not refresh single plan procurement data:', fetchErr);
+    }
   };
 
-  // Handle stage field changes in modal
+  // Handle stage field changes in modal (prevent editing procurement locked fields)
   const handleStageChange = (idx, field, value) => {
     setModalStages(prev =>
-      prev.map((item, i) => (i === idx ? { ...item, [field]: value } : item))
+      prev.map((item, i) => {
+        if (i === idx && item.isProcurementLocked && (field === 'actualDate' || field === 'remarks' || field === 'plannedDate')) {
+          return item;
+        }
+        return i === idx ? { ...item, [field]: value } : item;
+      })
     );
   };
 
@@ -1009,32 +1067,80 @@ export default function ProductionMonitoring() {
                           const delayText = calculateTimeDelay(stage.plannedDate, stage.actualDate);
                           const isDelay = delayText.includes('delay');
                           const isOnTime = delayText === 'On time';
+                          const procCfg = stage.procurementConfig || getProcurementModuleConfig(stage.name);
+                          const isProcLocked = Boolean(procCfg);
 
                           return (
-                            <tr key={stage.name} className="hover:bg-slate-50/50 transition-colors">
+                            <tr
+                              key={stage.name}
+                              className={isProcLocked ? "bg-slate-50/70 hover:bg-slate-50 transition-colors" : "hover:bg-slate-50/50 transition-colors"}
+                            >
                               {/* Stage Name */}
                               <td className="px-4 py-3 font-bold text-slate-800 uppercase tracking-tight">
-                                {stage.name}
+                                <div className="flex flex-col gap-0.5">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span>{stage.name}</span>
+                                    {isProcLocked && (
+                                      <span
+                                        className="px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded bg-indigo-50 text-indigo-700 border border-indigo-200 inline-flex items-center gap-1"
+                                        title={`Actual Date & Remarks are synced from ${procCfg.label} and cannot be edited manually`}
+                                      >
+                                        <Lock className="w-2.5 h-2.5 text-indigo-600" />
+                                        <span>Procurement</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                  {isProcLocked && (
+                                    <span className="text-[10px] text-slate-400 font-medium normal-case">
+                                      Source: <span className="text-slate-600 font-semibold">{procCfg.label}</span>
+                                    </span>
+                                  )}
+                                </div>
                               </td>
 
                               {/* Planned Date */}
                               <td className="px-3 py-3">
                                 <input
                                   type="date"
+                                  disabled={isProcLocked}
                                   value={stage.plannedDate || ''}
                                   onChange={(e) => handleStageChange(idx, 'plannedDate', e.target.value)}
-                                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-700 outline-hidden focus:border-indigo-500 font-medium"
+                                  className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-medium outline-hidden transition-all ${
+                                    isProcLocked
+                                      ? 'bg-slate-100/90 text-slate-600 border border-slate-200 cursor-not-allowed'
+                                      : 'bg-white border border-slate-300 text-slate-700 focus:border-indigo-500'
+                                  }`}
+                                  title={isProcLocked ? "Planned date is fixed by planning schedule" : undefined}
                                 />
                               </td>
 
                               {/* Actual Date */}
                               <td className="px-3 py-3">
-                                <input
-                                  type="date"
-                                  value={stage.actualDate || ''}
-                                  onChange={(e) => handleStageChange(idx, 'actualDate', e.target.value)}
-                                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-700 outline-hidden focus:border-indigo-500 font-medium"
-                                />
+                                <div>
+                                  <input
+                                    type="date"
+                                    disabled={isProcLocked}
+                                    value={stage.actualDate || ''}
+                                    onChange={(e) => handleStageChange(idx, 'actualDate', e.target.value)}
+                                    className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-medium outline-hidden transition-all ${
+                                      isProcLocked
+                                        ? 'bg-slate-100/90 text-slate-800 border border-slate-200 cursor-not-allowed font-semibold'
+                                        : 'bg-white border border-slate-300 text-slate-700 focus:border-indigo-500'
+                                    }`}
+                                    title={
+                                      isProcLocked
+                                        ? stage.actualDate
+                                          ? `Actual Date (${stage.actualDate}) synced from ${procCfg.dateColumnLabel} in ${procCfg.label}`
+                                          : `Pending in ${procCfg.label}. Automatically set when ${procCfg.dateColumnLabel} is recorded.`
+                                        : undefined
+                                    }
+                                  />
+                                  {isProcLocked && !stage.actualDate && (
+                                    <span className="text-[10px] text-amber-600 font-medium block mt-0.5">
+                                      Awaiting receipt in {procCfg.label}
+                                    </span>
+                                  )}
+                                </div>
                               </td>
 
                               {/* Time Delay */}
@@ -1050,13 +1156,34 @@ export default function ProductionMonitoring() {
 
                               {/* Remarks */}
                               <td className="px-4 py-3">
-                                <input
-                                  type="text"
-                                  placeholder="Input"
-                                  value={stage.remarks || ''}
-                                  onChange={(e) => handleStageChange(idx, 'remarks', e.target.value)}
-                                  className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-700 placeholder-slate-400 outline-hidden focus:border-indigo-500"
-                                />
+                                <div>
+                                  <input
+                                    type="text"
+                                    disabled={isProcLocked}
+                                    placeholder={isProcLocked ? "No remark recorded in procurement" : "Input"}
+                                    value={stage.remarks || ''}
+                                    onChange={(e) => handleStageChange(idx, 'remarks', e.target.value)}
+                                    className={`w-full px-3 py-1.5 rounded-lg text-xs outline-hidden transition-all ${
+                                      isProcLocked
+                                        ? 'bg-slate-100/90 border border-slate-200 text-slate-800 font-medium cursor-not-allowed'
+                                        : 'bg-white border border-slate-300 text-slate-700 placeholder-slate-400 focus:border-indigo-500'
+                                    }`}
+                                    title={
+                                      isProcLocked && stage.remarks
+                                        ? `Last Remark from ${procCfg.label}:\n"${stage.remarks}"${stage.remarkAuthor ? `\n— By ${stage.remarkAuthor}` : ''}${stage.remarkDate ? ` on ${formatDate(stage.remarkDate)}` : ''}`
+                                        : undefined
+                                    }
+                                  />
+                                  {isProcLocked && stage.remarkAuthor && (
+                                    <div
+                                      className="text-[10px] text-slate-400 mt-0.5 truncate"
+                                      title={`By ${stage.remarkAuthor}${stage.remarkDate ? ` on ${formatDate(stage.remarkDate)}` : ''}`}
+                                    >
+                                      By {stage.remarkAuthor}
+                                      {stage.remarkDate && ` • ${formatDate(stage.remarkDate)}`}
+                                    </div>
+                                  )}
+                                </div>
                               </td>
                             </tr>
                           );

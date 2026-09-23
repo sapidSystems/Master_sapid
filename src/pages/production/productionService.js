@@ -432,3 +432,242 @@ export const fetchApprovalHistory = async () => {
     return [];
   }
 };
+
+/**
+ * Identify if a stage name corresponds to one of the 3 procurement modules:
+ * - LEATHER IN-HOUSE -> Daily Leather Procurement
+ * - MATERIALS IN-HOUSE -> Daily Material Procurement
+ * - PACKING MATERIALS IN-HOUSE -> Daily Packaging Procurement
+ */
+export const getProcurementModuleConfig = (stageName) => {
+  if (!stageName) return null;
+  const n = String(stageName).toUpperCase().replace(/[-_]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (n.includes('LEATHER') && n.includes('HOUSE')) {
+    return {
+      module: 'daily-leather',
+      tableName: 'procurement_daily_leather',
+      stageName: 'LEATHER IN-HOUSE',
+      label: 'Daily Leather Procurement',
+      dateColumnLabel: 'Actual Receipt Date for Complete Order'
+    };
+  }
+  if (n.includes('PACK') && n.includes('HOUSE')) {
+    return {
+      module: 'packaging',
+      tableName: 'procurement_packaging',
+      stageName: 'PACKING MATERIALS IN-HOUSE',
+      label: 'Daily Packaging Procurement',
+      dateColumnLabel: 'Actual Material Receipt Date'
+    };
+  }
+  if (n.includes('MATERIAL') && n.includes('HOUSE')) {
+    return {
+      module: 'material',
+      tableName: 'procurement_material',
+      stageName: 'MATERIALS IN-HOUSE',
+      label: 'Daily Material Procurement',
+      dateColumnLabel: 'Actual Material Receipt Date'
+    };
+  }
+  return null;
+};
+
+/**
+ * Extract the latest remark, author, and timestamp from a procurement table row
+ */
+export const extractLatestProcurementRemark = (row) => {
+  if (!row) return { remark: '', date: '', author: '' };
+
+  let latestText = '';
+  let latestDate = '';
+  let latestAuthor = '';
+
+  // 1. Check remark_history if it exists and has items
+  if (Array.isArray(row.remark_history) && row.remark_history.length > 0) {
+    const sorted = [...row.remark_history].sort((a, b) => {
+      const ta = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const tb = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+      return tb - ta;
+    });
+    const top = sorted[0];
+    if (top && top.text && String(top.text).trim()) {
+      latestText = String(top.text).trim();
+      latestDate = top.timestamp || row.updated_at || row.created_at || '';
+      latestAuthor = top.author || 'Procurement';
+    }
+  }
+
+  // 2. Fallback to row.remarks if remark_history didn't yield text
+  if (!latestText && row.remarks && String(row.remarks).trim()) {
+    latestText = String(row.remarks).trim();
+    latestDate = row.updated_at || row.created_at || '';
+    latestAuthor = 'Procurement';
+  }
+
+  return {
+    remark: latestText,
+    date: latestDate,
+    author: latestAuthor
+  };
+};
+
+/**
+ * Aggregate multiple rows for a given procurement module on a work order
+ */
+export const aggregateProcurementRows = (rows) => {
+  if (!rows || rows.length === 0) {
+    return { actualDate: '', remark: '', remarkDate: '', remarkAuthor: '' };
+  }
+
+  // Valid actual receipt dates (formatted as YYYY-MM-DD)
+  const validDates = rows
+    .map(r => r.actual_receipt_date ? String(r.actual_receipt_date).substring(0, 10) : null)
+    .filter(Boolean);
+  const actualDate = validDates.length > 0 ? validDates.sort().reverse()[0] : '';
+
+  // Find the most recent remark across all rows
+  let bestRemark = { remark: '', date: '', author: '' };
+  let bestTime = -1;
+
+  rows.forEach(r => {
+    const remInfo = extractLatestProcurementRemark(r);
+    if (remInfo.remark) {
+      const t = remInfo.date ? new Date(remInfo.date).getTime() : 0;
+      if (t >= bestTime) {
+        bestTime = t;
+        bestRemark = remInfo;
+      }
+    }
+  });
+
+  return {
+    actualDate,
+    remark: bestRemark.remark,
+    remarkDate: bestRemark.date,
+    remarkAuthor: bestRemark.author
+  };
+};
+
+/**
+ * Fetch all procurement data across the 3 procurement tables and build an efficient lookup function
+ */
+export const fetchProcurementDataForOrders = async (plans = []) => {
+  try {
+    const [dlRes, matRes, pkgRes] = await Promise.all([
+      supabase.from('procurement_daily_leather').select('id, wo_no, production_planning_id, actual_receipt_date, remarks, remark_history, created_at, updated_at'),
+      supabase.from('procurement_material').select('id, wo_no, production_planning_id, actual_receipt_date, remarks, remark_history, created_at, updated_at'),
+      supabase.from('procurement_packaging').select('id, wo_no, production_planning_id, actual_receipt_date, remarks, remark_history, created_at, updated_at'),
+    ]);
+
+    const dlRows = dlRes.data || [];
+    const matRows = matRes.data || [];
+    const pkgRows = pkgRes.data || [];
+
+    const getMatchingRows = (rows, plan) => {
+      if (!plan) return [];
+      const planId = plan.id;
+      const wo = plan.woNo ? String(plan.woNo).trim().toUpperCase() : '';
+      return rows.filter(r => {
+        if (planId && r.production_planning_id && r.production_planning_id === planId) return true;
+        if (wo && r.wo_no && String(r.wo_no).trim().toUpperCase() === wo) return true;
+        return false;
+      });
+    };
+
+    const getInfoForPlan = (plan) => {
+      if (!plan) return null;
+      const dlMatch = getMatchingRows(dlRows, plan);
+      const matMatch = getMatchingRows(matRows, plan);
+      const pkgMatch = getMatchingRows(pkgRows, plan);
+      return {
+        'daily-leather': aggregateProcurementRows(dlMatch),
+        'material': aggregateProcurementRows(matMatch),
+        'packaging': aggregateProcurementRows(pkgMatch),
+      };
+    };
+
+    return {
+      dlRows,
+      matRows,
+      pkgRows,
+      getInfoForPlan
+    };
+  } catch (err) {
+    console.error('Error fetching procurement data for orders:', err);
+    return {
+      dlRows: [],
+      matRows: [],
+      pkgRows: [],
+      getInfoForPlan: () => ({
+        'daily-leather': { actualDate: '', remark: '', remarkDate: '', remarkAuthor: '' },
+        'material': { actualDate: '', remark: '', remarkDate: '', remarkAuthor: '' },
+        'packaging': { actualDate: '', remark: '', remarkDate: '', remarkAuthor: '' },
+      })
+    };
+  }
+};
+
+/**
+ * Fetch fresh procurement data for a single work order / plan
+ */
+export const fetchProcurementForSinglePlan = async (plan) => {
+  if (!plan) return null;
+  const wo = plan.woNo ? String(plan.woNo).trim().toUpperCase() : '';
+  const planId = plan.id;
+
+  try {
+    const buildQuery = (tbl) => {
+      let q = supabase.from(tbl).select('id, wo_no, production_planning_id, actual_receipt_date, remarks, remark_history, created_at, updated_at');
+      if (planId && wo) {
+        return q.or(`production_planning_id.eq.${planId},wo_no.eq.${wo}`);
+      } else if (planId) {
+        return q.eq('production_planning_id', planId);
+      } else if (wo) {
+        return q.eq('wo_no', wo);
+      }
+      return q;
+    };
+
+    const [dlRes, matRes, pkgRes] = await Promise.all([
+      buildQuery('procurement_daily_leather'),
+      buildQuery('procurement_material'),
+      buildQuery('procurement_packaging'),
+    ]);
+
+    return {
+      'daily-leather': aggregateProcurementRows(dlRes.data || []),
+      'material': aggregateProcurementRows(matRes.data || []),
+      'packaging': aggregateProcurementRows(pkgRes.data || []),
+    };
+  } catch (err) {
+    console.error('Error fetching procurement for single plan:', err);
+    return null;
+  }
+};
+
+/**
+ * Merge procurement actual dates and latest remarks into stage list
+ */
+export const mergeProcurementIntoStages = (stages = [], procurementInfo = null) => {
+  if (!Array.isArray(stages)) return [];
+  if (!procurementInfo) return stages;
+
+  return stages.map(stage => {
+    const cfg = getProcurementModuleConfig(stage.name);
+    if (!cfg) return stage;
+
+    const proc = procurementInfo[cfg.module];
+    if (!proc) return stage;
+
+    return {
+      ...stage,
+      actualDate: proc.actualDate || stage.actualDate || '',
+      remarks: proc.remark || stage.remarks || '',
+      remarkDate: proc.remarkDate || stage.remarkDate || '',
+      remarkAuthor: proc.remarkAuthor || stage.remarkAuthor || 'Procurement',
+      isProcurementLocked: true,
+      procurementConfig: cfg
+    };
+  });
+};
+

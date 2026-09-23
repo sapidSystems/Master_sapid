@@ -821,7 +821,7 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
 
                         <div>
                           <label className="block text-xs font-semibold text-slate-700 mb-1">
-                            Planned Delivery Date
+                            Planned Material Receipt Date
                           </label>
                           <input
                             type="date"
@@ -1064,7 +1064,7 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
 
                       <div>
                         <label className="block text-xs font-semibold text-slate-700 mb-1">
-                          Expected Material Receipt Date
+                          Planned Material Receipt Date
                         </label>
                         <input
                           type="date"
