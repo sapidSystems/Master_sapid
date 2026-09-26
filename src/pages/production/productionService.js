@@ -47,6 +47,23 @@ export const getTodayDate = () => {
 };
 
 /**
+ * Helper to identify automated dummy/system remarks (e.g. from production planning approvals or dispatch notifications)
+ */
+export const isSystemRemark = (text) => {
+  if (!text) return false;
+  const t = String(text).trim();
+  return Boolean(
+    t.match(/^Approved in Production Planning by .* Dispatched for procurement/i) ||
+    t.match(/^Approved in Production/i) ||
+    t.match(/^Created from Production Plan Approval/i) ||
+    t.match(/^from Production Plan Approval/i) ||
+    t.match(/Dispatched for procurement/i) ||
+    t.match(/^Approved for procurement/i) ||
+    t.match(/^Plan approved and dispatched/i)
+  );
+};
+
+/**
  * Extract all remark records across plans (both overall W/O remarks and stage-level remarks)
  * Each entry is a discrete history record.
  */
@@ -58,7 +75,7 @@ export const extractRemarkRecords = (plans) => {
     if (!plan) return;
 
     // 1. Overall W/O Remarks
-    if (plan.remarks && String(plan.remarks).trim()) {
+    if (plan.remarks && String(plan.remarks).trim() && !isSystemRemark(plan.remarks)) {
       const firstStage = Array.isArray(plan.stages) ? plan.stages[0] : null;
       records.push({
         id: `${plan.id}-overall`,
@@ -79,7 +96,7 @@ export const extractRemarkRecords = (plans) => {
     // 2. Stage-level Remarks
     const stages = plan.stages || [];
     stages.forEach((stage, idx) => {
-      if (stage && stage.remarks && String(stage.remarks).trim()) {
+      if (stage && stage.remarks && String(stage.remarks).trim() && !isSystemRemark(stage.remarks)) {
         records.push({
           id: `${plan.id}-stage-${idx}`,
           planId: plan.id,
@@ -109,6 +126,18 @@ export const extractRemarkRecords = (plans) => {
 
 export const mapDbToLead = (dbRow) => {
   if (!dbRow) return null;
+  const rawStages = Array.isArray(dbRow.stages) ? dbRow.stages : [];
+  const cleanStages = rawStages.map(s => {
+    if (!s) return s;
+    const cleanRemark = isSystemRemark(s.remarks) ? '' : (s.remarks || '');
+    return {
+      ...s,
+      remarks: cleanRemark,
+      remarkAuthor: cleanRemark ? (s.remarkAuthor || '') : '',
+      remarkDate: cleanRemark ? (s.remarkDate || '') : ''
+    };
+  });
+
   return {
     id: dbRow.id,
     buyer: dbRow.buyer || '',
@@ -117,12 +146,12 @@ export const mapDbToLead = (dbRow) => {
     woDate: dbRow.wo_date || '',
     woDespatchDate: dbRow.wo_despatch_date || '',
     qty: dbRow.qty || '',
-    remarks: dbRow.remarks || '',
+    remarks: isSystemRemark(dbRow.remarks) ? '' : (dbRow.remarks || ''),
     addedBy: dbRow.added_by || '',
     currentStage: dbRow.current_stage || 0,
     isHistory: dbRow.is_history || false,
     historyTimestamp: dbRow.history_timestamp || '',
-    stages: Array.isArray(dbRow.stages) ? dbRow.stages : [],
+    stages: cleanStages,
     timestamp: dbRow.created_at || '',
     planDate: dbRow.plan_date || '',
     approvalStatus: dbRow.approval_status || 'draft', // 'draft' | 'pending_approval' | 'approved' | 'rejected'
@@ -341,13 +370,13 @@ export const approveProductionPlan = async ({ lead, note = '', currentUser }) =>
     production_planning_id: lead.id,
     source: 'production_planning',
     status: 'pending',
-    remarks: `Created from Production Plan Approval (${lead.woNo}). ${lead.remarks || ''}`.trim(),
-    remark_history: [{
+    remarks: (lead.remarks && String(lead.remarks).trim()) ? String(lead.remarks).trim() : '',
+    remark_history: (lead.remarks && String(lead.remarks).trim()) ? [{
       id: 'rem-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
-      text: `Approved in Production Planning by ${userName}. Dispatched for procurement.`,
+      text: String(lead.remarks).trim(),
       author: userName,
       timestamp: nowIso
-    }],
+    }] : [],
     created_at: nowIso,
     updated_at: nowIso
   };
@@ -367,10 +396,10 @@ export const approveProductionPlan = async ({ lead, note = '', currentUser }) =>
     ...baseProcurementRow,
     id: `DL-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
     module: 'daily-leather',
-    leather_name: 'Production Leather Requirement',
-    colour: 'Standard',
-    quantity: Number(lead.qty) || 0,
-    tannery: 'Pending Selection',
+    leather_name: '',
+    colour: '',
+    quantity: null,
+    tannery: '',
     po_release_target_date: dlPoRelease,
   };
 
@@ -379,11 +408,11 @@ export const approveProductionPlan = async ({ lead, note = '', currentUser }) =>
     ...baseProcurementRow,
     id: `MAT-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
     module: 'material',
-    material_name: 'Production Material Requirement',
-    specification: 'Per WO Specification',
-    quantity: Number(lead.qty) || 0,
+    material_name: '',
+    specification: '',
+    quantity: null,
     unit: 'pcs',
-    supplier: 'Pending Selection',
+    supplier: '',
     target_stock_check_date: matStockCheck,
     po_release_target_date: matPoRelease,
   };
@@ -393,11 +422,11 @@ export const approveProductionPlan = async ({ lead, note = '', currentUser }) =>
     ...baseProcurementRow,
     id: `PKG-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
     module: 'packaging',
-    packaging_type: 'Standard Packaging Requirement',
-    specification: 'Per Export Standard',
-    quantity: Number(lead.qty) || 0,
+    packaging_type: '',
+    specification: '',
+    quantity: null,
     unit: 'pcs',
-    supplier: 'Pending Selection',
+    supplier: '',
     target_stock_check_date: pkgStockCheck,
     po_release_target_date: pkgPoRelease,
   };
@@ -511,21 +540,24 @@ export const extractLatestProcurementRemark = (row) => {
 
   // 1. Check remark_history if it exists and has items
   if (Array.isArray(row.remark_history) && row.remark_history.length > 0) {
-    const sorted = [...row.remark_history].sort((a, b) => {
-      const ta = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-      const tb = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-      return tb - ta;
-    });
-    const top = sorted[0];
-    if (top && top.text && String(top.text).trim()) {
-      latestText = String(top.text).trim();
-      latestDate = top.timestamp || row.updated_at || row.created_at || '';
-      latestAuthor = top.author || 'Procurement';
+    const validHistory = row.remark_history.filter(item => item && item.text && !isSystemRemark(item.text));
+    if (validHistory.length > 0) {
+      const sorted = [...validHistory].sort((a, b) => {
+        const ta = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+        const tb = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+        return tb - ta;
+      });
+      const top = sorted[0];
+      if (top && top.text && String(top.text).trim()) {
+        latestText = String(top.text).trim();
+        latestDate = top.timestamp || row.updated_at || row.created_at || '';
+        latestAuthor = top.author || 'Procurement';
+      }
     }
   }
 
   // 2. Fallback to row.remarks if remark_history didn't yield text
-  if (!latestText && row.remarks && String(row.remarks).trim()) {
+  if (!latestText && row.remarks && String(row.remarks).trim() && !isSystemRemark(row.remarks)) {
     latestText = String(row.remarks).trim();
     latestDate = row.updated_at || row.created_at || '';
     latestAuthor = 'Procurement';
@@ -533,8 +565,8 @@ export const extractLatestProcurementRemark = (row) => {
 
   return {
     remark: latestText,
-    date: latestDate,
-    author: latestAuthor
+    date: latestText ? latestDate : '',
+    author: latestText ? latestAuthor : ''
   };
 };
 
@@ -686,12 +718,17 @@ export const mergeProcurementIntoStages = (stages = [], procurementInfo = null) 
     const proc = procurementInfo[cfg.module];
     if (!proc) return stage;
 
+    const cleanStageRemark = isSystemRemark(stage.remarks) ? '' : (stage.remarks || '');
+    const finalRemark = (proc.remark && !isSystemRemark(proc.remark)) ? proc.remark : cleanStageRemark;
+    const finalDate = finalRemark ? (proc.remarkDate || stage.remarkDate || '') : '';
+    const finalAuthor = finalRemark ? (proc.remarkAuthor || stage.remarkAuthor || '') : '';
+
     return {
       ...stage,
       actualDate: proc.actualDate || stage.actualDate || '',
-      remarks: proc.remark || stage.remarks || '',
-      remarkDate: proc.remarkDate || stage.remarkDate || '',
-      remarkAuthor: proc.remarkAuthor || stage.remarkAuthor || 'Procurement',
+      remarks: finalRemark,
+      remarkDate: finalDate,
+      remarkAuthor: finalAuthor,
       isProcurementLocked: true,
       procurementConfig: cfg
     };

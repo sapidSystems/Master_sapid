@@ -115,16 +115,30 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
         setTannery(nl.tannery || '');
       } else if (module === 'daily-leather') {
         const dl = item as DailyLeatherItem;
+        const isDummy = (val?: string, list: string[] = []) => {
+          if (!val) return true;
+          const s = val.trim().toLowerCase();
+          return list.some(l => l.toLowerCase() === s);
+        };
+        const isPlaceholderLeather = (s?: string) => isDummy(s, ['production leather requirement', 'standard leather']);
+        const isPlaceholderTannery = (s?: string) => isDummy(s, ['pending selection', 'tannery 1']);
+        const isPlaceholderColour = (s?: string) => isDummy(s, ['standard']);
+
+        const cleanDlLeatherName = isPlaceholderLeather(dl.leatherName) ? '' : (dl.leatherName || '');
+        const cleanDlColour = isPlaceholderColour(dl.colour) ? '' : (dl.colour || '');
+        const cleanDlTannery = isPlaceholderTannery(dl.tannery) ? '' : (dl.tannery || '');
+        const cleanDlQty = isPlaceholderLeather(dl.leatherName) ? '' : (dl.quantity !== undefined && dl.quantity !== null ? dl.quantity : '');
+
         setWoNo(dl.woNo || '');
         setIndentReceiptDate(dl.indentReceiptDate || '');
         setShipmentDate(dl.shipmentDate || '');
-        setLeatherName(dl.leatherName || '');
-        setColour(dl.colour || '');
-        setQuantity(dl.quantity !== undefined ? dl.quantity : '');
-        setTannery(dl.tannery || '');
+        setLeatherName(cleanDlLeatherName);
+        setColour(cleanDlColour);
+        setQuantity(cleanDlQty);
+        setTannery(cleanDlTannery);
         setActualPoReleaseDate(dl.actualPoReleaseDate || '');
-        setQtyInStock(dl.qtyInStock !== undefined ? dl.qtyInStock : '');
-        setQtyOrdered(dl.qtyOrdered !== undefined ? dl.qtyOrdered : dl.quantity || '');
+        setQtyInStock(dl.qtyInStock !== undefined && dl.qtyInStock !== null ? dl.qtyInStock : '');
+        setQtyOrdered(dl.qtyOrdered !== undefined && dl.qtyOrdered !== null ? dl.qtyOrdered : cleanDlQty);
         setPoDeliveryDate(dl.poDeliveryDate || '');
         setPlannedDeliveryDate(dl.plannedDeliveryDate || dl.targetReceiptDate || '');
         setQtyReceived('');
@@ -136,16 +150,24 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
           ? dailyLeather.filter(i => (i.woNo || '').trim().toUpperCase() === targetWoNo)
           : [];
 
-        if (siblings.length > 0) {
-          setLeatherItems(siblings.map(s => ({
+        const sanitizeLeatherItem = (s: any) => {
+          const isDummyName = isPlaceholderLeather(s.leatherName);
+          const isDummyTan = isPlaceholderTannery(s.tannery);
+          const isDummyCol = isPlaceholderColour(s.colour);
+          const sLeatherName = isDummyName ? '' : (s.leatherName || '');
+          const sColour = isDummyCol ? '' : (s.colour || '');
+          const sTannery = isDummyTan ? '' : (s.tannery || '');
+          const sQuantity = isDummyName ? '' : (s.quantity !== undefined && s.quantity !== null ? s.quantity : '');
+
+          return {
             id: s.id,
-            leatherName: s.leatherName || '',
-            colour: s.colour || '',
-            quantity: s.quantity !== undefined ? s.quantity : '',
-            tannery: s.tannery || '',
+            leatherName: sLeatherName,
+            colour: sColour,
+            quantity: sQuantity,
+            tannery: sTannery,
             actualPoReleaseDate: s.actualPoReleaseDate || '',
-            qtyInStock: s.qtyInStock !== undefined ? s.qtyInStock : '',
-            qtyOrdered: s.qtyOrdered !== undefined ? s.qtyOrdered : s.quantity || '',
+            qtyInStock: s.qtyInStock !== undefined && s.qtyInStock !== null ? s.qtyInStock : '',
+            qtyOrdered: s.qtyOrdered !== undefined && s.qtyOrdered !== null ? s.qtyOrdered : sQuantity,
             poDeliveryDate: s.poDeliveryDate || '',
             plannedDeliveryDate: s.plannedDeliveryDate || s.targetReceiptDate || '',
             qtyReceived: '',
@@ -153,50 +175,56 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
             poDeliveryDateLocked: Boolean((s as any).poDeliveryDateLocked),
             plannedDeliveryDateLocked: Boolean((s as any).plannedDeliveryDateLocked),
             isNew: false
-          })));
+          };
+        };
+
+        if (siblings.length > 0) {
+          setLeatherItems(siblings.map(sanitizeLeatherItem));
         } else {
-          setLeatherItems([{
-            id: dl.id || 'sub-1',
-            leatherName: dl.leatherName || '',
-            colour: dl.colour || '',
-            quantity: dl.quantity !== undefined ? dl.quantity : '',
-            tannery: dl.tannery || '',
-            actualPoReleaseDate: dl.actualPoReleaseDate || '',
-            qtyInStock: dl.qtyInStock !== undefined ? dl.qtyInStock : '',
-            qtyOrdered: dl.qtyOrdered !== undefined ? dl.qtyOrdered : dl.quantity || '',
-            poDeliveryDate: dl.poDeliveryDate || '',
-            plannedDeliveryDate: dl.plannedDeliveryDate || dl.targetReceiptDate || '',
-            qtyReceived: '',
-            alreadyReceived: Number(dl.qtyReceived || 0),
-            poDeliveryDateLocked: Boolean((dl as any).poDeliveryDateLocked),
-            plannedDeliveryDateLocked: Boolean((dl as any).plannedDeliveryDateLocked),
-            isNew: false
-          }]);
+          setLeatherItems([sanitizeLeatherItem({ ...dl, id: dl.id || 'sub-1' })]);
         }
       } else if (module === 'material') {
         const mat = item as MaterialItem;
+        const isDummy = (val?: string, list: string[] = []) => {
+          if (!val) return true;
+          const s = val.trim().toLowerCase();
+          return list.some(l => l.toLowerCase() === s);
+        };
+        const isDummyMat = isDummy(mat.materialName, ['production material requirement']);
+        const isDummyMatSpec = isDummy(mat.specification, ['per wo specification']);
+        const isDummySupp = isDummy(mat.supplier, ['pending selection']);
+
         setWoNo(mat.woNo || '');
         setIndentReceiptDate(mat.indentReceiptDate || '');
         setShipmentDate(mat.shipmentDate || '');
         setActualStockUpdateDate(mat.actualStockUpdateDate || '');
         setActualPoReleaseDate(mat.actualPoReleaseDate || '');
         setExpectedMaterialReceiptDate(mat.expectedMaterialReceiptDate || mat.targetReceiptDate || '');
-        setMaterialName(mat.materialName || '');
-        setMaterialSpec(mat.specification || '');
-        setQuantity(mat.quantity !== undefined ? mat.quantity : '');
-        setSupplier(mat.supplier || '');
+        setMaterialName(isDummyMat ? '' : (mat.materialName || ''));
+        setMaterialSpec(isDummyMatSpec ? '' : (mat.specification || ''));
+        setQuantity(isDummyMat ? '' : (mat.quantity !== undefined && mat.quantity !== null ? mat.quantity : ''));
+        setSupplier(isDummySupp ? '' : (mat.supplier || ''));
       } else if (module === 'packaging') {
         const pkg = item as PackagingItem;
+        const isDummy = (val?: string, list: string[] = []) => {
+          if (!val) return true;
+          const s = val.trim().toLowerCase();
+          return list.some(l => l.toLowerCase() === s);
+        };
+        const isDummyPkg = isDummy(pkg.packagingType, ['standard packaging requirement']);
+        const isDummyPkgSpec = isDummy(pkg.specification, ['per export standard']);
+        const isDummyPkgSupp = isDummy(pkg.supplier, ['pending selection']);
+
         setWoNo(pkg.woNo || '');
         setIndentReceiptDate(pkg.indentReceiptDate || '');
         setShipmentDate(pkg.shipmentDate || '');
         setActualStockUpdateDate(pkg.actualStockUpdateDate || '');
         setActualPoReleaseDate(pkg.actualPoReleaseDate || '');
         setExpectedMaterialReceiptDate(pkg.expectedMaterialReceiptDate || pkg.targetReceiptDate || '');
-        setPackagingType(pkg.packagingType || '');
-        setPackagingSpec(pkg.specification || '');
-        setQuantity(pkg.quantity !== undefined ? pkg.quantity : '');
-        setSupplier(pkg.supplier || '');
+        setPackagingType(isDummyPkg ? '' : (pkg.packagingType || ''));
+        setPackagingSpec(isDummyPkgSpec ? '' : (pkg.specification || ''));
+        setQuantity(isDummyPkg ? '' : (pkg.quantity !== undefined && pkg.quantity !== null ? pkg.quantity : ''));
+        setSupplier(isDummyPkgSupp ? '' : (pkg.supplier || ''));
       }
     }
   }, [item, module]);
@@ -255,7 +283,7 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
       const firstItem = leatherItems[0] || { leatherName: '', colour: '', quantity: '', tannery: '' };
       updates.leatherName = (firstItem.leatherName || '').trim();
       updates.colour = (firstItem.colour || '').trim();
-      updates.quantity = firstItem.quantity !== '' ? Number(firstItem.quantity) : 0;
+      updates.quantity = firstItem.quantity !== '' && firstItem.quantity !== null && firstItem.quantity !== undefined ? Number(firstItem.quantity) : null;
       updates.tannery = (firstItem.tannery || '').trim();
 
       // Top-level tracking fields for primary item
@@ -270,7 +298,7 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
         id: s.id,
         leatherName: (s.leatherName || '').trim(),
         colour: (s.colour || '').trim(),
-        quantity: s.quantity !== '' ? Number(s.quantity) : 0,
+        quantity: s.quantity !== '' && s.quantity !== null && s.quantity !== undefined ? Number(s.quantity) : null,
         tannery: (s.tannery || '').trim(),
         actualPoReleaseDate: s.actualPoReleaseDate || undefined,
         qtyInStock: s.qtyInStock !== '' && s.qtyInStock !== undefined ? Number(s.qtyInStock) : undefined,
@@ -727,7 +755,6 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
                           </label>
                           <input
                             type="text"
-                            required
                             placeholder="e.g. Smooth Milled Nappa"
                             value={sub.leatherName}
                             onChange={(e) => updateLeatherItem(idx, 'leatherName', e.target.value)}
@@ -741,7 +768,6 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
                           </label>
                           <input
                             type="text"
-                            required
                             placeholder="e.g. Jet Black"
                             value={sub.colour}
                             onChange={(e) => updateLeatherItem(idx, 'colour', e.target.value)}
@@ -755,9 +781,8 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
                           </label>
                           <input
                             type="number"
-                            required
                             min="1"
-                            placeholder="1000"
+                            placeholder="e.g. 500"
                             value={sub.quantity}
                             onChange={(e) => updateLeatherItem(idx, 'quantity', e.target.value === '' ? '' : Number(e.target.value))}
                             className="w-full min-h-[40px] px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-slate-900 text-xs sm:text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none font-bold"
@@ -770,7 +795,6 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
                           </label>
                           <input
                             type="text"
-                            required
                             placeholder="e.g. Prime Tanners Ltd"
                             value={sub.tannery}
                             onChange={(e) => updateLeatherItem(idx, 'tannery', e.target.value)}
@@ -855,24 +879,15 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
 
                           <div>
                             <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                              Planned Material Receipt Date
+                              Planned Material Receipt Date <span className="text-slate-400 font-normal">(Read-only)</span>
                             </label>
                             <input
                               type="date"
-                              disabled={!isAdmin && sub.plannedDeliveryDateLocked}
+                              disabled
+                              readOnly
                               value={sub.plannedDeliveryDate || ''}
-                              onChange={(e) => updateLeatherItem(idx, 'plannedDeliveryDate', e.target.value)}
-                              className={`w-full min-h-[38px] px-3 py-1.5 rounded-xl border text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none ${
-                                !isAdmin && sub.plannedDeliveryDateLocked
-                                  ? 'border-slate-200 bg-slate-100 text-slate-700 cursor-not-allowed'
-                                  : 'border-slate-300 bg-white text-slate-900 font-medium'
-                              }`}
+                              className="w-full min-h-[38px] px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-100 text-slate-700 text-xs font-semibold cursor-not-allowed select-none"
                             />
-                            {!isAdmin && sub.plannedDeliveryDateLocked && (
-                              <p className="text-[10px] text-amber-600 font-medium mt-0.5">
-                                Locked after first update
-                              </p>
-                            )}
                           </div>
 
                           <div>

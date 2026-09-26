@@ -37,6 +37,42 @@ const TABLE: Record<ModuleType, string> = {
 // camelCase ↔ snake_case conversion helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
+const MODULE_COLUMNS: Record<string, string[]> = {
+  'daily-leather': [
+    'id', 'module', 'wo_no', 'buyer_code', 'date', 'wo_date',
+    'indent_receipt_date', 'shipment_date', 'target_receipt_date',
+    'actual_receipt_date', 'leather_name', 'colour', 'quantity', 'unit',
+    'tannery', 'actual_po_release_date', 'po_release_target_date',
+    'qty_in_stock', 'qty_ordered', 'po_delivery_date', 'planned_delivery_date',
+    'qty_received', 'status', 'remarks', 'remark_history',
+    'created_at', 'updated_at', 'production_planning_id', 'source'
+  ],
+  'new-leather': [
+    'id', 'module', 'date', 'buyer_code', 'target_receipt_date',
+    'actual_receipt_date', 'status', 'remarks', 'remark_history',
+    'leather_name', 'colour', 'quantity', 'unit', 'tannery',
+    'created_at', 'updated_at'
+  ],
+  'material': [
+    'id', 'module', 'wo_no', 'buyer_code', 'date', 'wo_date',
+    'indent_receipt_date', 'shipment_date', 'target_stock_check_date',
+    'po_release_target_date', 'actual_stock_update_date', 'actual_po_release_date',
+    'expected_material_receipt_date', 'material_name', 'specification',
+    'quantity', 'unit', 'supplier', 'target_receipt_date', 'actual_receipt_date',
+    'status', 'remarks', 'remark_history', 'created_at', 'updated_at',
+    'production_planning_id', 'source'
+  ],
+  'packaging': [
+    'id', 'module', 'wo_no', 'buyer_code', 'date', 'wo_date',
+    'indent_receipt_date', 'shipment_date', 'target_stock_check_date',
+    'po_release_target_date', 'actual_stock_update_date', 'actual_po_release_date',
+    'expected_material_receipt_date', 'packaging_type', 'specification',
+    'quantity', 'unit', 'supplier', 'target_receipt_date', 'actual_receipt_date',
+    'status', 'remarks', 'remark_history', 'created_at', 'updated_at',
+    'production_planning_id', 'source'
+  ]
+};
+
 /** Convert a JS procurement item (camelCase) → DB row (snake_case) */
 function toDbRow(item: any): Record<string, any> {
   const row: Record<string, any> = {};
@@ -85,21 +121,80 @@ function toDbRow(item: any): Record<string, any> {
     if (item[k] !== undefined) row[k] = item[k];
   }
 
+  // Filter columns based on target module table to prevent "column not found" errors
+  const moduleType = (item.module || row.module) as string;
+  const allowed = MODULE_COLUMNS[moduleType];
+  const finalRow: Record<string, any> = {};
+
+  for (const [k, v] of Object.entries(row)) {
+    if (!allowed || allowed.includes(k)) {
+      finalRow[k] = v;
+    }
+  }
+
   // Empty strings → null for DATE columns to avoid Postgres errors
   const dateFields = ['date', 'wo_date', 'indent_receipt_date', 'shipment_date',
     'target_receipt_date', 'actual_receipt_date', 'target_stock_check_date',
     'po_release_target_date', 'actual_stock_update_date', 'actual_po_release_date',
     'expected_material_receipt_date', 'po_delivery_date', 'planned_delivery_date'];
   for (const f of dateFields) {
-    if (row[f] === '') row[f] = null;
+    if (finalRow[f] === '') finalRow[f] = null;
   }
 
-  return row;
+  return finalRow;
 }
 
 /** Convert a DB row (snake_case) → JS item (camelCase) */
 function fromDbRow(row: any): any {
   if (!row) return null;
+
+  const isDummyText = (val: any, dummies: string[]) => {
+    if (!val || typeof val !== 'string') return false;
+    const trimmed = val.trim().toLowerCase();
+    return dummies.some(d => d.toLowerCase() === trimmed);
+  };
+
+  const isDummyLeatherName = isDummyText(row.leather_name, [
+    'production leather requirement',
+    'standard leather'
+  ]);
+  const isDummyTannery = isDummyText(row.tannery, ['pending selection', 'tannery 1']);
+  const isDummyColour = isDummyText(row.colour, ['standard']);
+  const isDummyMaterialName = isDummyText(row.material_name, ['production material requirement']);
+  const isDummyPkgType = isDummyText(row.packaging_type, ['standard packaging requirement']);
+  const isDummySupplier = isDummyText(row.supplier, ['pending selection']);
+  const isDummySpec = isDummyText(row.specification, ['per wo specification', 'per export standard']);
+
+  const cleanLeatherName = isDummyLeatherName ? '' : (row.leather_name || '');
+  const cleanTannery = isDummyTannery ? '' : (row.tannery || '');
+  const cleanColour = (isDummyColour && (isDummyLeatherName || !row.leather_name)) ? '' : (row.colour || '');
+  const cleanQuantity = (isDummyLeatherName && row.module === 'daily-leather') ? undefined : (row.quantity !== null ? row.quantity : undefined);
+
+  const cleanMaterialName = isDummyMaterialName ? '' : (row.material_name || '');
+  const cleanPackagingType = isDummyPkgType ? '' : (row.packaging_type || '');
+  const cleanSupplier = isDummySupplier ? '' : (row.supplier || '');
+  const cleanSpec = isDummySpec ? '' : (row.specification || '');
+
+  // Strip automated system remarks if no actual user remarks exist
+  let cleanRemarks = row.remarks || '';
+  if (typeof cleanRemarks === 'string') {
+    cleanRemarks = cleanRemarks
+      .replace(/^Created from Production Plan Approval\s*(\([^)]*\))?\.?\s*/i, '')
+      .replace(/^from Production Plan Approval\s*(\([^)]*\))?\.?\s*/i, '')
+      .trim();
+  }
+
+  // Filter remarkHistory to exclude automated system dispatch messages
+  const cleanRemarkHistory = Array.isArray(row.remark_history)
+    ? row.remark_history.filter((r: any) => {
+        if (!r || !r.text) return false;
+        const text = String(r.text).trim();
+        return !text.match(/^Approved in Production Planning by .* Dispatched for procurement\./i) &&
+               !text.match(/^Created from Production Plan Approval/i) &&
+               !text.match(/^from Production Plan Approval/i);
+      })
+    : [];
+
   return {
     id: row.id,
     module: row.module,
@@ -108,16 +203,16 @@ function fromDbRow(row: any): any {
     targetReceiptDate: row.target_receipt_date || '',
     actualReceiptDate: row.actual_receipt_date || undefined,
     status: row.status || 'pending',
-    remarks: row.remarks || '',
-    remarkHistory: Array.isArray(row.remark_history) ? row.remark_history : [],
+    remarks: cleanRemarks,
+    remarkHistory: cleanRemarkHistory,
     createdAt: row.created_at || new Date().toISOString(),
     updatedAt: row.updated_at || new Date().toISOString(),
     // New Leather
-    leatherName: row.leather_name,
-    colour: row.colour,
-    quantity: row.quantity,
+    leatherName: cleanLeatherName,
+    colour: cleanColour,
+    quantity: cleanQuantity,
     unit: row.unit,
-    tannery: row.tannery,
+    tannery: cleanTannery,
     // Daily Leather extra
     woNo: row.wo_no,
     woDate: row.wo_date,
@@ -150,12 +245,16 @@ function fromDbRow(row: any): any {
     })(),
     actualStockUpdateDate: row.actual_stock_update_date || undefined,
     expectedMaterialReceiptDate: row.expected_material_receipt_date || undefined,
-    updateSectionLocked: row.update_section_locked !== undefined ? Boolean(row.update_section_locked) : undefined,
-    materialName: row.material_name,
-    specification: row.specification,
-    supplier: row.supplier,
-    // Packaging only
-    packagingType: row.packaging_type,
+    ...(row.module === 'material' ? {
+      materialName: cleanMaterialName,
+      specification: cleanSpec,
+      supplier: cleanSupplier,
+    } : {}),
+    ...(row.module === 'packaging' ? {
+      packagingType: cleanPackagingType,
+      specification: cleanSpec,
+      supplier: cleanSupplier,
+    } : {}),
     // Production Planning Integration
     productionPlanningId: row.production_planning_id || undefined,
     source: row.source || 'manual',
@@ -487,10 +586,10 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
         case 'daily-leather': {
           const rawItems: LeatherSubItem[] = data.items && data.items.length > 0 ? data.items : [{
             id: 'sub-' + Date.now(),
-            leatherName: data.leatherName || 'Standard Leather',
-            colour: data.colour || 'Black',
-            quantity: Number(data.quantity) || 100,
-            tannery: data.tannery || 'Tannery 1',
+            leatherName: data.leatherName || '',
+            colour: data.colour || '',
+            quantity: data.quantity !== undefined && data.quantity !== '' ? Number(data.quantity) : 0,
+            tannery: data.tannery || '',
             remarks: data.remarks || ''
           }];
 
@@ -725,7 +824,12 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
       }
 
       const merged: any = { ...existing, ...updates, remarkHistory: updatedRemarkHistory, updatedAt: nowIso };
+      if (updates.newRemark && updates.newRemark.trim()) {
+        merged.remarks = updates.newRemark.trim();
+      }
       delete merged.newRemark;
+      delete merged.leatherItems;
+      delete merged.deletedLeatherItemIds;
 
       if (module === 'material' || module === 'packaging') {
         const indentDate = merged.indentReceiptDate || merged.woDate || merged.date;
@@ -744,9 +848,14 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
       const movingToHistory = !existing.actualReceiptDate && !!merged.actualReceiptDate;
 
-      // Upsert to Supabase
-      const { error } = await supabase.from(TABLE[module]).upsert(toDbRow(merged));
-      if (error) throw error;
+      // Update to Supabase using filtered columns
+      const dbRow = toDbRow(merged);
+      const { error: updateErr } = await supabase.from(TABLE[module]).update(dbRow).eq('id', id);
+      if (updateErr) {
+        console.warn('[Procurement] Update by id failed, trying upsert:', updateErr);
+        const { error: upsertErr } = await supabase.from(TABLE[module]).upsert(dbRow);
+        if (upsertErr) throw upsertErr;
+      }
 
       // Update local state
       switch (module) {

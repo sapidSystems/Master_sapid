@@ -154,10 +154,10 @@ export const ModuleView: React.FC<ModuleViewProps> = ({ module }) => {
   const leatherNameOptions = useMemo(() => {
     const set = new Set<string>();
     currentModuleItems.forEach(i => {
-      if ((i as any).leatherName) set.add((i as any).leatherName);
+      if ((i as any).leatherName && (i as any).leatherName.trim()) set.add((i as any).leatherName.trim());
       if ((i as any).items) {
         (i as any).items.forEach((sub: any) => {
-          if (sub.leatherName) set.add(sub.leatherName);
+          if (sub.leatherName && sub.leatherName.trim()) set.add(sub.leatherName.trim());
         });
       }
     });

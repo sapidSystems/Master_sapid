@@ -31,7 +31,8 @@ import {
   getProcurementModuleConfig,
   fetchProcurementDataForOrders,
   fetchProcurementForSinglePlan,
-  mergeProcurementIntoStages
+  mergeProcurementIntoStages,
+  isSystemRemark
 } from './productionService';
 import { useBuyerCodes } from '../../services/buyerCodeService';
 import { useMagicToast } from '../../context/MagicToastContext';
@@ -248,17 +249,21 @@ export default function ProductionMonitoring() {
           ? modData.actualDate
           : (found?.actualDate || '');
 
-        const remarks = (isProcLocked && modData?.remark)
-          ? modData.remark
-          : (found?.remarks || '');
+        const rawFoundRemark = found?.remarks || '';
+        const cleanFoundRemark = isSystemRemark(rawFoundRemark) ? '' : rawFoundRemark;
+        const modRemark = (modData?.remark && !isSystemRemark(modData.remark)) ? modData.remark : '';
 
-        const remarkDate = (isProcLocked && modData?.remarkDate)
-          ? modData.remarkDate
-          : (found?.remarkDate || '');
+        const remarks = isProcLocked
+          ? (modRemark || cleanFoundRemark || '')
+          : (cleanFoundRemark || '');
 
-        const remarkAuthor = (isProcLocked && modData?.remarkAuthor)
-          ? modData.remarkAuthor
-          : (found?.remarkAuthor || '');
+        const remarkDate = remarks
+          ? ((isProcLocked && modData?.remarkDate) ? modData.remarkDate : (found?.remarkDate || ''))
+          : '';
+
+        const remarkAuthor = remarks
+          ? ((isProcLocked && modData?.remarkAuthor) ? modData.remarkAuthor : (found?.remarkAuthor || ''))
+          : '';
 
         return {
           name,
@@ -345,19 +350,22 @@ export default function ProductionMonitoring() {
       // Check stage-level remarks changes and attach date/author
       const updatedStages = modalStages.map((stage, idx) => {
         const prevStage = (selectedPlan.stages || []).find(s => s.name === stage.name);
-        const remarkChanged = stage.remarks && stage.remarks.trim() &&
-          (!prevStage?.remarks || prevStage.remarks.trim() !== stage.remarks.trim());
+        const stageRemarkClean = isSystemRemark(stage.remarks) ? '' : (stage.remarks ? stage.remarks.trim() : '');
+        const prevRemarkClean = isSystemRemark(prevStage?.remarks) ? '' : (prevStage?.remarks ? prevStage.remarks.trim() : '');
+        const remarkChanged = stageRemarkClean &&
+          (!prevRemarkClean || prevRemarkClean !== stageRemarkClean);
 
         return {
           ...stage,
+          remarks: stageRemarkClean,
           woRemarkDate: idx === 0 ? updatedWoRemarkDate : stage.woRemarkDate,
           woRemarkAuthor: idx === 0 ? updatedWoRemarkAuthor : stage.woRemarkAuthor,
-          remarkDate: remarkChanged
-            ? nowIso
-            : (stage.remarkDate || prevStage?.remarkDate || (stage.remarks ? nowIso : null)),
-          remarkAuthor: remarkChanged
-            ? currentUserName
-            : (stage.remarkAuthor || prevStage?.remarkAuthor || (stage.remarks ? currentUserName : null))
+          remarkDate: stageRemarkClean
+            ? (remarkChanged ? nowIso : (stage.remarkDate || prevStage?.remarkDate || nowIso))
+            : null,
+          remarkAuthor: stageRemarkClean
+            ? (remarkChanged ? currentUserName : (stage.remarkAuthor || prevStage?.remarkAuthor || currentUserName))
+            : null
         };
       });
 
@@ -1138,7 +1146,7 @@ export default function ProductionMonitoring() {
                                   <input
                                     type="text"
                                     disabled={isProcLocked}
-                                    placeholder={isProcLocked ? "No remark recorded in procurement" : "Input"}
+                                    placeholder={isProcLocked ? "" : "Input"}
                                     value={stage.remarks || ''}
                                     onChange={(e) => handleStageChange(idx, 'remarks', e.target.value)}
                                     className={`w-full px-3 py-1.5 rounded-lg text-xs outline-hidden transition-all ${
@@ -1152,7 +1160,7 @@ export default function ProductionMonitoring() {
                                         : undefined
                                     }
                                   />
-                                  {isProcLocked && stage.remarkAuthor && (
+                                  {isProcLocked && stage.remarks && stage.remarkAuthor && (
                                     <div
                                       className="text-[10px] text-slate-400 mt-0.5 truncate"
                                       title={`By ${stage.remarkAuthor}${stage.remarkDate ? ` on ${formatDate(stage.remarkDate)}` : ''}`}

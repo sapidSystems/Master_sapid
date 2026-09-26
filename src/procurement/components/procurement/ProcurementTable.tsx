@@ -311,7 +311,7 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                           {item.colour || '—'}
                         </td>
                         <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-right font-mono font-bold text-slate-900 bg-amber-500/5">
-                          {(item.quantity || 0).toLocaleString()}
+                          {item.quantity !== undefined && item.quantity !== null && item.quantity !== '' ? Number(item.quantity).toLocaleString() : '—'}
                         </td>
                         <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-slate-600 bg-amber-500/5">
                           {item.tannery || '—'}
@@ -320,7 +320,7 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                           {item.qtyInStock !== undefined && item.qtyInStock !== null ? item.qtyInStock.toLocaleString() : '0'}
                         </td>
                         <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-right font-mono font-medium text-emerald-700 bg-emerald-500/10">
-                          {item.qtyOrdered !== undefined && item.qtyOrdered !== null ? item.qtyOrdered.toLocaleString() : (item.quantity || 0).toLocaleString()}
+                          {item.qtyOrdered !== undefined && item.qtyOrdered !== null ? item.qtyOrdered.toLocaleString() : (item.quantity !== undefined && item.quantity !== null && item.quantity !== '' ? Number(item.quantity).toLocaleString() : '—')}
                         </td>
                         <td className="px-3 sm:px-4 py-3 whitespace-nowrap font-medium text-orange-700 bg-orange-500/10">
                           {formatDate(item.poDeliveryDate)}
@@ -332,7 +332,9 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
                           {(item.qtyReceived || 0) > 0 ? (item.qtyReceived || 0).toLocaleString() : '—'}
                         </td>
                         <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-right font-mono font-bold text-slate-800">
-                          {(item.qtyReceived || 0) >= (item.quantity || 0) ? 'No Due' : Math.max(0, (item.quantity || 0) - (item.qtyReceived || 0)).toLocaleString()}
+                          {item.quantity !== undefined && item.quantity !== null && item.quantity !== ''
+                            ? ((item.qtyReceived || 0) >= Number(item.quantity) ? 'No Due' : Math.max(0, Number(item.quantity) - (item.qtyReceived || 0)).toLocaleString())
+                            : '—'}
                         </td>
                         <td className="px-3 sm:px-4 py-3 whitespace-nowrap font-bold text-emerald-700 bg-emerald-500/10 border-l-2 border-emerald-500">
                           {formatDate(item.actualReceiptDate)}
@@ -674,8 +676,18 @@ export const ProcurementTable: React.FC<ProcurementTableProps> = ({
           <tbody className="divide-y divide-slate-100 text-slate-800">
             {sortedItems.map((item, idx) => {
               const daysInfo = getDaysDiffText(item.targetReceiptDate, item.actualReceiptDate);
-              const remarkCount = item.remarkHistory ? item.remarkHistory.length : 0;
-              const latestRemark = item.remarks || (remarkCount > 0 ? item.remarkHistory[remarkCount - 1].text : '—');
+              const isSystemRemark = (text?: string) => {
+                if (!text) return true;
+                const t = text.trim();
+                return Boolean(
+                  t.match(/^Created from Production Plan Approval/i) ||
+                  t.match(/^from Production Plan Approval/i) ||
+                  t.match(/^Approved in Production Planning by .* Dispatched for procurement\./i)
+                );
+              };
+              const rawRemark = item.remarks && !isSystemRemark(item.remarks) ? item.remarks : '';
+              const userHistoryRemarks = (item.remarkHistory || []).filter(r => r && r.text && !isSystemRemark(r.text));
+              const latestRemark = rawRemark || (userHistoryRemarks.length > 0 ? userHistoryRemarks[userHistoryRemarks.length - 1].text : '—');
 
               if (module === 'new-leather') {
                 const nl = item as NewLeatherItem;

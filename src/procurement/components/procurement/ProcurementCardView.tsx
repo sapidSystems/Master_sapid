@@ -113,7 +113,7 @@ export const ProcurementCardView: React.FC<ProcurementCardViewProps> = ({
                     {module === 'daily-leather' ? 'Leather Item' : 'Material Requirement'}
                   </span>
                   <div className="font-bold text-slate-800 text-sm mt-0.5 line-clamp-1">
-                    {(item as any).leatherName || (item as any).materialName || (item as any).packagingType || 'Standard Item'}
+                    {(item as any).leatherName || (item as any).materialName || (item as any).packagingType || '—'}
                   </div>
                   {((item as any).colour || (item as any).specification) && (
                     <span className="text-[11px] text-slate-500 font-medium">
@@ -136,7 +136,9 @@ export const ProcurementCardView: React.FC<ProcurementCardViewProps> = ({
                   <div>
                     <span className="text-[9px] uppercase font-semibold text-slate-400 block">Req</span>
                     <span className="font-mono font-bold text-slate-800 text-xs">
-                      {Number((item as any).quantity || 0).toLocaleString()}
+                      {(item as any).quantity !== undefined && (item as any).quantity !== null && (item as any).quantity !== ''
+                        ? Number((item as any).quantity).toLocaleString()
+                        : '—'}
                     </span>
                   </div>
                   <div>
