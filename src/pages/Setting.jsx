@@ -12,6 +12,8 @@ import * as XLSX from 'xlsx';
 import { sendTaskReassignmentNotification } from '../services/whatsappService';
 import { useMagicToast } from '../context/MagicToastContext';
 import TatMasterTab from '../components/setting/TatMasterTab';
+import BuyerCodesTab from '../components/setting/BuyerCodesTab';
+import { Tag } from 'lucide-react';
 
 const formatDateLong = (date) => date ? date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "";
 const formatDateISO = (date) => {
@@ -1444,6 +1446,7 @@ const Setting = () => {
                 { id: 'categories', label: 'Machines', icon: Settings },
                 { id: 'daily_reminder', label: 'Daily Reminder', icon: Clock },
                 { id: 'tat_master', label: 'TAT Master', icon: Clock },
+                { id: 'buyer_codes', label: 'Buyer Codes', icon: Tag },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -2526,6 +2529,11 @@ const Setting = () => {
         {/* TAT Master Tab */}
         {activeTab === 'tat_master' && (
           <TatMasterTab />
+        )}
+
+        {/* Buyer Codes Tab */}
+        {activeTab === 'buyer_codes' && (
+          <BuyerCodesTab />
         )}
 
 

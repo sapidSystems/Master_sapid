@@ -33,6 +33,7 @@ import {
   fetchProcurementForSinglePlan,
   mergeProcurementIntoStages
 } from './productionService';
+import { useBuyerCodes } from '../../services/buyerCodeService';
 import { useMagicToast } from '../../context/MagicToastContext';
 
 // Helper to compute time delay string
@@ -63,6 +64,7 @@ export default function ProductionMonitoring() {
   const [historySubTab, setHistorySubTab] = useState('remarks'); // 'remarks' | 'completed'
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBuyer, setSelectedBuyer] = useState('all');
+  const { buyerCodes } = useBuyerCodes();
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'delayed' | 'ontime'
 
   // Update Modal State
@@ -143,14 +145,17 @@ export default function ProductionMonitoring() {
     return activeTab === 'history' ? historyPlans : activePlans;
   }, [activeTab, activePlans, historyPlans]);
 
-  // Unique buyer list from approved plans
+  // Unique buyer list from master Buyer Codes + approved plans
   const buyersList = useMemo(() => {
     const set = new Set();
+    buyerCodes.forEach(b => {
+      if (b.buyerCode) set.add(b.buyerCode);
+    });
     approvedPlans.forEach(p => {
       if (p.buyer) set.add(p.buyer);
     });
     return Array.from(set).sort();
-  }, [approvedPlans]);
+  }, [buyerCodes, approvedPlans]);
 
   // Overall delay status helper for a plan
   const getPlanDelaySummary = (plan) => {
@@ -367,7 +372,6 @@ export default function ProductionMonitoring() {
 
       await updateProductionPlan(selectedPlan.id, {
         stages: updatedStages,
-        woDespatchDate: modalDespatchDate || null,
         remarks: modalRemarks || null,
         isHistory: willMoveToHistory,
         historyTimestamp: willMoveToHistory
@@ -621,9 +625,14 @@ export default function ProductionMonitoring() {
                 className="px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-hidden text-slate-700 font-medium"
               >
                 <option value="all">All Buyers</option>
-                {buyersList.map(b => (
-                  <option key={b} value={b}>{b}</option>
-                ))}
+                {buyersList.map(b => {
+                  const matched = buyerCodes.find(bc => bc.buyerCode === b);
+                  return (
+                    <option key={b} value={b}>
+                      {b}{matched?.buyerName ? ` — ${matched.buyerName}` : ''}
+                    </option>
+                  );
+                })}
               </select>
 
               {!(activeTab === 'history' && historySubTab === 'remarks') && (
@@ -991,41 +1000,10 @@ export default function ProductionMonitoring() {
 
                   <div className="pt-1 flex flex-wrap items-center gap-6">
                     <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[11px] font-bold text-slate-400 uppercase">W/O SHIPMENT</span>
-                        {!isEditingDespatch ? (
-                          <button
-                            type="button"
-                            onClick={() => setIsEditingDespatch(true)}
-                            className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 rounded text-[11px] font-medium transition-colors cursor-pointer"
-                          >
-                            <Pencil className="w-2.5 h-2.5" />
-                            <span>edit</span>
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setIsEditingDespatch(false)}
-                            className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[11px] font-medium cursor-pointer"
-                          >
-                            <Check className="w-2.5 h-2.5" />
-                            <span>done</span>
-                          </button>
-                        )}
+                      <span className="text-[11px] font-bold text-slate-400 uppercase">W/O SHIPMENT</span>
+                      <div className="text-sm font-bold text-slate-900 mt-0.5">
+                        {formatDate(selectedPlan?.woDespatchDate) || '-'}
                       </div>
-
-                      {isEditingDespatch ? (
-                        <input
-                          type="date"
-                          value={modalDespatchDate}
-                          onChange={(e) => setModalDespatchDate(e.target.value)}
-                          className="mt-1 px-2 py-1 text-xs bg-white border border-indigo-400 rounded-lg outline-hidden font-semibold"
-                        />
-                      ) : (
-                        <div className="text-sm font-bold text-slate-900 mt-0.5">
-                          {formatDate(modalDespatchDate) || '-'}
-                        </div>
-                      )}
                     </div>
                   </div>
 

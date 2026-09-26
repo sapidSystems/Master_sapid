@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Filter, X, RotateCcw, SlidersHorizontal, Check } from 'lucide-react';
 import { FilterState, ModuleType } from '../../types/procurement';
+import { useBuyerCodes } from '../../../services/buyerCodeService';
 
 interface TableFiltersProps {
   filters: FilterState;
@@ -21,6 +22,7 @@ export const TableFilters: React.FC<TableFiltersProps> = ({
   module,
   leatherNameOptions = []
 }) => {
+  const { buyerCodes } = useBuyerCodes();
   const [mobileModalOpen, setMobileModalOpen] = useState(false);
   const [tempFilters, setTempFilters] = useState<FilterState>(filters);
 
@@ -173,9 +175,14 @@ export const TableFilters: React.FC<TableFiltersProps> = ({
           className="bg-white text-slate-800 px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-brand-500 shadow-soft-sm"
         >
           <option value="all">All Buyers</option>
-          {buyerOptions.map(b => (
-            <option key={b} value={b}>{b}</option>
-          ))}
+          {buyerOptions.map(b => {
+            const matched = buyerCodes.find(bc => bc.buyerCode === b);
+            return (
+              <option key={b} value={b}>
+                {b}{matched?.buyerName ? ` — ${matched.buyerName}` : ''}
+              </option>
+            );
+          })}
         </select>
 
         {/* Vendor Dropdown */}
@@ -300,9 +307,14 @@ export const TableFilters: React.FC<TableFiltersProps> = ({
                   className="w-full min-h-[44px] px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
                 >
                   <option value="all">All Buyers</option>
-                  {buyerOptions.map(b => (
-                    <option key={b} value={b}>{b}</option>
-                  ))}
+                  {buyerOptions.map(b => {
+                    const matched = buyerCodes.find(bc => bc.buyerCode === b);
+                    return (
+                      <option key={b} value={b}>
+                        {b}{matched?.buyerName ? ` — ${matched.buyerName}` : ''}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 

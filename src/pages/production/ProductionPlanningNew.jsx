@@ -23,6 +23,7 @@ import {
   getTodayDate
 } from './productionService';
 import { useMagicToast } from '../../context/MagicToastContext';
+import { useBuyerCodes } from '../../services/buyerCodeService';
 
 export default function ProductionPlanningNew() {
   const { showToast } = useMagicToast();
@@ -32,6 +33,7 @@ export default function ProductionPlanningNew() {
   const [activeTab, setActiveTab] = useState('pending'); // 'pending' | 'submitted' | 'approved'
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBuyer, setSelectedBuyer] = useState('all');
+  const { buyerCodes } = useBuyerCodes();
 
   // Modal for scheduling / submitting plan
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
@@ -103,9 +105,10 @@ export default function ProductionPlanningNew() {
 
   const buyerOptions = useMemo(() => {
     const set = new Set();
+    buyerCodes.forEach(b => { if (b.buyerCode) set.add(b.buyerCode); });
     plans.forEach(p => { if (p.buyer) set.add(p.buyer); });
     return Array.from(set).sort();
-  }, [plans]);
+  }, [buyerCodes, plans]);
 
   // Handle Quick Submit In-line
   const handleQuickSubmit = async (plan) => {
@@ -139,19 +142,17 @@ export default function ProductionPlanningNew() {
   // Open Detailed Scheduling Modal
   const handleOpenScheduleModal = (plan) => {
     setSelectedPlan(plan);
-    const initialPlanDate = plan.planDate || inlineDates[plan.id] || getTodayDate();
-    setPlanDateInput(initialPlanDate);
+    // Task 2: Master Production Plan Date field must load blank (not prefilled) — user must actively select it
+    setPlanDateInput('');
 
-    // Initialize stage planned dates
+    // Task 2: All Stage-by-Stage Milestone Targets must load blank — no auto-filled Planned Dates
+    // The 8th milestone, "Planned Shipment", is the exception: auto-prefilled with Shipment Date from Work Order Creation and read-only
     const existingStages = plan.stages || [];
-    const stagesArr = STAGES_LIST.map((name, idx) => {
+    const stagesArr = STAGES_LIST.map((name) => {
       const found = existingStages.find(s => s.name === name);
-      // Auto-project planned date if missing: space out between planDate and shipment date
-      let pDate = found?.plannedDate || '';
-      if (!pDate && initialPlanDate) {
-        const base = new Date(initialPlanDate);
-        base.setDate(base.getDate() + (idx + 1) * 3);
-        pDate = base.toISOString().split('T')[0];
+      let pDate = '';
+      if (name === 'Planned Shipment') {
+        pDate = plan.woDespatchDate || '';
       }
       return {
         name,
@@ -168,13 +169,20 @@ export default function ProductionPlanningNew() {
     e.preventDefault();
     if (!selectedPlan) return;
     if (!planDateInput) {
-      showToast('Plan date is required', 'error');
+      showToast('Master Production Plan Date is required. Please select a date.', 'error');
       return;
     }
 
     try {
       setIsSubmitting(true);
-      await submitForApproval(selectedPlan.id, planDateInput, stageDates);
+      // Ensure 8th milestone "Planned Shipment" is always locked to selectedPlan.woDespatchDate
+      const finalStages = stageDates.map(stg =>
+        stg.name === 'Planned Shipment'
+          ? { ...stg, plannedDate: selectedPlan.woDespatchDate || '' }
+          : stg
+      );
+
+      await submitForApproval(selectedPlan.id, planDateInput, finalStages);
       showToast(`Production Plan submitted for approval!`, 'success');
 
       setPlans(prev =>
@@ -184,7 +192,7 @@ export default function ProductionPlanningNew() {
                 ...p,
                 planDate: planDateInput,
                 approvalStatus: 'pending_approval',
-                stages: stageDates
+                stages: finalStages
               }
             : p
         )
@@ -253,9 +261,14 @@ export default function ProductionPlanningNew() {
                 className="px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-hidden text-slate-700 font-medium"
               >
                 <option value="all">All Buyers ({buyerOptions.length})</option>
-                {buyerOptions.map(b => (
-                  <option key={b} value={b}>{b}</option>
-                ))}
+                {buyerOptions.map(b => {
+                  const matched = buyerCodes.find(bc => bc.buyerCode === b);
+                  return (
+                    <option key={b} value={b}>
+                      {b}{matched?.buyerName ? ` — ${matched.buyerName}` : ''}
+                    </option>
+                  );
+                })}
               </select>
             </div>
 
@@ -420,7 +433,7 @@ export default function ProductionPlanningNew() {
                     className="px-3 py-2 text-sm bg-white border border-slate-300 rounded-xl outline-hidden focus:border-black font-semibold"
                   />
                   <p className="text-[11px] text-slate-500 mt-1">
-                    This date marks the official planned production kickoff date and will carry over to procurement modules upon approval.
+                    Please select the official planned production kickoff date.
                   </p>
                 </div>
 
@@ -428,35 +441,51 @@ export default function ProductionPlanningNew() {
                   <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
                     Stage-by-Stage Milestone Targets
                   </h4>
-                  <div className="space-y-2 max-h-[45vh] overflow-y-auto pr-1">
-                    {stageDates.map((stg, idx) => (
-                      <div
-                        key={stg.name}
-                        className="p-3 bg-slate-50/60 rounded-xl border border-slate-200 flex items-center justify-between gap-3 text-xs"
-                      >
-                        <div className="flex items-center gap-2 font-bold text-slate-800">
-                          <span className="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-[10px]">
-                            {idx + 1}
-                          </span>
-                          <span>{stg.name}</span>
-                        </div>
+                  <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
+                    {stageDates.map((stg, idx) => {
+                      const isShipmentStage = stg.name === 'Planned Shipment';
 
-                        <div className="flex items-center gap-2">
-                          <span className="text-slate-500 text-[11px]">Planned Date:</span>
-                          <input
-                            type="date"
-                            value={stg.plannedDate}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setStageDates(prev =>
-                                prev.map((s, i) => (i === idx ? { ...s, plannedDate: val } : s))
-                              );
-                            }}
-                            className="px-2.5 py-1 bg-white border border-slate-300 rounded-lg text-xs"
-                          />
+                      return (
+                        <div
+                          key={stg.name}
+                          className="p-3 bg-slate-50/60 rounded-xl border border-slate-200 flex items-center justify-between gap-3 text-xs"
+                        >
+                          <div className="flex items-center gap-2 font-bold text-slate-800">
+                            <span className="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-[10px]">
+                              {idx + 1}
+                            </span>
+                            <span>{stg.name}</span>
+                            {isShipmentStage && (
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-amber-100/70 text-amber-800 border border-amber-200">
+                                Work Order Shipment Date • Read-only
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <span className="text-slate-500 text-[11px]">Planned Date:</span>
+                            <input
+                              type="date"
+                              disabled={isShipmentStage}
+                              readOnly={isShipmentStage}
+                              value={stg.plannedDate}
+                              onChange={(e) => {
+                                if (isShipmentStage) return;
+                                const val = e.target.value;
+                                setStageDates(prev =>
+                                  prev.map((s, i) => (i === idx ? { ...s, plannedDate: val } : s))
+                                );
+                              }}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-medium border ${
+                                isShipmentStage
+                                  ? 'bg-slate-100 border-slate-200 text-slate-600 cursor-not-allowed select-none font-semibold'
+                                  : 'bg-white border-slate-300 text-slate-800 focus:border-black outline-hidden'
+                              }`}
+                            />
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 

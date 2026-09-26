@@ -228,6 +228,33 @@ export const updateProductionPlan = async (id, updates) => {
     .update(cleanUpdates)
     .eq('id', id);
   if (error) throw error;
+
+  // Sourced live sync: propagate updated shipment date to downstream procurement records for this work order
+  if (cleanUpdates.wo_despatch_date) {
+    try {
+      let targetWoNo = updates.woNo;
+      if (!targetWoNo) {
+        const { data: currentPlan } = await supabase
+          .from('sample_system_product_planning')
+          .select('wo_no')
+          .eq('id', id)
+          .maybeSingle();
+        targetWoNo = currentPlan?.wo_no;
+      }
+      if (targetWoNo) {
+        await Promise.allSettled([
+          supabase.from('procurement_daily_leather').update({ shipment_date: cleanUpdates.wo_despatch_date }).eq('wo_no', targetWoNo),
+          supabase.from('procurement_material').update({ shipment_date: cleanUpdates.wo_despatch_date }).eq('wo_no', targetWoNo),
+          supabase.from('procurement_packaging').update({ shipment_date: cleanUpdates.wo_despatch_date }).eq('wo_no', targetWoNo),
+          supabase.from('procurement_new_leather').update({ shipment_date: cleanUpdates.wo_despatch_date }).eq('wo_no', targetWoNo),
+        ]);
+        window.dispatchEvent(new CustomEvent('procurement-updated'));
+      }
+    } catch (syncErr) {
+      console.warn('Warning syncing shipment date to procurement modules:', syncErr);
+    }
+  }
+
   notifyProductionUpdated();
   return true;
 };

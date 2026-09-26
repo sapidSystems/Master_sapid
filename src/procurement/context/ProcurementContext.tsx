@@ -768,20 +768,32 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
           }
 
           if (updates.leatherItems && Array.isArray(updates.leatherItems)) {
-            // Update any existing sibling entries
+            // Update any existing sibling entries with their own tracking parameters
             const existingSiblings = updates.leatherItems.filter(
               (sub: any) => !sub.isNew && sub.id !== id && !sub.id.startsWith('new-')
             );
             for (const sub of existingSiblings) {
               (async () => {
                 try {
-                  const sibPatch = {
+                  const sibPatch: any = {
                     leather_name: sub.leatherName,
                     colour: sub.colour,
                     quantity: Number(sub.quantity) || 0,
                     tannery: sub.tannery,
                     updated_at: nowIso
                   };
+                  if (sub.actualPoReleaseDate !== undefined) sibPatch.actual_po_release_date = sub.actualPoReleaseDate || null;
+                  if (sub.qtyInStock !== undefined) sibPatch.qty_in_stock = sub.qtyInStock !== '' ? Number(sub.qtyInStock) : null;
+                  if (sub.qtyOrdered !== undefined) sibPatch.qty_ordered = sub.qtyOrdered !== '' ? Number(sub.qtyOrdered) : null;
+                  if (sub.poDeliveryDate !== undefined) sibPatch.po_delivery_date = sub.poDeliveryDate || null;
+                  if (sub.plannedDeliveryDate !== undefined) {
+                    sibPatch.planned_delivery_date = sub.plannedDeliveryDate || null;
+                    sibPatch.target_receipt_date = sub.plannedDeliveryDate || sub.poDeliveryDate || undefined;
+                  }
+                  if (sub.incrementalQtyReceived !== undefined && sub.incrementalQtyReceived !== '') {
+                    sibPatch.qty_received = (Number(sub.alreadyReceived) || 0) + Number(sub.incrementalQtyReceived);
+                  }
+
                   await supabase.from(TABLE['daily-leather']).update(sibPatch).eq('id', sub.id);
                   setDailyLeather(prev =>
                     prev.map(i =>
@@ -791,7 +803,15 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
                             leatherName: sub.leatherName,
                             colour: sub.colour,
                             quantity: Number(sub.quantity) || 0,
-                            tannery: sub.tannery
+                            tannery: sub.tannery,
+                            actualPoReleaseDate: sub.actualPoReleaseDate !== undefined ? sub.actualPoReleaseDate : i.actualPoReleaseDate,
+                            qtyInStock: sub.qtyInStock !== undefined && sub.qtyInStock !== '' ? Number(sub.qtyInStock) : i.qtyInStock,
+                            qtyOrdered: sub.qtyOrdered !== undefined && sub.qtyOrdered !== '' ? Number(sub.qtyOrdered) : i.qtyOrdered,
+                            poDeliveryDate: sub.poDeliveryDate !== undefined ? sub.poDeliveryDate : i.poDeliveryDate,
+                            plannedDeliveryDate: sub.plannedDeliveryDate !== undefined ? sub.plannedDeliveryDate : i.plannedDeliveryDate,
+                            qtyReceived: sub.incrementalQtyReceived !== undefined && sub.incrementalQtyReceived !== ''
+                              ? (Number(sub.alreadyReceived) || 0) + Number(sub.incrementalQtyReceived)
+                              : i.qtyReceived
                           }
                         : i
                     )
@@ -802,7 +822,7 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
               })();
             }
 
-            // Insert newly added entries
+            // Insert newly added entries with independent tracking parameters
             const newSubs = updates.leatherItems.filter((sub: any) => sub.isNew || sub.id.startsWith('new-'));
             if (newSubs.length > 0) {
               (async () => {
@@ -820,21 +840,21 @@ export const ProcurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
                     indentReceiptDate: merged.indentReceiptDate || undefined,
                     shipmentDate: merged.shipmentDate || undefined,
                     targetReceiptDate:
+                      sub.plannedDeliveryDate ||
+                      sub.poDeliveryDate ||
                       merged.targetReceiptDate ||
-                      merged.plannedDeliveryDate ||
-                      merged.poDeliveryDate ||
                       getTodayDateString(),
                     actualReceiptDate: merged.actualReceiptDate || undefined,
                     leatherName: sub.leatherName || '',
                     colour: sub.colour || '',
                     quantity: Number(sub.quantity) || 0,
                     tannery: sub.tannery || '',
-                    actualPoReleaseDate: merged.actualPoReleaseDate || undefined,
-                    qtyInStock: merged.qtyInStock !== undefined ? Number(merged.qtyInStock) : undefined,
-                    qtyOrdered: merged.qtyOrdered !== undefined ? Number(merged.qtyOrdered) : undefined,
-                    poDeliveryDate: merged.poDeliveryDate || undefined,
-                    plannedDeliveryDate: merged.plannedDeliveryDate || undefined,
-                    qtyReceived: undefined,
+                    actualPoReleaseDate: sub.actualPoReleaseDate || undefined,
+                    qtyInStock: sub.qtyInStock !== undefined && sub.qtyInStock !== '' ? Number(sub.qtyInStock) : undefined,
+                    qtyOrdered: sub.qtyOrdered !== undefined && sub.qtyOrdered !== '' ? Number(sub.qtyOrdered) : undefined,
+                    poDeliveryDate: sub.poDeliveryDate || undefined,
+                    plannedDeliveryDate: sub.plannedDeliveryDate || undefined,
+                    qtyReceived: sub.incrementalQtyReceived !== undefined && sub.incrementalQtyReceived !== '' ? Number(sub.incrementalQtyReceived) : undefined,
                     status: merged.status,
                     remarks: merged.remarks || '',
                     remarkHistory: merged.remarkHistory || [],

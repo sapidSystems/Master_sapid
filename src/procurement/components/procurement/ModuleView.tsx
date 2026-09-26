@@ -1,14 +1,16 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Plus, CheckCircle, Clock, Boxes, ScrollText } from 'lucide-react';
+import { Plus, CheckCircle, Clock, Boxes, ScrollText, LayoutGrid, List } from 'lucide-react';
 import { ModuleType, AnyProcurementItem, FilterState, ViewTab } from '../../types/procurement';
 import { useProcurement } from '../../context/ProcurementContext';
 import { TableFilters } from './TableFilters';
 import { ProcurementTable } from './ProcurementTable';
+import { ProcurementCardView } from './ProcurementCardView';
 import { CreateRecordModal } from '../modals/CreateRecordModal';
 import { UpdateStatusModal } from '../modals/UpdateStatusModal';
 import { RemarksHistoryModal } from '../modals/RemarksHistoryModal';
 import { ConfirmModal } from '../common/ConfirmModal';
+import { useBuyerCodes } from '../../../services/buyerCodeService';
 
 interface ModuleViewProps {
   module: ModuleType;
@@ -29,6 +31,7 @@ export const ModuleView: React.FC<ModuleViewProps> = ({ module }) => {
     deleteRecord,
     addRemarkToRecord
   } = useProcurement();
+  const { buyerCodes } = useBuyerCodes();
 
   const [searchParams, setSearchParams] = useSearchParams();
   const subQuery = searchParams.get('sub');
@@ -122,14 +125,17 @@ export const ModuleView: React.FC<ModuleViewProps> = ({ module }) => {
     }
   }, [currentModuleItems, activeTab]);
 
-  // Unique Buyers and Vendors for dropdown filters
+  // Unique Buyers and Vendors for dropdown filters sourced from master Buyer Codes
   const buyerOptions = useMemo(() => {
     const set = new Set<string>();
+    buyerCodes.forEach(b => {
+      if (b.buyerCode) set.add(b.buyerCode);
+    });
     currentModuleItems.forEach(i => {
       if (i.buyerCode) set.add(i.buyerCode);
     });
     return Array.from(set).sort();
-  }, [currentModuleItems]);
+  }, [buyerCodes, currentModuleItems]);
 
   const vendorOptions = useMemo(() => {
     const set = new Set<string>();
@@ -247,6 +253,8 @@ export const ModuleView: React.FC<ModuleViewProps> = ({ module }) => {
   };
 
   // Module configuration
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+
   const config = {
     'new-leather': {
       title: 'New Leather Development',
@@ -259,22 +267,22 @@ export const ModuleView: React.FC<ModuleViewProps> = ({ module }) => {
       title: 'Daily Leather Procurement',
       subtitle: 'Manage production work order leather requirements and multiple hide lots',
       vendorLabel: 'Tannery',
-      addLabel: 'Add Daily Leather',
-      shortAddLabel: 'Add Daily Leather'
+      addLabel: '',
+      shortAddLabel: ''
     },
     'material': {
       title: 'Daily Material Procurement',
       subtitle: 'Monitor fabric linings, bonded threads, buckles, and footwear hardware',
       vendorLabel: 'Supplier',
-      addLabel: 'Add Daily Material',
-      shortAddLabel: 'Add Daily Material'
+      addLabel: '',
+      shortAddLabel: ''
     },
     'packaging': {
       title: 'Daily Packaging Procurement',
       subtitle: 'Coordinate branded shoe boxes, barcode hangtags, desiccants, and master cartons',
       vendorLabel: 'Supplier',
-      addLabel: 'Add Daily Packaging',
-      shortAddLabel: 'Add Daily Packaging'
+      addLabel: '',
+      shortAddLabel: ''
     }
   }[currentActiveModule];
 
@@ -367,15 +375,15 @@ export const ModuleView: React.FC<ModuleViewProps> = ({ module }) => {
           </p>
         </div>
 
-        {/* Primary Add Button */}
-        {canWrite && (
+        {/* Primary Add Button (Only for New Leather Development - Daily Leather, Material, Packaging are pushed from approved Work Orders) */}
+        {canWrite && currentActiveModule === 'new-leather' && (
           <button
             type="button"
             onClick={() => setCreateModalOpen(true)}
             className="self-start sm:self-auto min-h-[44px] px-5 py-2.5 bg-black hover:bg-slate-900 active:bg-slate-800 text-white text-xs sm:text-sm font-bold rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer ring-2 ring-black/10"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
-            <span>{config.addLabel}</span>
+            <span>Add New Leather</span>
           </button>
         )}
       </div>
@@ -434,20 +442,66 @@ export const ModuleView: React.FC<ModuleViewProps> = ({ module }) => {
         leatherNameOptions={leatherNameOptions}
       />
 
-      {/* Table Component (Req #55, #56, #63) */}
-      <ProcurementTable
-        module={currentActiveModule}
-        items={filteredItems}
-        isHistory={activeTab === 'history'}
-        onUpdate={handleOpenUpdate}
-        onQuickComplete={(item, actualDate) => updateRecord(currentActiveModule, item.id, { actualReceiptDate: actualDate })}
-        onViewRemarks={handleOpenRemarks}
-        onDelete={handleOpenDelete}
-        onAddNew={currentActiveModule === 'new-leather' ? () => setCreateModalOpen(true) : undefined}
-        hasActiveFilters={hasActiveFilters}
-        onResetFilters={resetFilters}
-        canWrite={canWrite}
-      />
+      {/* Table View / Card View Toggle Bar */}
+      <div className="flex items-center justify-between gap-3 pt-1">
+        <div className="text-xs text-slate-500 font-medium">
+          Showing <strong>{filteredItems.length}</strong> items
+        </div>
+
+        <div className="inline-flex items-center p-1 bg-slate-100 border border-slate-200/80 rounded-xl">
+          <button
+            type="button"
+            onClick={() => setViewMode('table')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              viewMode === 'table'
+                ? 'bg-white text-slate-900 shadow-xs border border-slate-200/50'
+                : 'text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            <List className="w-3.5 h-3.5" />
+            <span>Table View</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('cards')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              viewMode === 'cards'
+                ? 'bg-white text-slate-900 shadow-xs border border-slate-200/50'
+                : 'text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
+            <span>Card View</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Table or Card Component */}
+      {viewMode === 'table' ? (
+        <ProcurementTable
+          module={currentActiveModule}
+          items={filteredItems}
+          isHistory={activeTab === 'history'}
+          onUpdate={handleOpenUpdate}
+          onQuickComplete={(item, actualDate) => updateRecord(currentActiveModule, item.id, { actualReceiptDate: actualDate })}
+          onViewRemarks={handleOpenRemarks}
+          onDelete={handleOpenDelete}
+          onAddNew={currentActiveModule === 'new-leather' ? () => setCreateModalOpen(true) : undefined}
+          hasActiveFilters={hasActiveFilters}
+          onResetFilters={resetFilters}
+          canWrite={canWrite}
+        />
+      ) : (
+        <ProcurementCardView
+          module={currentActiveModule}
+          items={filteredItems}
+          isHistory={activeTab === 'history'}
+          canWrite={canWrite}
+          onUpdate={handleOpenUpdate}
+          onViewRemarks={handleOpenRemarks}
+          onDelete={handleOpenDelete}
+        />
+      )}
 
       {/* Create Modal */}
       <CreateRecordModal

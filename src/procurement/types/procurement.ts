@@ -24,6 +24,9 @@ export interface BaseProcurementItem {
   updatedAt: string;
   productionPlanningId?: string;
   source?: string;
+  woNo?: string;
+  woDate?: string;
+  shipmentDate?: string;
 }
 
 // 1. New Leather Development

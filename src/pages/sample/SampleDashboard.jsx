@@ -5,6 +5,7 @@ import DonutChart from '../../components/DonutChart';
 import { useMagicToast } from '../../context/MagicToastContext';
 import supabase from '../../SupabaseClient';
 import AdminLayout from '../../components/layout/AdminLayout';
+import { useBuyerCodes } from '../../services/buyerCodeService';
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '-';
@@ -94,6 +95,7 @@ const mapPlanningDbToLead = (dbRow) => {
 
 export default function SampleDashboard() {
   const { showToast } = useMagicToast();
+  const { buyerCodes } = useBuyerCodes();
   const toast = {
     success: (msg) => showToast(msg, 'success'),
     error: (msg) => showToast(msg, 'error')
@@ -431,13 +433,18 @@ export default function SampleDashboard() {
                     onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
                     className="w-full bg-white border border-gray-300 rounded-lg lg:rounded px-2 py-1.5 focus:outline-none focus:border-indigo-500 text-[11px] md:text-sm h-[32px] md:h-[38px]"
                   />
-                  <input
-                    type="text"
+                  <select
                     value={filters.buyerCoder}
                     onChange={(e) => setFilters({ ...filters, buyerCoder: e.target.value })}
-                    placeholder="Buyer Code..."
                     className="w-full bg-white border border-gray-300 rounded-lg lg:rounded px-2 py-1.5 focus:outline-none focus:border-indigo-500 text-[11px] md:text-sm h-[32px] md:h-[38px]"
-                  />
+                  >
+                    <option value="">All Buyer Codes</option>
+                    {buyerCodes.map((b) => (
+                      <option key={b.buyerCode} value={b.buyerCode}>
+                        {b.buyerCode} — {b.buyerName}
+                      </option>
+                    ))}
+                  </select>
                   {dashboardType === 'enquiry' && (
                     <select
                       value={filters.type}

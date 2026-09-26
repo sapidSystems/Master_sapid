@@ -11,6 +11,8 @@ import {
   TatPlannedCell,
   TatDelayCell,
 } from '../../utils/tatUtils';
+import { useBuyerCodes } from '../../services/buyerCodeService';
+import BuyerCodeSelect from '../../components/common/BuyerCodeSelect';
 
 const formatDate = (dateString) => {
   if (!dateString) return '-';
@@ -151,6 +153,7 @@ const ALL_COLUMNS = [
 
 export default function SampleManagement() {
   const { showToast } = useMagicToast();
+  const { buyerCodes } = useBuyerCodes();
   const toast = {
     success: (msg) => showToast(msg, 'success'),
     error: (msg) => showToast(msg, 'error')
@@ -689,14 +692,13 @@ export default function SampleManagement() {
                     
                     {/* Buyer Code */}
                     <div>
-                      <label className="block text-[11px] md:text-sm font-medium text-gray-700 mb-0.5 md:mb-1">Buyer Code *</label>
-                      <input
-                        type="text"
-                        value={formData.buyerCoder}
-                        onChange={(e) => setFormData({ ...formData, buyerCoder: e.target.value })}
-                        placeholder="e.g. BUYER01"
-                        className="w-full border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-[11px] md:text-sm bg-white min-h-[30px] md:min-h-[38px]"
+                      <BuyerCodeSelect
                         required
+                        label="Buyer Code"
+                        showAddButton={true}
+                        value={formData.buyerCoder}
+                        onChange={(val) => setFormData(prev => ({ ...prev, buyerCoder: val }))}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-[11px] md:text-sm bg-white min-h-[30px] md:min-h-[38px]"
                       />
                     </div>
 

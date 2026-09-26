@@ -28,6 +28,8 @@ import {
   getTodayDate
 } from './productionService';
 import { useMagicToast } from '../../context/MagicToastContext';
+import { useBuyerCodes } from '../../services/buyerCodeService';
+import BuyerCodeSelect from '../../components/common/BuyerCodeSelect';
 
 export default function ProductionData() {
   const { showToast } = useMagicToast();
@@ -87,12 +89,14 @@ export default function ProductionData() {
     loadData();
   }, []);
 
-  // Filter options
+  const { buyerCodes: masterBuyerList } = useBuyerCodes();
+
+  // Filter options sourced from master Buyer Codes list
   const buyerOptions = useMemo(() => {
-    const set = new Set();
+    const set = new Set(masterBuyerList.map(b => b.buyerCode));
     plans.forEach(p => { if (p.buyer) set.add(p.buyer); });
     return Array.from(set).sort();
-  }, [plans]);
+  }, [plans, masterBuyerList]);
 
   // Filtered plans
   const filteredPlans = useMemo(() => {
@@ -423,7 +427,11 @@ export default function ProductionData() {
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                   {paginatedPlans.map((plan) => {
                     const currentStageName = getCurrentStageName(plan);
-                    const isDraftOrRejected = !plan.approvalStatus || plan.approvalStatus === 'draft' || plan.approvalStatus === 'rejected';
+                    const isAdmin = currentUser.role === 'admin';
+                    // Admin users retain edit access regardless of current Approval Status (including Pending Approval or Approved).
+                    // Non-admin users lose edit rights once status moves past "Draft".
+                    const canEdit = isAdmin || (!plan.approvalStatus || plan.approvalStatus === 'draft');
+                    const canDelete = isAdmin || (!plan.approvalStatus || plan.approvalStatus === 'draft');
 
                     return (
                       <tr key={plan.id} className="hover:bg-slate-50/80 transition-colors">
@@ -476,7 +484,7 @@ export default function ProductionData() {
                               <Eye className="w-3.5 h-3.5" />
                             </button>
 
-                            {isDraftOrRejected && (
+                            {canEdit && (
                               <button
                                 type="button"
                                 onClick={() => handleOpenEdit(plan)}
@@ -487,7 +495,7 @@ export default function ProductionData() {
                               </button>
                             )}
 
-                            {isDraftOrRejected && (
+                            {canDelete && (
                               <button
                                 type="button"
                                 onClick={() => handleOpenDelete(plan)}
@@ -574,16 +582,13 @@ export default function ProductionData() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Buyer Code <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="text"
+                    <BuyerCodeSelect
                       required
-                      placeholder="e.g. BUYER-XYZ"
+                      label="Buyer Code"
+                      showAddButton={true}
                       value={formData.buyer}
-                      onChange={(e) => setFormData(prev => ({ ...prev, buyer: e.target.value }))}
-                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl outline-hidden focus:border-black font-mono"
+                      onChange={(val) => setFormData(prev => ({ ...prev, buyer: val }))}
+                      className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-xl outline-hidden focus:border-black font-semibold text-slate-800"
                     />
                   </div>
                 </div>
@@ -696,13 +701,13 @@ export default function ProductionData() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Buyer Code</label>
-                    <input
-                      type="text"
+                    <BuyerCodeSelect
                       required
+                      label="Buyer Code"
+                      showAddButton={true}
                       value={formData.buyer}
-                      onChange={(e) => setFormData(prev => ({ ...prev, buyer: e.target.value }))}
-                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl outline-hidden font-mono"
+                      onChange={(val) => setFormData(prev => ({ ...prev, buyer: val }))}
+                      className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-xl outline-hidden focus:border-black font-semibold text-slate-800"
                     />
                   </div>
                 </div>

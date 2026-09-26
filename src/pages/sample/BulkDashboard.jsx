@@ -5,6 +5,7 @@ import DonutChart from '../../components/DonutChart';
 import { useMagicToast } from '../../context/MagicToastContext';
 import supabase from '../../SupabaseClient';
 import AdminLayout from '../../components/layout/AdminLayout';
+import { useBuyerCodes } from '../../services/buyerCodeService';
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '-';
@@ -69,6 +70,7 @@ const mapPlanningDbToLead = (dbRow) => {
 
 export default function BulkDashboard() {
   const { showToast } = useMagicToast();
+  const { buyerCodes } = useBuyerCodes();
   const toast = {
     success: (msg) => showToast(msg, 'success'),
     error: (msg) => showToast(msg, 'error')
@@ -116,9 +118,11 @@ export default function BulkDashboard() {
   }, [bulkOrders]);
 
   const distinctBuyers = useMemo(() => {
-    const buyers = leads.map(l => l.buyer).filter(Boolean);
-    return [...new Set(buyers)].sort();
-  }, [leads]);
+    const set = new Set();
+    buyerCodes.forEach(b => { if (b.buyerCode) set.add(b.buyerCode); });
+    leads.forEach(l => { if (l.buyer) set.add(l.buyer); });
+    return Array.from(set).sort();
+  }, [buyerCodes, leads]);
 
   const filteredLeads = useMemo(() => {
     let filtered = leads.filter(l => {

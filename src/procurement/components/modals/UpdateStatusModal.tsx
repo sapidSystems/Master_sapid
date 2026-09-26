@@ -10,6 +10,8 @@ import {
 } from '../../types/procurement';
 import { getTodayDateString, addDays, addWorkingDays } from '../../utils/dateUtils';
 import { useProcurement } from '../../context/ProcurementContext';
+import { useBuyerCodes } from '../../../services/buyerCodeService';
+import BuyerCodeSelect from '../../../components/common/BuyerCodeSelect';
 
 interface EditableLeatherItem {
   id: string;
@@ -17,6 +19,15 @@ interface EditableLeatherItem {
   colour: string;
   quantity: number | '';
   tannery: string;
+  actualPoReleaseDate?: string;
+  qtyInStock?: number | '';
+  qtyOrdered?: number | '';
+  poDeliveryDate?: string;
+  plannedDeliveryDate?: string;
+  qtyReceived?: number | '';
+  alreadyReceived?: number;
+  poDeliveryDateLocked?: boolean;
+  plannedDeliveryDateLocked?: boolean;
   isNew?: boolean;
 }
 
@@ -57,6 +68,7 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
 
   // Daily Leather Multi-Entry Leather Items
   const { dailyLeather } = useProcurement();
+  const { buyerCodes } = useBuyerCodes();
   const [leatherItems, setLeatherItems] = useState<EditableLeatherItem[]>([]);
   const [deletedLeatherItemIds, setDeletedLeatherItemIds] = useState<string[]>([]);
 
@@ -131,6 +143,15 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
             colour: s.colour || '',
             quantity: s.quantity !== undefined ? s.quantity : '',
             tannery: s.tannery || '',
+            actualPoReleaseDate: s.actualPoReleaseDate || '',
+            qtyInStock: s.qtyInStock !== undefined ? s.qtyInStock : '',
+            qtyOrdered: s.qtyOrdered !== undefined ? s.qtyOrdered : s.quantity || '',
+            poDeliveryDate: s.poDeliveryDate || '',
+            plannedDeliveryDate: s.plannedDeliveryDate || s.targetReceiptDate || '',
+            qtyReceived: '',
+            alreadyReceived: Number(s.qtyReceived || 0),
+            poDeliveryDateLocked: Boolean((s as any).poDeliveryDateLocked),
+            plannedDeliveryDateLocked: Boolean((s as any).plannedDeliveryDateLocked),
             isNew: false
           })));
         } else {
@@ -140,6 +161,15 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
             colour: dl.colour || '',
             quantity: dl.quantity !== undefined ? dl.quantity : '',
             tannery: dl.tannery || '',
+            actualPoReleaseDate: dl.actualPoReleaseDate || '',
+            qtyInStock: dl.qtyInStock !== undefined ? dl.qtyInStock : '',
+            qtyOrdered: dl.qtyOrdered !== undefined ? dl.qtyOrdered : dl.quantity || '',
+            poDeliveryDate: dl.poDeliveryDate || '',
+            plannedDeliveryDate: dl.plannedDeliveryDate || dl.targetReceiptDate || '',
+            qtyReceived: '',
+            alreadyReceived: Number(dl.qtyReceived || 0),
+            poDeliveryDateLocked: Boolean((dl as any).poDeliveryDateLocked),
+            plannedDeliveryDateLocked: Boolean((dl as any).plannedDeliveryDateLocked),
             isNew: false
           }]);
         }
@@ -228,28 +258,32 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
       updates.quantity = firstItem.quantity !== '' ? Number(firstItem.quantity) : 0;
       updates.tannery = (firstItem.tannery || '').trim();
 
+      // Top-level tracking fields for primary item
+      updates.actualPoReleaseDate = firstItem.actualPoReleaseDate || undefined;
+      updates.qtyInStock = firstItem.qtyInStock !== '' && firstItem.qtyInStock !== undefined ? Number(firstItem.qtyInStock) : undefined;
+      updates.qtyOrdered = firstItem.qtyOrdered !== '' && firstItem.qtyOrdered !== undefined ? Number(firstItem.qtyOrdered) : undefined;
+      updates.poDeliveryDate = firstItem.poDeliveryDate || undefined;
+      updates.plannedDeliveryDate = firstItem.plannedDeliveryDate || undefined;
+      updates.incrementalQtyReceived = firstItem.qtyReceived !== '' && firstItem.qtyReceived !== undefined ? Number(firstItem.qtyReceived) : undefined;
+
       updates.leatherItems = leatherItems.map(s => ({
         id: s.id,
         leatherName: (s.leatherName || '').trim(),
         colour: (s.colour || '').trim(),
         quantity: s.quantity !== '' ? Number(s.quantity) : 0,
         tannery: (s.tannery || '').trim(),
+        actualPoReleaseDate: s.actualPoReleaseDate || undefined,
+        qtyInStock: s.qtyInStock !== '' && s.qtyInStock !== undefined ? Number(s.qtyInStock) : undefined,
+        qtyOrdered: s.qtyOrdered !== '' && s.qtyOrdered !== undefined ? Number(s.qtyOrdered) : undefined,
+        poDeliveryDate: s.poDeliveryDate || undefined,
+        plannedDeliveryDate: s.plannedDeliveryDate || undefined,
+        incrementalQtyReceived: s.qtyReceived !== '' && s.qtyReceived !== undefined ? Number(s.qtyReceived) : undefined,
+        alreadyReceived: s.alreadyReceived || 0,
+        poDeliveryDateLocked: !isAdmin && s.poDeliveryDate ? true : s.poDeliveryDateLocked,
+        plannedDeliveryDateLocked: !isAdmin && s.plannedDeliveryDate ? true : s.plannedDeliveryDateLocked,
         isNew: s.isNew
       }));
       updates.deletedLeatherItemIds = deletedLeatherItemIds;
-
-      updates.actualPoReleaseDate = actualPoReleaseDate || undefined;
-      updates.qtyInStock = qtyInStock !== '' ? Number(qtyInStock) : undefined;
-      updates.qtyOrdered = qtyOrdered !== '' ? Number(qtyOrdered) : undefined;
-      updates.poDeliveryDate = poDeliveryDate || undefined;
-      if (!(item as any)?.poDeliveryDateLocked && !isAdmin && poDeliveryDate) {
-        updates.poDeliveryDateLocked = true;
-      }
-      updates.plannedDeliveryDate = plannedDeliveryDate || undefined;
-      if (!(item as any)?.plannedDeliveryDateLocked && !isAdmin && plannedDeliveryDate) {
-        updates.plannedDeliveryDateLocked = true;
-      }
-      updates.incrementalQtyReceived = qtyReceived !== '' ? Number(qtyReceived) : undefined;
     } else if (module === 'material') {
       updates.woNo = woNo.trim().toUpperCase();
       updates.woDate = date;
@@ -306,6 +340,15 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
         colour: '',
         quantity: '',
         tannery: '',
+        actualPoReleaseDate: '',
+        qtyInStock: '',
+        qtyOrdered: '',
+        poDeliveryDate: '',
+        plannedDeliveryDate: '',
+        qtyReceived: '',
+        alreadyReceived: 0,
+        poDeliveryDateLocked: false,
+        plannedDeliveryDateLocked: false,
         isNew: true
       }
     ]);
@@ -435,14 +478,13 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Buyer Code <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="text"
+                    <BuyerCodeSelect
+                      id="nl-buyer-code"
                       required
+                      label="Buyer Code"
+                      showAddButton={true}
                       value={buyerCode}
-                      onChange={(e) => setBuyerCode(e.target.value)}
+                      onChange={(val: string) => setBuyerCode(val)}
                       className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 text-xs sm:text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none font-medium"
                     />
                   </div>
@@ -736,169 +778,157 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
                           />
                         </div>
                       </div>
+
+                      {/* Nested Tracking & Delivery Parameters (Editable) for this specific leather item */}
+                      <div className="mt-3 p-3.5 rounded-xl border border-amber-200/90 bg-amber-50/40 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-amber-950 uppercase tracking-wider block">
+                            Tracking & Delivery Parameters (Item #{idx + 1})
+                          </span>
+                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800">
+                            Independent Parameters
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+                          <div>
+                            <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                              Actual PO Release Date
+                            </label>
+                            <input
+                              type="date"
+                              value={sub.actualPoReleaseDate || ''}
+                              onChange={(e) => updateLeatherItem(idx, 'actualPoReleaseDate', e.target.value)}
+                              className="w-full min-h-[38px] px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-slate-900 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none font-medium"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                              Qty In Stock (sqft)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder="e.g. 500"
+                              value={sub.qtyInStock ?? ''}
+                              onChange={(e) => updateLeatherItem(idx, 'qtyInStock', e.target.value === '' ? '' : Number(e.target.value))}
+                              className="w-full min-h-[38px] px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-slate-900 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none font-medium"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                              Qty Ordered (sqft)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder="e.g. 3000"
+                              value={sub.qtyOrdered ?? ''}
+                              onChange={(e) => updateLeatherItem(idx, 'qtyOrdered', e.target.value === '' ? '' : Number(e.target.value))}
+                              className="w-full min-h-[38px] px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-slate-900 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none font-medium"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                              PO Delivery Date
+                            </label>
+                            <input
+                              type="date"
+                              disabled={!isAdmin && sub.poDeliveryDateLocked}
+                              value={sub.poDeliveryDate || ''}
+                              onChange={(e) => updateLeatherItem(idx, 'poDeliveryDate', e.target.value)}
+                              className={`w-full min-h-[38px] px-3 py-1.5 rounded-xl border text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none ${
+                                !isAdmin && sub.poDeliveryDateLocked
+                                  ? 'border-slate-200 bg-slate-100 text-slate-700 cursor-not-allowed'
+                                  : 'border-slate-300 bg-white text-slate-900 font-medium'
+                              }`}
+                            />
+                            {!isAdmin && sub.poDeliveryDateLocked && (
+                              <p className="text-[10px] text-amber-600 font-medium mt-0.5">
+                                Locked after first update
+                              </p>
+                            )}
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                              Planned Material Receipt Date
+                            </label>
+                            <input
+                              type="date"
+                              disabled={!isAdmin && sub.plannedDeliveryDateLocked}
+                              value={sub.plannedDeliveryDate || ''}
+                              onChange={(e) => updateLeatherItem(idx, 'plannedDeliveryDate', e.target.value)}
+                              className={`w-full min-h-[38px] px-3 py-1.5 rounded-xl border text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none ${
+                                !isAdmin && sub.plannedDeliveryDateLocked
+                                  ? 'border-slate-200 bg-slate-100 text-slate-700 cursor-not-allowed'
+                                  : 'border-slate-300 bg-white text-slate-900 font-medium'
+                              }`}
+                            />
+                            {!isAdmin && sub.plannedDeliveryDateLocked && (
+                              <p className="text-[10px] text-amber-600 font-medium mt-0.5">
+                                Locked after first update
+                              </p>
+                            )}
+                          </div>
+
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="block text-[11px] font-semibold text-slate-700">
+                                New Qty Received
+                              </label>
+                              <span className="text-[10px] text-slate-500 font-medium">
+                                Received: <strong className="text-slate-900 font-bold">{Number(sub.alreadyReceived || 0).toLocaleString()}</strong> / {Number(sub.qtyOrdered || sub.quantity || 0).toLocaleString()}
+                              </span>
+                            </div>
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder="e.g. 200"
+                              value={sub.qtyReceived ?? ''}
+                              onChange={(e) => updateLeatherItem(idx, 'qtyReceived', e.target.value === '' ? '' : Number(e.target.value))}
+                              className="w-full min-h-[38px] px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-slate-900 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none font-medium"
+                            />
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* 8 Editable Tracking & Delivery Parameters */}
-              <div className="p-3.5 rounded-xl border border-brand-200 bg-brand-50/20 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-brand-900 uppercase tracking-wider block">
-                    Tracking & Delivery Parameters (Editable)
-                  </span>
-                  <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-brand-100 text-brand-700">
-                    Editable Inputs
-                  </span>
+              {/* Actual Receipt Date for Complete Order */}
+              <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 space-y-2">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs sm:text-sm font-bold text-slate-800">
+                    Actual Receipt Date for Complete Order
+                  </label>
+                  <button
+                    type="button"
+                    onClick={setReceivedToday}
+                    className="text-xs text-brand-600 hover:underline font-semibold cursor-pointer"
+                  >
+                    Set Today
+                  </button>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Actual PO Release Date
-                    </label>
-                    <input
-                      type="date"
-                      value={actualPoReleaseDate}
-                      onChange={(e) => setActualPoReleaseDate(e.target.value)}
-                      className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 text-xs sm:text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                    />
-                  </div>
+                <input
+                  type="date"
+                  value={actualReceiptDate}
+                  onChange={(e) => setActualReceiptDate(e.target.value)}
+                  className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 text-xs sm:text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none font-medium"
+                />
 
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Qty In Stock (sqft)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="e.g. 500"
-                      value={qtyInStock}
-                      onChange={(e) => setQtyInStock(e.target.value === '' ? '' : Number(e.target.value))}
-                      className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 text-xs sm:text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Qty Ordered (sqft)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="e.g. 3000"
-                      value={qtyOrdered}
-                      onChange={(e) => setQtyOrdered(e.target.value === '' ? '' : Number(e.target.value))}
-                      className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 text-xs sm:text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                    />
-                  </div>
-
-                  {(() => {
-                    const poDeliveryLocked = !isAdmin && Boolean((item as any)?.poDeliveryDateLocked);
-                    const plannedDeliveryLocked = !isAdmin && Boolean((item as any)?.plannedDeliveryDateLocked);
-                    return (
-                      <>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-700 mb-1">
-                            PO Delivery Date
-                          </label>
-                          <input
-                            type="date"
-                            disabled={poDeliveryLocked}
-                            value={poDeliveryDate}
-                            onChange={(e) => setPoDeliveryDate(e.target.value)}
-                            className={`w-full min-h-[42px] px-3 py-2 rounded-xl border text-xs sm:text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none ${
-                              poDeliveryLocked
-                                ? 'border-slate-200 bg-slate-100 text-slate-700 cursor-not-allowed'
-                                : 'border-slate-300 bg-white text-slate-900'
-                            }`}
-                          />
-                          {poDeliveryLocked && (
-                            <p className="text-[11px] text-amber-600 font-medium mt-1">
-                              Locked after first update — contact an admin to change this.
-                            </p>
-                          )}
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-700 mb-1">
-                            Planned Material Receipt Date
-                          </label>
-                          <input
-                            type="date"
-                            disabled={plannedDeliveryLocked}
-                            value={plannedDeliveryDate}
-                            onChange={(e) => setPlannedDeliveryDate(e.target.value)}
-                            className={`w-full min-h-[42px] px-3 py-2 rounded-xl border text-xs sm:text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none ${
-                              plannedDeliveryLocked
-                                ? 'border-slate-200 bg-slate-100 text-slate-700 cursor-not-allowed'
-                                : 'border-slate-300 bg-white text-slate-900'
-                            }`}
-                          />
-                          {plannedDeliveryLocked && (
-                            <p className="text-[11px] text-amber-600 font-medium mt-1">
-                              Locked after first update — contact an admin to change this.
-                            </p>
-                          )}
-                        </div>
-                      </>
-                    );
-                  })()}
-
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-xs font-semibold text-slate-700">
-                        New Qty Received (add to total)
-                      </label>
-                      <span className="text-[11px] text-slate-500 font-medium">
-                        Already received: <strong className="text-slate-900 font-bold">{Number((item as any)?.qtyReceived || 0).toLocaleString()}</strong> / {Number((item as any)?.quantity || (item as any)?.qtyOrdered || 0).toLocaleString()} sqft
-                      </span>
+                {showCompletionNotice && (
+                  <div className="mt-2.5 p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-2.5 text-xs text-emerald-800 animate-in fade-in duration-200">
+                    <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5 text-emerald-600" />
+                    <div>
+                      <span className="font-semibold">Move to History:</span> Filling this date will mark this order as <strong>Completed</strong> and move it to Received History.
                     </div>
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="e.g. 200 (sqft just arrived)"
-                      value={qtyReceived}
-                      onChange={(e) => setQtyReceived(e.target.value === '' ? '' : Number(e.target.value))}
-                      className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 text-xs sm:text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                    />
-                    {qtyReceived !== '' && Number(qtyReceived) > 0 && (
-                      <p className="text-[11px] text-emerald-700 font-semibold mt-1">
-                        New Total will be: {(Number((item as any)?.qtyReceived || 0) + Number(qtyReceived)).toLocaleString()} / {Number((item as any)?.quantity || (item as any)?.qtyOrdered || 0).toLocaleString()} sqft (Remaining: {Math.max(0, Number((item as any)?.quantity || (item as any)?.qtyOrdered || 0) - (Number((item as any)?.qtyReceived || 0) + Number(qtyReceived))).toLocaleString()} sqft)
-                      </p>
-                    )}
                   </div>
-                </div>
-
-                {/* Actual Receipt Date for Complete Order */}
-                <div className="pt-2 border-t border-slate-100">
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs sm:text-sm font-bold text-slate-800">
-                      Actual Receipt Date for Complete Order
-                    </label>
-                    <button
-                      type="button"
-                      onClick={setReceivedToday}
-                      className="text-xs text-brand-600 hover:underline font-semibold"
-                    >
-                      Set Today
-                    </button>
-                  </div>
-                  <input
-                    type="date"
-                    value={actualReceiptDate}
-                    onChange={(e) => setActualReceiptDate(e.target.value)}
-                    className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 text-xs sm:text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                  />
-
-                  {showCompletionNotice && (
-                    <div className="mt-2.5 p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-2.5 text-xs text-emerald-800 animate-in fade-in duration-200">
-                      <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5 text-emerald-600" />
-                      <div>
-                        <span className="font-semibold">Move to History:</span> Filling this date will mark this leather item as <strong>Completed</strong> and move it to Received History.
-                      </div>
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
             </div>
           )}
