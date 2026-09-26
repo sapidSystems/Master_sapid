@@ -363,6 +363,7 @@ export default function ProductionApproval() {
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
                       <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+                        <th className="px-4 py-3.5 text-center">Action</th>
                         <th className="px-4 py-3.5">W/O No</th>
                         <th className="px-4 py-3.5">Buyer</th>
                         <th className="px-4 py-3.5">Plan Date</th>
@@ -371,12 +372,21 @@ export default function ProductionApproval() {
                         <th className="px-4 py-3.5 text-right">Quantity</th>
                         <th className="px-4 py-3.5">Remarks</th>
                         <th className="px-4 py-3.5">Submitted By</th>
-                        <th className="px-4 py-3.5 text-center">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                       {filteredPending.map((plan) => (
                         <tr key={plan.id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="px-4 py-3 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenScheduleModal(plan)}
+                              className="px-3.5 py-1.5 bg-black hover:bg-slate-900 active:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-xs inline-flex items-center gap-1.5 transition-all cursor-pointer"
+                            >
+                              <Sliders className="w-3.5 h-3.5 text-white" />
+                              <span>Update</span>
+                            </button>
+                          </td>
                           <td className="px-4 py-3 font-bold text-slate-900 font-mono">
                             {plan.woNo}
                           </td>
@@ -399,16 +409,6 @@ export default function ProductionApproval() {
                             {plan.remarks || '—'}
                           </td>
                           <td className="px-4 py-3 text-slate-500 text-[11px]">{plan.addedBy || '—'}</td>
-                          <td className="px-4 py-3 text-center">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenScheduleModal(plan)}
-                              className="px-3.5 py-1.5 bg-black hover:bg-slate-900 active:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-xs inline-flex items-center gap-1.5 transition-all cursor-pointer"
-                            >
-                              <Sliders className="w-3.5 h-3.5 text-white" />
-                              <span>Update</span>
-                            </button>
-                          </td>
                         </tr>
                       ))}
                       {filteredPending.length === 0 && (

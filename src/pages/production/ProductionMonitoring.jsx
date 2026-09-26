@@ -673,6 +673,7 @@ export default function ProductionMonitoring() {
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+                      <th className="px-4 py-3.5 text-center">Action</th>
                       <th className="px-4 py-3.5">W/O No</th>
                       <th className="px-4 py-3.5">Buyer</th>
                       <th className="px-4 py-3.5">Milestone / Section</th>
@@ -680,12 +681,21 @@ export default function ProductionMonitoring() {
                       <th className="px-4 py-3.5">Date Logged</th>
                       <th className="px-4 py-3.5">Logged By</th>
                       <th className="px-4 py-3.5 text-center">Order Status</th>
-                      <th className="px-4 py-3.5 text-center">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                     {filteredRemarkRecords.map((record) => (
                       <tr key={record.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="px-4 py-3.5 text-center">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenUpdate(record.plan)}
+                            className="px-3 py-1.5 rounded-xl text-xs font-bold shadow-xs inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer transition-all"
+                          >
+                            <Sliders className="w-3.5 h-3.5" />
+                            <span>View / Update</span>
+                          </button>
+                        </td>
                         <td className="px-4 py-3.5 font-bold text-slate-900 font-mono">
                           {record.woNo}
                         </td>
@@ -738,16 +748,6 @@ export default function ProductionMonitoring() {
                             </span>
                           )}
                         </td>
-                        <td className="px-4 py-3.5 text-center">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenUpdate(record.plan)}
-                            className="px-3 py-1.5 rounded-xl text-xs font-bold shadow-xs inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer transition-all"
-                          >
-                            <Sliders className="w-3.5 h-3.5" />
-                            <span>View / Update</span>
-                          </button>
-                        </td>
                       </tr>
                     ))}
                     {filteredRemarkRecords.length === 0 && (
@@ -774,6 +774,7 @@ export default function ProductionMonitoring() {
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+                      <th className="px-4 py-3.5 text-center">Action</th>
                       <th className="px-4 py-3.5">W/O No</th>
                       <th className="px-4 py-3.5">Buyer</th>
                       <th className="px-4 py-3.5">Plan Date</th>
@@ -782,7 +783,6 @@ export default function ProductionMonitoring() {
                       <th className="px-4 py-3.5 text-right">Quantity</th>
                       <th className="px-4 py-3.5">Progress / Status</th>
                       <th className="px-4 py-3.5">Remarks</th>
-                      <th className="px-4 py-3.5 text-center">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
@@ -792,6 +792,20 @@ export default function ProductionMonitoring() {
 
                       return (
                         <tr key={plan.id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="px-4 py-3 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenUpdate(plan)}
+                              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-xs inline-flex items-center gap-1.5 transition-all cursor-pointer text-white ${
+                                activeTab === 'history'
+                                  ? 'bg-slate-800 hover:bg-slate-900 active:bg-slate-950'
+                                  : 'bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800'
+                              }`}
+                            >
+                              <Sliders className="w-3.5 h-3.5 text-white" />
+                              <span>{activeTab === 'history' ? 'View / Edit' : 'Update'}</span>
+                            </button>
+                          </td>
                           <td className="px-4 py-3 font-bold text-slate-900 font-mono">
                             {plan.woNo}
                           </td>
@@ -861,20 +875,6 @@ export default function ProductionMonitoring() {
                           </td>
                           <td className="px-4 py-3 max-w-[180px] truncate text-slate-500" title={plan.remarks}>
                             {plan.remarks || '—'}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenUpdate(plan)}
-                              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-xs inline-flex items-center gap-1.5 transition-all cursor-pointer text-white ${
-                                activeTab === 'history'
-                                  ? 'bg-slate-800 hover:bg-slate-900 active:bg-slate-950'
-                                  : 'bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800'
-                              }`}
-                            >
-                              <Sliders className="w-3.5 h-3.5 text-white" />
-                              <span>{activeTab === 'history' ? 'View / Edit' : 'Update'}</span>
-                            </button>
                           </td>
                         </tr>
                       );

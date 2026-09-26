@@ -410,6 +410,7 @@ export default function ProductionData() {
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+                    <th className="px-4 py-3.5 text-center">Actions</th>
                     <th className="px-4 py-3.5">W/O No</th>
                     <th className="px-4 py-3.5">Buyer</th>
                     <th className="px-4 py-3.5">W/O Date</th>
@@ -421,7 +422,6 @@ export default function ProductionData() {
                     <th className="px-4 py-3.5">Approval Status</th>
                     <th className="px-4 py-3.5">Remarks</th>
                     <th className="px-4 py-3.5">Added By</th>
-                    <th className="px-4 py-3.5 text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
@@ -435,6 +435,40 @@ export default function ProductionData() {
 
                     return (
                       <tr key={plan.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="px-4 py-3 text-center">
+                          <div className="inline-flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenStages(plan)}
+                              title="View Stage Timeline"
+                              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+
+                            {canEdit && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEdit(plan)}
+                                title="Edit Record"
+                                className="p-1.5 rounded-lg hover:bg-slate-100 text-blue-600 hover:text-blue-800 transition-colors"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+
+                            {canDelete && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenDelete(plan)}
+                                title="Delete Record"
+                                className="p-1.5 rounded-lg hover:bg-rose-50 text-rose-600 hover:text-rose-800 transition-colors"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-4 py-3 font-bold text-slate-900 font-mono">
                           {plan.woNo}
                         </td>
@@ -473,40 +507,6 @@ export default function ProductionData() {
                           {plan.remarks || '—'}
                         </td>
                         <td className="px-4 py-3 text-slate-500 text-[11px]">{plan.addedBy || '—'}</td>
-                        <td className="px-4 py-3 text-center">
-                          <div className="inline-flex items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenStages(plan)}
-                              title="View Stage Timeline"
-                              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                            </button>
-
-                            {canEdit && (
-                              <button
-                                type="button"
-                                onClick={() => handleOpenEdit(plan)}
-                                title="Edit Record"
-                                className="p-1.5 rounded-lg hover:bg-slate-100 text-blue-600 hover:text-blue-800 transition-colors"
-                              >
-                                <Edit2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-
-                            {canDelete && (
-                              <button
-                                type="button"
-                                onClick={() => handleOpenDelete(plan)}
-                                title="Delete Record"
-                                className="p-1.5 rounded-lg hover:bg-rose-50 text-rose-600 hover:text-rose-800 transition-colors"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        </td>
                       </tr>
                     );
                   })}
