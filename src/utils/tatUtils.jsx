@@ -1,58 +1,9 @@
 import supabase from "../SupabaseClient";
 
-export const DEFAULT_TAT_CONFIGS = [
-  {
-    system_id: "sample",
-    system_name: "Sample System",
-    page_name: "Sample Management",
-    page_path: "/dashboard/sample-management",
-    tat_days: 5,
-    description: "Sample inquiry to dispatch SLA",
-  },
-  {
-    system_id: "production",
-    system_name: "Production Planning and Monitoring",
-    page_name: "Production Planning and Monitoring",
-    page_path: "/dashboard/bulk-order",
-    tat_days: 15,
-    description: "Work order production completion SLA",
-  },
-  {
-    system_id: "procurement",
-    system_name: "Procurement System",
-    page_name: "New Leather Development",
-    page_path: "/dashboard/procurement/new-leather",
-    tat_days: 7,
-    description: "Swatch and lab dip receipt SLA",
-  },
-  {
-    system_id: "procurement",
-    system_name: "Procurement System",
-    page_name: "Daily Leather Procurement",
-    page_path: "/dashboard/procurement/daily-leather",
-    tat_days: 4,
-    description: "Stock check and order receipt SLA",
-  },
-  {
-    system_id: "procurement",
-    system_name: "Procurement System",
-    page_name: "Daily Material Procurement",
-    page_path: "/dashboard/procurement/material",
-    tat_days: 3,
-    description: "Material indent and store update SLA",
-  },
-  {
-    system_id: "procurement",
-    system_name: "Procurement System",
-    page_name: "Packaging Procurement",
-    page_path: "/dashboard/procurement/packaging",
-    tat_days: 5,
-    description: "Packaging release and receipt SLA",
-  },
-];
+export const DEFAULT_TAT_CONFIGS = [];
 
 /**
- * Fetch all TAT configurations from Supabase or fallback to defaults
+ * Fetch all TAT configurations directly from Supabase tat_master table
  */
 export async function fetchTatConfigs() {
   try {
@@ -61,21 +12,24 @@ export async function fetchTatConfigs() {
       .select("*")
       .order("created_at", { ascending: true });
 
-    if (!error && data && data.length > 0) {
-      return data;
+    if (error) {
+      console.error("Error fetching tat_master:", error);
+      return [];
     }
+
+    return data || [];
   } catch (err) {
-    console.warn("Could not fetch tat_master, using default configurations:", err);
+    console.error("Could not fetch tat_master:", err);
+    return [];
   }
-  return DEFAULT_TAT_CONFIGS;
 }
 
 /**
- * Get TAT days for a specific page path
+ * Get TAT days for a specific page path from loaded configs, with fallback days
  */
 export function getTatDays(tatConfigs = [], pagePath, fallbackDays = 0) {
   if (!pagePath) return fallbackDays;
-  const match = tatConfigs.find(
+  const match = (tatConfigs || []).find(
     (c) =>
       c.page_path === pagePath ||
       (pagePath.startsWith(c.page_path) && c.page_path !== "/dashboard/procurement")
@@ -83,8 +37,7 @@ export function getTatDays(tatConfigs = [], pagePath, fallbackDays = 0) {
   if (match && typeof match.tat_days === "number") {
     return match.tat_days;
   }
-  const defaultMatch = DEFAULT_TAT_CONFIGS.find((c) => c.page_path === pagePath);
-  return defaultMatch ? defaultMatch.tat_days : fallbackDays;
+  return fallbackDays;
 }
 
 /**

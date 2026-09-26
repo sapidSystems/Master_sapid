@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import supabase from "../../SupabaseClient";
 import { useMagicToast } from "../../context/MagicToastContext";
-import { DEFAULT_TAT_CONFIGS } from "../../utils/tatUtils";
 
 const AVAILABLE_SYSTEMS = [
   {
@@ -80,7 +79,7 @@ export default function TatMasterTab() {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [editingId, setEditingId] = useState(null);
+  const [editingItem, setEditingItem] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
 
   // Form State
@@ -89,7 +88,7 @@ export default function TatMasterTab() {
   const [formTatDays, setFormTatDays] = useState("5");
   const [formDescription, setFormDescription] = useState("");
 
-  // Load TAT records
+  // Load TAT records directly from Supabase tat_master
   const loadTatConfigs = async () => {
     try {
       setIsLoading(true);
@@ -98,15 +97,15 @@ export default function TatMasterTab() {
         .select("*")
         .order("created_at", { ascending: true });
 
-      if (!error && data && data.length > 0) {
-        setTatList(data);
+      if (error) {
+        console.error("Could not query tat_master from Supabase:", error);
+        setTatList([]);
       } else {
-        // Fallback to defaults
-        setTatList(DEFAULT_TAT_CONFIGS);
+        setTatList(data || []);
       }
     } catch (err) {
-      console.warn("Could not query tat_master, using defaults:", err);
-      setTatList(DEFAULT_TAT_CONFIGS);
+      console.error("Could not query tat_master from Supabase:", err);
+      setTatList([]);
     } finally {
       setIsLoading(false);
     }
@@ -144,7 +143,7 @@ export default function TatMasterTab() {
   // Open Create Modal
   const handleOpenCreate = () => {
     setIsEditing(false);
-    setEditingId(null);
+    setEditingItem(null);
     setFormSystemId("sample");
     setFormPagePath("/dashboard/sample-management");
     setFormTatDays("5");
@@ -155,15 +154,15 @@ export default function TatMasterTab() {
   // Open Edit Modal
   const handleOpenEdit = (item) => {
     setIsEditing(true);
-    setEditingId(item.id || item.page_path);
+    setEditingItem(item);
     setFormSystemId(item.system_id || "sample");
     setFormPagePath(item.page_path || "/dashboard/sample-management");
-    setFormTatDays(String(item.tat_days || 5));
+    setFormTatDays(String(item.tat_days ?? 5));
     setFormDescription(item.description || "");
     setIsModalOpen(true);
   };
 
-  // Save / Update TAT Rule
+  // Save / Update TAT Rule directly in Supabase
   const handleSave = async (e) => {
     e.preventDefault();
     const days = parseInt(formTatDays, 10);
@@ -175,67 +174,152 @@ export default function TatMasterTab() {
     const selectedSys = AVAILABLE_SYSTEMS.find((s) => s.id === formSystemId);
     const selectedPage = selectedSys?.pages.find((p) => p.path === formPagePath);
 
-    const payload = {
-      system_id: formSystemId,
-      system_name: selectedSys ? selectedSys.name : formSystemId,
-      page_name: selectedPage ? selectedPage.name : formPagePath,
-      page_path: formPagePath,
-      tat_days: days,
-      description: formDescription.trim(),
-      updated_at: new Date().toISOString(),
-    };
-
     try {
       setIsSaving(true);
-      const { error } = await supabase
-        .from("tat_master")
-        .upsert([payload], { onConflict: "system_id, page_path" });
 
-      if (error) {
-        // Local state optimistic update if DB table is missing
-        console.warn("DB update failed, updating local state:", error);
-        setTatList((prev) => {
-          const idx = prev.findIndex((p) => p.page_path === formPagePath);
-          if (idx >= 0) {
-            const next = [...prev];
-            next[idx] = { ...next[idx], ...payload };
-            return next;
-          }
-          return [...prev, { id: `local_${Date.now()}`, ...payload }];
-        });
+      if (isEditing && editingItem?.id) {
+        // Direct UPDATE in Supabase by ID
+        const { error } = await supabase
+          .from("tat_master")
+          .update({
+            system_id: formSystemId,
+            system_name: selectedSys ? selectedSys.name : formSystemId,
+            page_name: selectedPage ? selectedPage.name : formPagePath,
+            page_path: formPagePath,
+            tat_days: days,
+            description: formDescription.trim(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", editingItem.id);
+
+        if (error) throw error;
+        showToast(
+          `TAT rule for "${selectedPage?.name || editingItem.page_name}" updated in database!`,
+          "success"
+        );
       } else {
-        await loadTatConfigs();
+        // Direct INSERT / UPSERT in Supabase
+        const payload = {
+          system_id: formSystemId,
+          system_name: selectedSys ? selectedSys.name : formSystemId,
+          page_name: selectedPage ? selectedPage.name : formPagePath,
+          page_path: formPagePath,
+          tat_days: days,
+          description: formDescription.trim(),
+          updated_at: new Date().toISOString(),
+        };
+
+        const { error } = await supabase
+          .from("tat_master")
+          .upsert([payload], { onConflict: "system_id, page_path" });
+
+        if (error) throw error;
+        showToast(
+          `TAT rule for "${payload.page_name}" saved to database!`,
+          "success"
+        );
       }
 
-      showToast(
-        `TAT rule for ${selectedPage?.name || "page"} saved successfully!`,
-        "success"
-      );
       setIsModalOpen(false);
+      await loadTatConfigs();
     } catch (err) {
-      console.error("Error saving TAT master:", err);
-      showToast("Failed to save TAT rule", "error");
+      console.error("Error saving TAT master to Supabase:", err);
+      showToast(err.message || "Failed to save TAT rule to Supabase", "error");
     } finally {
       setIsSaving(false);
     }
   };
 
-  // Delete TAT Rule
+  // Delete TAT Rule directly in Supabase
   const handleDelete = async (item) => {
     if (!window.confirm(`Are you sure you want to remove the TAT rule for "${item.page_name}"?`)) {
       return;
     }
 
     try {
-      if (item.id && typeof item.id === "string" && !item.id.startsWith("local_")) {
+      if (item.id) {
         const { error } = await supabase.from("tat_master").delete().eq("id", item.id);
         if (error) throw error;
+      } else if (item.page_path) {
+        const { error } = await supabase.from("tat_master").delete().eq("page_path", item.page_path);
+        if (error) throw error;
       }
-      setTatList((prev) => prev.filter((p) => p.page_path !== item.page_path));
-      showToast(`TAT rule for "${item.page_name}" removed`, "success");
+
+      showToast(`TAT rule for "${item.page_name}" removed from database`, "success");
+      await loadTatConfigs();
     } catch (err) {
-      console.error("Error deleting TAT rule:", err);
-      showToast("Could not delete from database", "error");
+      console.error("Error deleting TAT rule from database:", err);
+      showToast(err.message || "Could not delete from database", "error");
+    }
+  };
+
+  // Seed default system modules directly into Supabase
+  const handleSeedDefaults = async () => {
+    const initialConfigs = [
+      {
+        system_id: "sample",
+        system_name: "Sample System",
+        page_name: "Sample Management",
+        page_path: "/dashboard/sample-management",
+        tat_days: 5,
+        description: "Sample inquiry to dispatch SLA",
+      },
+      {
+        system_id: "production",
+        system_name: "Production Planning and Monitoring",
+        page_name: "Production Planning and Monitoring",
+        page_path: "/dashboard/bulk-order",
+        tat_days: 15,
+        description: "Work order production completion SLA",
+      },
+      {
+        system_id: "procurement",
+        system_name: "Procurement System",
+        page_name: "New Leather Development",
+        page_path: "/dashboard/procurement/new-leather",
+        tat_days: 7,
+        description: "Swatch and lab dip receipt SLA",
+      },
+      {
+        system_id: "procurement",
+        system_name: "Procurement System",
+        page_name: "Daily Leather Procurement",
+        page_path: "/dashboard/procurement/daily-leather",
+        tat_days: 4,
+        description: "Stock check and order receipt SLA",
+      },
+      {
+        system_id: "procurement",
+        system_name: "Procurement System",
+        page_name: "Daily Material Procurement",
+        page_path: "/dashboard/procurement/material",
+        tat_days: 3,
+        description: "Material indent and store update SLA",
+      },
+      {
+        system_id: "procurement",
+        system_name: "Procurement System",
+        page_name: "Packaging Procurement",
+        page_path: "/dashboard/procurement/packaging",
+        tat_days: 5,
+        description: "Packaging release and receipt SLA",
+      },
+    ];
+
+    try {
+      setIsLoading(true);
+      const { error } = await supabase
+        .from("tat_master")
+        .upsert(initialConfigs, { onConflict: "system_id, page_path" });
+
+      if (error) throw error;
+      showToast("Standard system rules saved to Supabase tat_master table!", "success");
+      await loadTatConfigs();
+    } catch (err) {
+      console.error("Error seeding tat_master:", err);
+      showToast(err.message || "Failed to initialize rules in Supabase", "error");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -339,8 +423,32 @@ export default function TatMasterTab() {
                 <tr>
                   <td colSpan={5} className="py-12 text-center text-slate-400">
                     <Clock className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                    <p className="font-bold text-slate-600">No TAT rules found</p>
-                    <p className="text-[11px] mt-0.5">Click "Add TAT Master" above to create one.</p>
+                    <p className="font-bold text-slate-600">
+                      {tatList.length === 0 ? "No TAT rules in database" : "No matching TAT rules"}
+                    </p>
+                    <p className="text-[11px] mt-0.5 text-slate-400">
+                      {tatList.length === 0
+                        ? "Your Supabase tat_master table is currently empty."
+                        : "Try adjusting your search query or operational system filter."}
+                    </p>
+                    {tatList.length === 0 && (
+                      <div className="mt-4 flex items-center justify-center gap-3">
+                        <button
+                          type="button"
+                          onClick={handleOpenCreate}
+                          className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> Add First Rule
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSeedDefaults}
+                          className="px-4 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200/80 font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+                        >
+                          <Database className="w-3.5 h-3.5" /> Seed Default System Modules
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ) : (
@@ -468,6 +576,11 @@ export default function TatMasterTab() {
                       {sys.name}
                     </option>
                   ))}
+                  {!AVAILABLE_SYSTEMS.some((sys) => sys.id === formSystemId) && (
+                    <option value={formSystemId}>
+                      {editingItem?.system_name || formSystemId}
+                    </option>
+                  )}
                 </select>
               </div>
 
@@ -487,6 +600,11 @@ export default function TatMasterTab() {
                       {p.name} ({p.path})
                     </option>
                   ))}
+                  {!(AVAILABLE_SYSTEMS.find((s) => s.id === formSystemId)?.pages || []).some((p) => p.path === formPagePath) && (
+                    <option value={formPagePath}>
+                      {editingItem?.page_name || formPagePath} ({formPagePath})
+                    </option>
+                  )}
                 </select>
               </div>
 

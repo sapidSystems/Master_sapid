@@ -35,8 +35,7 @@ export default function BuyerCodesTab() {
   // Form State
   const [formData, setFormData] = useState({
     buyerName: '',
-    buyerCode: '',
-    description: ''
+    buyerCode: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
@@ -47,15 +46,14 @@ export default function BuyerCodesTab() {
     const q = searchQuery.toLowerCase();
     return buyerCodes.filter(b =>
       b.buyerCode.toLowerCase().includes(q) ||
-      b.buyerName.toLowerCase().includes(q) ||
-      (b.description && b.description.toLowerCase().includes(q))
+      b.buyerName.toLowerCase().includes(q)
     );
   }, [buyerCodes, searchQuery]);
 
   const handleOpenAdd = () => {
     setIsEditing(false);
     setCurrentId(null);
-    setFormData({ buyerName: '', buyerCode: '', description: '' });
+    setFormData({ buyerName: '', buyerCode: '' });
     setFormError('');
     setIsModalOpen(true);
   };
@@ -65,8 +63,7 @@ export default function BuyerCodesTab() {
     setCurrentId(item.id);
     setFormData({
       buyerName: item.buyerName || '',
-      buyerCode: item.buyerCode || '',
-      description: item.description || ''
+      buyerCode: item.buyerCode || ''
     });
     setFormError('');
     setIsModalOpen(true);
@@ -75,10 +72,6 @@ export default function BuyerCodesTab() {
   const handleSave = async (e) => {
     e.preventDefault();
     setFormError('');
-    if (!formData.buyerName.trim()) {
-      setFormError('Customer / Buyer Name is required');
-      return;
-    }
     if (!formData.buyerCode.trim()) {
       setFormError('Buyer Code is required');
       return;
@@ -164,7 +157,7 @@ export default function BuyerCodesTab() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by Buyer Code, Customer Name, or Notes..."
+            placeholder="Search by Buyer Code or Customer Name..."
             className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm outline-none focus:bg-white focus:border-purple-600 transition-colors"
           />
           {searchQuery && (
@@ -191,7 +184,6 @@ export default function BuyerCodesTab() {
               <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
                 <th className="px-5 py-3.5">Buyer Code</th>
                 <th className="px-5 py-3.5">Customer / Buyer Name</th>
-                <th className="px-5 py-3.5">Description / Remarks</th>
                 <th className="px-5 py-3.5 text-center">Actions</th>
               </tr>
             </thead>
@@ -206,11 +198,8 @@ export default function BuyerCodesTab() {
                   <td className="px-5 py-3.5 font-semibold text-slate-900">
                     <div className="flex items-center gap-2">
                       <Building2 className="w-4 h-4 text-slate-400" />
-                      <span>{item.buyerName}</span>
+                      <span>{item.buyerName?.trim() || <span className="text-slate-400 font-normal italic">Not specified</span>}</span>
                     </div>
-                  </td>
-                  <td className="px-5 py-3.5 text-slate-500 max-w-xs truncate">
-                    {item.description || '—'}
                   </td>
                   <td className="px-5 py-3.5 text-center">
                     <div className="inline-flex items-center gap-1.5">
@@ -239,7 +228,7 @@ export default function BuyerCodesTab() {
               ))}
               {filteredList.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-5 py-12 text-center text-slate-400">
+                  <td colSpan={3} className="px-5 py-12 text-center text-slate-400">
                     <Users className="w-10 h-10 mx-auto text-slate-300 mb-2" />
                     <p className="font-semibold text-slate-600">No buyer codes found</p>
                     <p className="text-xs text-slate-400 mt-0.5">Try searching with a different term or add a new code.</p>
@@ -283,11 +272,10 @@ export default function BuyerCodesTab() {
             <form onSubmit={handleSave} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Customer / Buyer Name <span className="text-rose-500">*</span>
+                  Customer / Buyer Name
                 </label>
                 <input
                   type="text"
-                  required
                   placeholder="e.g. Dolce & Gabbana, Inditex, Zara"
                   value={formData.buyerName}
                   onChange={(e) => setFormData({ ...formData, buyerName: e.target.value })}
@@ -310,19 +298,6 @@ export default function BuyerCodesTab() {
                 <p className="text-[11px] text-slate-500 mt-1">
                   Short uppercase identifier used across Work Orders and Procurement filters.
                 </p>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Description / Remarks
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="Optional customer notes, division or requirements..."
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3.5 py-2.5 text-xs md:text-sm border border-slate-300 rounded-xl outline-none focus:border-purple-600 font-medium resize-none"
-                />
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">

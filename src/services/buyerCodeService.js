@@ -1,189 +1,128 @@
 import { useState, useEffect, useCallback } from 'react';
 import supabase from '../SupabaseClient';
 
-export const DEFAULT_BUYER_CODES = [
-  { id: 'BC-1', buyerCode: 'DG', buyerName: 'Dolce & Gabbana', description: 'Luxury apparel and footwear' },
-  { id: 'BC-2', buyerCode: 'IT', buyerName: 'Inditex Group', description: 'Global retail fashion' },
-  { id: 'BC-3', buyerCode: 'VL', buyerName: 'Valentino', description: 'Couture & leather goods' },
-  { id: 'BC-4', buyerCode: 'VBL', buyerName: 'Van Bommel', description: 'Heritage shoe manufacturer' },
-  { id: 'BC-5', buyerCode: 'TK', buyerName: 'Ted Baker', description: 'Lifestyle brand' },
-  { id: 'BC-6', buyerCode: 'ND', buyerName: 'Nordstrom', description: 'Department store retail' },
-  { id: 'BC-7', buyerCode: 'AH', buyerName: 'Armani House', description: 'Designer fashion' },
-  { id: 'BC-8', buyerCode: 'OX', buyerName: 'Oxford Footwear', description: 'Classic dress shoes' },
-  { id: 'BC-9', buyerCode: 'PO', buyerName: 'Polo Ralph Lauren', description: 'Apparel and accessories' },
-  { id: 'BC-10', buyerCode: 'AT', buyerName: 'Ann Taylor', description: 'Retail fashion' },
-  { id: 'BC-11', buyerCode: 'ZS', buyerName: 'Zalando SE', description: 'E-commerce fashion' },
-  { id: 'BC-12', buyerCode: 'EE', buyerName: 'Ecco Enterprises', description: 'Footwear & leather' },
-  { id: 'BC-13', buyerCode: 'DOI', buyerName: 'Department of Industry', description: 'Institutional' },
-  { id: 'BC-14', buyerCode: 'AK', buyerName: 'Anne Klein', description: 'Women apparel and footwear' },
-  { id: 'BC-15', buyerCode: 'DLW', buyerName: 'Deluxe Leather Works', description: 'Specialty leather' },
-  { id: 'BC-16', buyerCode: 'BUYER-A1', buyerName: 'Prime Retail A1', description: 'Wholesale client' },
-  { id: 'BC-17', buyerCode: 'SH', buyerName: 'Schuh Holdings', description: 'Footwear retail' },
-  { id: 'BC-18', buyerCode: 'XOZ', buyerName: 'XOZ International', description: 'Export client' },
-];
+export const DEFAULT_BUYER_CODES = [];
 
 const LOCAL_STORAGE_KEY = 'master_buyer_codes_cache';
 
-// Helper to read cached codes
+// Helper to read cached codes from localStorage
 export const getCachedBuyerCodes = () => {
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) return parsed;
     }
   } catch (err) {
     console.warn('Error reading cached buyer codes:', err);
   }
-  return DEFAULT_BUYER_CODES;
+  return [];
 };
 
 // Helper to save cached codes
 export const setCachedBuyerCodes = (codes) => {
   try {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(codes));
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(codes || []));
     window.dispatchEvent(new CustomEvent('buyer-codes-updated', { detail: codes }));
   } catch (err) {
     console.warn('Error saving cached buyer codes:', err);
   }
 };
 
-// Fetch master buyer codes from Supabase (falling back to cache/defaults)
+// Fetch master buyer codes directly from Supabase master_buyer_codes table
 export const fetchMasterBuyerCodes = async () => {
   try {
     const { data, error } = await supabase
-      .from('dropdown_options')
-      .select('*')
-      .eq('project_type', 'buyer_code')
-      .order('created_at', { ascending: true });
+      .from('master_buyer_codes')
+      .select('id, buyer_code, buyer_name, created_at, updated_at')
+      .order('buyer_code', { ascending: true });
 
     if (error) throw error;
 
-    if (data && data.length > 0) {
-      const mapped = data.map(row => ({
-        id: row.id,
-        buyerCode: (row.task_status || '').trim().toUpperCase(),
-        buyerName: row.part_name || '',
-        description: row.machine_name || '',
-        createdAt: row.created_at
-      })).filter(b => Boolean(b.buyerCode));
+    const mapped = (data || []).map(row => ({
+      id: row.id,
+      buyerCode: (row.buyer_code || '').trim().toUpperCase(),
+      buyerName: (row.buyer_name || '').trim(),
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    })).filter(b => Boolean(b.buyerCode));
 
-      setCachedBuyerCodes(mapped);
-      return mapped;
-    } else {
-      // Seed default buyer codes into Supabase dropdown_options
-      const seedEntries = DEFAULT_BUYER_CODES.map(b => ({
-        project_type: 'buyer_code',
-        part_name: b.buyerName,
-        task_status: b.buyerCode.toUpperCase(),
-        machine_name: b.description || ''
-      }));
-
-      const { data: inserted, error: seedError } = await supabase
-        .from('dropdown_options')
-        .insert(seedEntries)
-        .select();
-
-      if (!seedError && inserted && inserted.length > 0) {
-        const mapped = inserted.map(row => ({
-          id: row.id,
-          buyerCode: (row.task_status || '').trim().toUpperCase(),
-          buyerName: row.part_name || '',
-          description: row.machine_name || '',
-          createdAt: row.created_at
-        }));
-        setCachedBuyerCodes(mapped);
-        return mapped;
-      }
-    }
+    setCachedBuyerCodes(mapped);
+    return mapped;
   } catch (err) {
-    console.warn('Using cached buyer codes due to fetch error:', err);
+    console.error('Error fetching master buyer codes from master_buyer_codes:', err);
+    return getCachedBuyerCodes();
   }
-
-  const cached = getCachedBuyerCodes();
-  return cached;
 };
 
-// Create a new Buyer Code
-export const createMasterBuyerCode = async ({ buyerName = '', buyerCode, description = '' }) => {
+// Create a new Buyer Code directly in Supabase master_buyer_codes table
+export const createMasterBuyerCode = async ({ buyerName = '', buyerCode }) => {
   const cleanCode = (buyerCode || '').trim().toUpperCase();
-  const cleanName = (buyerName || '').trim() || cleanCode;
+  const cleanName = (buyerName || '').trim();
 
   if (!cleanCode) throw new Error('Buyer Code is required');
 
-  // Check uniqueness in current cache
-  const existing = getCachedBuyerCodes();
-  const found = existing.find(b => b.buyerCode.toUpperCase() === cleanCode);
-  if (found) {
-    return found; // Return existing record if code already exists
-  }
+  const { data, error } = await supabase
+    .from('master_buyer_codes')
+    .insert([{
+      buyer_code: cleanCode,
+      buyer_name: cleanName
+    }])
+    .select()
+    .single();
 
-  const payload = {
-    project_type: 'buyer_code',
-    part_name: cleanName,
-    task_status: cleanCode,
-    machine_name: description.trim()
-  };
-
-  let newId = `BC-${Date.now()}`;
-  try {
-    const { data, error } = await supabase
-      .from('dropdown_options')
-      .insert([payload])
-      .select()
-      .single();
-
-    if (!error && data) {
-      newId = data.id;
-    } else if (error) {
-      console.warn('Could not insert buyer code to remote database, saving locally:', error);
+  if (error) {
+    console.error('Error creating buyer code in master_buyer_codes:', error);
+    if (error.code === '23505' || String(error.message).includes('duplicate') || String(error.message).includes('unique')) {
+      throw new Error(`Buyer Code "${cleanCode}" already exists.`);
     }
-  } catch (err) {
-    console.warn('Remote buyer code insert error, saving locally:', err);
+    throw new Error(error.message || 'Failed to create Buyer Code');
   }
 
   const newRecord = {
-    id: newId,
-    buyerCode: cleanCode,
-    buyerName: cleanName,
-    description: description.trim(),
-    createdAt: new Date().toISOString()
+    id: data.id,
+    buyerCode: data.buyer_code,
+    buyerName: data.buyer_name,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at
   };
 
-  const updatedList = [...existing, newRecord].sort((a, b) => a.buyerCode.localeCompare(b.buyerCode));
+  const existing = getCachedBuyerCodes();
+  const updatedList = [...existing.filter(b => b.buyerCode !== cleanCode), newRecord]
+    .sort((a, b) => a.buyerCode.localeCompare(b.buyerCode));
   setCachedBuyerCodes(updatedList);
   return newRecord;
 };
 
-// Update an existing Buyer Code
-export const updateMasterBuyerCode = async (id, { buyerName, buyerCode, description = '' }) => {
-  const cleanCode = buyerCode.trim().toUpperCase();
-  const cleanName = buyerName.trim();
+// Update an existing Buyer Code directly in Supabase master_buyer_codes table
+export const updateMasterBuyerCode = async (id, { buyerName, buyerCode }) => {
+  const cleanCode = (buyerCode || '').trim().toUpperCase();
+  const cleanName = (buyerName || '').trim();
 
   if (!cleanCode) throw new Error('Buyer Code is required');
-  if (!cleanName) throw new Error('Customer / Buyer Name is required');
-
-  const existing = getCachedBuyerCodes();
-  const duplicate = existing.find(b => b.buyerCode.toUpperCase() === cleanCode && String(b.id) !== String(id));
-  if (duplicate) {
-    throw new Error(`Buyer Code "${cleanCode}" is already in use by another customer.`);
-  }
-
-  const payload = {
-    part_name: cleanName,
-    task_status: cleanCode,
-    machine_name: description.trim()
-  };
 
   const { error } = await supabase
-    .from('dropdown_options')
-    .update(payload)
-    .eq('id', id);
+    .from('master_buyer_codes')
+    .update({
+      buyer_code: cleanCode,
+      buyer_name: cleanName,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', id)
+    .select()
+    .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error('Error updating buyer code in master_buyer_codes:', error);
+    if (error.code === '23505' || String(error.message).includes('duplicate') || String(error.message).includes('unique')) {
+      throw new Error(`Buyer Code "${cleanCode}" is already in use by another customer.`);
+    }
+    throw new Error(error.message || 'Failed to update Buyer Code');
+  }
 
+  const existing = getCachedBuyerCodes();
   const updatedList = existing.map(b => (String(b.id) === String(id)
-    ? { ...b, buyerCode: cleanCode, buyerName: cleanName, description: description.trim() }
+    ? { ...b, buyerCode: cleanCode, buyerName: cleanName }
     : b
   )).sort((a, b) => a.buyerCode.localeCompare(b.buyerCode));
 
@@ -191,14 +130,17 @@ export const updateMasterBuyerCode = async (id, { buyerName, buyerCode, descript
   return true;
 };
 
-// Delete a Buyer Code
+// Delete a Buyer Code directly in Supabase master_buyer_codes table
 export const deleteMasterBuyerCode = async (id) => {
   const { error } = await supabase
-    .from('dropdown_options')
+    .from('master_buyer_codes')
     .delete()
     .eq('id', id);
 
-  if (error) throw error;
+  if (error) {
+    console.error('Error deleting buyer code from master_buyer_codes:', error);
+    throw new Error(error.message || 'Failed to delete Buyer Code');
+  }
 
   const existing = getCachedBuyerCodes();
   const updatedList = existing.filter(b => String(b.id) !== String(id));
@@ -237,8 +179,8 @@ export const useBuyerCodes = () => {
     window.addEventListener('buyer-codes-updated', handleUpdate);
 
     const channel = supabase
-      .channel('dropdown_options_buyer_codes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'dropdown_options' }, () => {
+      .channel('master_buyer_codes_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'master_buyer_codes' }, () => {
         reload();
       })
       .subscribe();
