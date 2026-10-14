@@ -830,10 +830,10 @@ export default function ProductionMonitoring() {
             /* Work Orders Card View */
             <ProductionCardView
               plans={filteredPlans}
-              onAction={activeTab === 'active' ? openUpdateModal : undefined}
-              actionLabel="Update"
+              onAction={handleOpenUpdate}
+              actionLabel={activeTab === 'history' ? 'View / Edit' : 'Update'}
               actionIcon={<Pencil className="w-3 h-3" />}
-              onCardClick={(p) => openUpdateModal(p)}
+              onCardClick={(p) => handleOpenUpdate(p)}
               emptyMessage={activeTab === 'history' ? 'No completed orders in history' : 'No active work orders found'}
             />
           ) : (
