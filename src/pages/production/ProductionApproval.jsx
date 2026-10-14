@@ -15,9 +15,12 @@ import {
   X,
   AlertTriangle,
   History,
-  Sliders
+  Sliders,
+  List,
+  LayoutGrid
 } from 'lucide-react';
 import AdminLayout from '../../components/layout/AdminLayout';
+import ProductionCardView from '../../components/common/ProductionCardView';
 import {
   fetchProductionPlans,
   approveProductionPlan,
@@ -38,6 +41,7 @@ export default function ProductionApproval() {
   const [activeTab, setActiveTab] = useState('pending'); // 'pending' | 'history'
   const [searchQuery, setSearchQuery] = useState('');
   const [historyFilter, setHistoryFilter] = useState('all'); // 'all' | 'approved' | 'rejected'
+  const [viewMode, setViewMode] = useState('table');
 
   // Modals
   const [selectedPlan, setSelectedPlan] = useState(null);
@@ -348,19 +352,60 @@ export default function ProductionApproval() {
               )}
             </div>
 
-            <div className="text-xs text-slate-500 font-medium">
-              {activeTab === 'pending'
-                ? `Showing ${filteredPending.length} pending approvals`
-                : `Showing ${filteredHistory.length} logged decisions`}
+            <div className="flex items-center gap-3">
+              <div className="text-xs text-slate-500 font-medium">
+                {activeTab === 'pending'
+                  ? `Showing ${filteredPending.length} pending approvals`
+                  : `Showing ${filteredHistory.length} logged decisions`}
+              </div>
+
+              {activeTab === 'pending' && (
+                <div className="inline-flex items-center p-1 bg-slate-100 border border-slate-200/80 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('table')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                      viewMode === 'table'
+                        ? 'bg-white text-slate-900 shadow-xs border border-slate-200/50'
+                        : 'text-slate-500 hover:text-slate-900'
+                    }`}
+                  >
+                    <List className="w-3.5 h-3.5" />
+                    <span>Table View</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('cards')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                      viewMode === 'cards'
+                        ? 'bg-white text-slate-900 shadow-xs border border-slate-200/50'
+                        : 'text-slate-500 hover:text-slate-900'
+                    }`}
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5" />
+                    <span>Card View</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Pending Approvals Content */}
           {activeTab === 'pending' && (
             <div className="space-y-4">
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse text-xs">
+              {viewMode === 'cards' ? (
+                <ProductionCardView
+                  plans={filteredPending}
+                  onAction={(plan) => handleOpenScheduleModal(plan)}
+                  actionLabel="Update"
+                  actionIcon={<Sliders className="w-3 h-3" />}
+                  onCardClick={(plan) => handleOpenScheduleModal(plan)}
+                  emptyMessage="No pending production plans awaiting approval."
+                />
+              ) : (
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
                     <thead>
                       <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
                         <th className="px-4 py-3.5 text-center">Action</th>
@@ -426,8 +471,9 @@ export default function ProductionApproval() {
                   </table>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
+        )}
 
           {/* History Content */}
           {activeTab === 'history' && (

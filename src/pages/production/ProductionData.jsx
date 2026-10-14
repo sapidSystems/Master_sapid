@@ -15,9 +15,12 @@ import {
   ArrowRight,
   RefreshCw,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  List,
+  LayoutGrid
 } from 'lucide-react';
 import AdminLayout from '../../components/layout/AdminLayout';
+import ProductionCardView from '../../components/common/ProductionCardView';
 import {
   fetchProductionPlans,
   createProductionPlan,
@@ -41,6 +44,7 @@ export default function ProductionData() {
   const [selectedStage, setSelectedStage] = useState('all');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [viewMode, setViewMode] = useState('table');
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -398,16 +402,57 @@ export default function ProductionData() {
                 )}
               </div>
 
-              <div>
-                Showing <strong>{filteredPlans.length}</strong> records
+              <div className="flex items-center gap-3">
+                <div>
+                  Showing <strong>{filteredPlans.length}</strong> records
+                </div>
+
+                <div className="inline-flex items-center p-1 bg-slate-100 border border-slate-200/80 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('table')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                      viewMode === 'table'
+                        ? 'bg-white text-slate-900 shadow-xs border border-slate-200/50'
+                        : 'text-slate-500 hover:text-slate-900'
+                    }`}
+                  >
+                    <List className="w-3.5 h-3.5" />
+                    <span>Table View</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('cards')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                      viewMode === 'cards'
+                        ? 'bg-white text-slate-900 shadow-xs border border-slate-200/50'
+                        : 'text-slate-500 hover:text-slate-900'
+                    }`}
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5" />
+                    <span>Card View</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Table */}
+          {/* Table / Card View */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
+            {viewMode === 'cards' ? (
+              <div className="p-5">
+                <ProductionCardView
+                  plans={paginatedPlans}
+                  onAction={(plan) => handleOpenEdit(plan)}
+                  actionLabel="Edit"
+                  actionIcon={<Edit2 className="w-3 h-3" />}
+                  onCardClick={(plan) => handleOpenStages(plan)}
+                  emptyMessage="No production records found matching the filters."
+                />
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
                     <th className="px-4 py-3.5 text-center">Actions</th>
@@ -520,6 +565,7 @@ export default function ProductionData() {
                 </tbody>
               </table>
             </div>
+            )}
 
             {/* Pagination Controls */}
             <div className="px-6 py-3 border-t border-slate-200 flex items-center justify-between text-xs text-slate-600">

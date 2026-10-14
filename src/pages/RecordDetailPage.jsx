@@ -10,6 +10,7 @@ import FilesTab from "../components/detail/FilesTab";
 import { ALL_SYSTEM_CONFIGS } from "../components/kanban/systemConfigs";
 import supabase from "../SupabaseClient";
 import { useMagicToast } from "../context/MagicToastContext";
+import { fetchProcurementForSinglePlan, mergeProcurementIntoStages } from "./production/productionService";
 import {
   Layers,
   Calendar,
@@ -260,6 +261,16 @@ export default function RecordDetailPage() {
         }
 
         const stagesList = ppRow.stages || [];
+        let mergedStages = stagesList;
+        try {
+          const procInfo = await fetchProcurementForSinglePlan(ppRow);
+          if (procInfo) {
+            mergedStages = mergeProcurementIntoStages(stagesList, procInfo);
+          }
+        } catch (procErr) {
+          console.warn("Could not fetch procurement info for detail page:", procErr);
+        }
+
         const isCompleted = ppRow.is_history === true;
         const isDelayed =
           !isCompleted &&
@@ -282,7 +293,7 @@ export default function RecordDetailPage() {
           raw: ppRow,
         };
 
-        const ms = stagesList.map((stg, idx) => ({
+        const ms = mergedStages.map((stg, idx) => ({
           id: `stage_${idx}`,
           stageId: stg.name,
           stageName: stg.name,

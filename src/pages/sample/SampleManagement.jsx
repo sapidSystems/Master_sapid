@@ -1,6 +1,22 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useMagicToast } from '../../context/MagicToastContext';
-import { Plus, Search, ChevronLeft, ChevronRight, X, Calendar, Edit2, Trash2, Filter } from 'lucide-react';
+import {
+  Plus,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  Calendar,
+  Edit2,
+  Trash2,
+  Filter,
+  List,
+  LayoutGrid,
+  Clock,
+  CheckCircle2,
+  Package,
+  Eye
+} from 'lucide-react';
 import DraggableScroll from '../../components/DraggableScroll';
 import supabase from '../../SupabaseClient';
 import AdminLayout from '../../components/layout/AdminLayout';
@@ -135,8 +151,6 @@ const generateDummyLeads = () => {
 const ALL_COLUMNS = [
   { id: 'buyerCoder', label: 'Buyer Code' },
   { id: 'receiptDate', label: 'Enquiry Receipt Date' },
-  { id: 'tatPlanned', label: 'TAT Planned' },
-  { id: 'tatDelay', label: 'TAT Delay' },
   { id: 'productName', label: 'Description of Enquiry' },
   { id: 'type', label: 'Type' },
   { id: 'requirementDate', label: 'Requirement Date' },
@@ -148,7 +162,9 @@ const ALL_COLUMNS = [
   { id: 'actualCompletionDate', label: 'Actual Completion Date' },
   { id: 'dispatchSentDate', label: 'Dispatch/Sent/Close Date' },
   { id: 'remarks', label: 'Remarks' },
-  { id: 'addedBy', label: 'Added By' }
+  { id: 'addedBy', label: 'Added By' },
+  { id: 'tatPlanned', label: 'TAT Planned' },
+  { id: 'tatDelay', label: 'TAT Delay' }
 ];
 
 export default function SampleManagement() {
@@ -268,6 +284,7 @@ export default function SampleManagement() {
   const [visibleColumns, setVisibleColumns] = useState(
     ALL_COLUMNS.reduce((acc, col) => ({ ...acc, [col.id]: true }), {})
   );
+  const [viewMode, setViewMode] = useState('table');
   const [filters, setFilters] = useState({
     fromDate: '',
     toDate: '',
@@ -630,6 +647,34 @@ export default function SampleManagement() {
             />
           </div>
 
+          {/* View Mode Toggle */}
+          <div className="inline-flex items-center p-1 bg-slate-100 border border-slate-200/80 rounded-xl flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                viewMode === 'table'
+                  ? 'bg-white text-slate-900 shadow-xs border border-slate-200/50'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              <List className="w-3.5 h-3.5" />
+              <span>Table</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('cards')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                viewMode === 'cards'
+                  ? 'bg-white text-slate-900 shadow-xs border border-slate-200/50'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>Cards</span>
+            </button>
+          </div>
+
           {/* Desktop Add Button */}
           {activeTab === 'pending' && canWrite && (
             <button
@@ -974,9 +1019,247 @@ export default function SampleManagement() {
             </div>
           ) : (
             <>
-          {/* Mobile View: Cards */}
-          <div className="md:hidden flex flex-col gap-2 p-2 overflow-y-auto flex-1 bg-slate-50/50 pb-2">
-            {paginatedLeads.map((lead) => (
+              {viewMode === 'cards' ? (
+                <div className="p-3 md:p-4 overflow-y-auto flex-1">
+                  {filteredLeads.length === 0 ? (
+                    <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-400">
+                      <Package className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+                      <p className="text-sm font-semibold text-slate-600">No sample records found</p>
+                      <p className="text-xs text-slate-400 mt-1">Try adjusting your filters or search keywords.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {paginatedLeads.map((lead) => {
+                        const isCompleted = activeTab === 'history' || Boolean(lead.dispatchSentDate);
+                        const todayDate = new Date();
+                        todayDate.setHours(0, 0, 0, 0);
+
+                        let isDelayed = false;
+                        let delayText = 'On Track';
+
+                        const targetDateStr = lead.requirementDate || lead.expectedCompletionDate;
+                        if (!isCompleted && targetDateStr) {
+                          const tDate = new Date(targetDateStr);
+                          if (!isNaN(tDate.getTime())) {
+                            tDate.setHours(0, 0, 0, 0);
+                            if (todayDate > tDate) {
+                              const diff = Math.max(1, Math.round((todayDate.getTime() - tDate.getTime()) / (1000 * 60 * 60 * 24)));
+                              isDelayed = true;
+                              delayText = `${diff}d delay`;
+                            } else if (todayDate.getTime() === tDate.getTime()) {
+                              delayText = 'Due Today';
+                            }
+                          }
+                        }
+
+                        return (
+                          <div
+                            key={lead.id}
+                            onClick={() => handleOpenFollowUp(lead)}
+                            className="group bg-white rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-md hover:border-amber-400 transition-all p-4 flex flex-col justify-between cursor-pointer relative overflow-hidden"
+                          >
+                            {/* Top Accent Strip */}
+                            <div
+                              className={`absolute top-0 left-0 right-0 h-1 ${
+                                isCompleted
+                                  ? 'bg-blue-500'
+                                  : isDelayed
+                                  ? 'bg-rose-500'
+                                  : 'bg-emerald-500'
+                              }`}
+                            />
+
+                            <div>
+                              {/* Header: Sample W/O No, Buyer Badge, Delay Badge */}
+                              <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2.5">
+                                <div>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    {visibleColumns.sampleWONo !== false && (
+                                      <span className="font-mono font-bold text-slate-900 text-sm group-hover:text-amber-800 transition-colors">
+                                        {lead.sampleWONo || lead.id}
+                                      </span>
+                                    )}
+                                    {visibleColumns.buyerCoder !== false && lead.buyerCoder && (
+                                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-200/80 font-mono">
+                                        {lead.buyerCoder}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {visibleColumns.sampleWODate !== false && lead.sampleWODate && (
+                                    <span className="text-[11px] text-slate-400 font-medium block mt-0.5">
+                                      WO Date: {formatDate(lead.sampleWODate)}
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="flex flex-col items-end gap-1">
+                                  {isCompleted ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                                      <CheckCircle2 className="w-3 h-3 text-blue-600" />
+                                      <span>Completed</span>
+                                    </span>
+                                  ) : isDelayed ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200 animate-pulse">
+                                      <Clock className="w-3 h-3 text-rose-600" />
+                                      <span>{delayText}</span>
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                      <span>{delayText}</span>
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Description & Type */}
+                              <div className="mt-2.5 space-y-1">
+                                {visibleColumns.productName !== false && (
+                                  <p className="text-xs font-semibold text-slate-800 line-clamp-2">
+                                    {lead.productName || 'No description'}
+                                  </p>
+                                )}
+                                {visibleColumns.type !== false && lead.type && (
+                                  <span className="inline-block text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
+                                    {lead.type}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Key Details Grid */}
+                              <div className="grid grid-cols-2 gap-2 mt-3 pt-2.5 border-t border-slate-100 text-xs">
+                                {visibleColumns.qty !== false && (
+                                  <div className="bg-slate-50/80 rounded-xl p-2 border border-slate-100">
+                                    <span className="text-[10px] text-slate-400 font-medium block uppercase tracking-wider">
+                                      Quantity
+                                    </span>
+                                    <span className="font-mono font-bold text-slate-900 text-xs">
+                                      {lead.qty || '—'}
+                                    </span>
+                                  </div>
+                                )}
+
+                                {visibleColumns.requirementDate !== false && (
+                                  <div className="bg-slate-50/80 rounded-xl p-2 border border-slate-100">
+                                    <span className="text-[10px] text-slate-400 font-medium block uppercase tracking-wider">
+                                      Req. Date
+                                    </span>
+                                    <span className="font-semibold text-slate-700 text-xs">
+                                      {formatDate(lead.requirementDate)}
+                                    </span>
+                                  </div>
+                                )}
+
+                                {visibleColumns.receiptDate !== false && (
+                                  <div className="bg-slate-50/80 rounded-xl p-2 border border-slate-100">
+                                    <span className="text-[10px] text-slate-400 font-medium block uppercase tracking-wider">
+                                      Receipt Date
+                                    </span>
+                                    <span className="font-semibold text-slate-700 text-xs">
+                                      {formatDate(lead.receiptDate)}
+                                    </span>
+                                  </div>
+                                )}
+
+                                {visibleColumns.sampleWOHandoverDate !== false && lead.sampleWOHandoverDate && (
+                                  <div className="bg-slate-50/80 rounded-xl p-2 border border-slate-100">
+                                    <span className="text-[10px] text-slate-400 font-medium block uppercase tracking-wider">
+                                      Handover Date
+                                    </span>
+                                    <span className="font-semibold text-slate-700 text-xs">
+                                      {formatDate(lead.sampleWOHandoverDate)}
+                                    </span>
+                                  </div>
+                                )}
+
+                                {visibleColumns.expectedCompletionDate !== false && (
+                                  <div className="bg-slate-50/80 rounded-xl p-2 border border-slate-100">
+                                    <span className="text-[10px] text-slate-400 font-medium block uppercase tracking-wider">
+                                      Expected Comp.
+                                    </span>
+                                    <span className="font-semibold text-slate-700 text-xs">
+                                      {formatDate(lead.expectedCompletionDate)}
+                                    </span>
+                                  </div>
+                                )}
+
+                                {visibleColumns.actualCompletionDate !== false && lead.actualCompletionDate && (
+                                  <div className="bg-slate-50/80 rounded-xl p-2 border border-slate-100">
+                                    <span className="text-[10px] text-slate-400 font-medium block uppercase tracking-wider">
+                                      Actual Comp.
+                                    </span>
+                                    <span className="font-semibold text-slate-700 text-xs">
+                                      {formatDate(lead.actualCompletionDate)}
+                                    </span>
+                                  </div>
+                                )}
+
+                                {visibleColumns.dispatchSentDate !== false && lead.dispatchSentDate && (
+                                  <div className="bg-slate-50/80 rounded-xl p-2 border border-slate-100">
+                                    <span className="text-[10px] text-slate-400 font-medium block uppercase tracking-wider">
+                                      Dispatch Date
+                                    </span>
+                                    <span className="font-semibold text-slate-700 text-xs">
+                                      {formatDate(lead.dispatchSentDate)}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Remarks */}
+                              {visibleColumns.remarks !== false && lead.remarks && (
+                                <div className="mt-2.5 p-2 bg-amber-50/40 rounded-xl border border-amber-100/70 text-[11px] text-slate-600 italic">
+                                  <span className="font-semibold not-italic text-slate-500 mr-1">Remark:</span>
+                                  {lead.remarks}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Footer with Added By and Action */}
+                            <div className="flex items-center justify-between gap-2 mt-3 pt-2.5 border-t border-slate-100">
+                              <span className="text-[11px] text-slate-400 font-medium truncate">
+                                {visibleColumns.addedBy !== false && lead.addedBy ? `By: ${lead.addedBy}` : ''}
+                              </span>
+
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenFollowUp(lead);
+                                }}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors cursor-pointer"
+                              >
+                                {activeTab === 'pending' ? (
+                                  canWrite ? (
+                                    <>
+                                      <Edit2 className="w-3 h-3" />
+                                      <span>Update</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Eye className="w-3 h-3" />
+                                      <span>View</span>
+                                    </>
+                                  )
+                                ) : (
+                                  <>
+                                    <Eye className="w-3 h-3" />
+                                    <span>View Details</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {/* Mobile View: Cards */}
+                  <div className="md:hidden flex flex-col gap-2 p-2 overflow-y-auto flex-1 bg-slate-50/50 pb-2">
+                    {paginatedLeads.map((lead) => (
               <div key={lead.id} className={`rounded-lg border shadow-[0_2px_10px_-4px_rgba(79,70,229,0.1)] p-2.5 relative flex flex-col gap-2 transition-all ${getRowColorClass(lead.requirementDate)}`}>
                 <div className="flex justify-between items-start border-b border-black/10 pb-2">
                   <div>
@@ -1017,28 +1300,6 @@ export default function SampleManagement() {
                        <span className="font-medium text-gray-800">{formatDate(lead.receiptDate)}</span>
                     </div>
                   )}
-                  {visibleColumns.tatPlanned && (
-                    <div>
-                       <span className="text-gray-500 block text-[10px] uppercase tracking-wide">TAT Planned</span>
-                       <TatPlannedCell
-                         tatDays={sampleTatDays}
-                         startDate={lead.receiptDate || lead.sampleWODate || lead.timestamp}
-                       />
-                    </div>
-                  )}
-                  {visibleColumns.tatDelay && (
-                    <div>
-                       <span className="text-gray-500 block text-[10px] uppercase tracking-wide">TAT Delay</span>
-                       <TatDelayCell
-                         status={calculateTatStatus({
-                           tatDays: sampleTatDays,
-                           startDate: lead.receiptDate || lead.sampleWODate || lead.timestamp,
-                           endDate: lead.dispatchSentDate || lead.actualCompletionDate || lead.completionDate,
-                           isCompleted: activeTab === 'history' || Boolean(lead.dispatchSentDate)
-                         })}
-                       />
-                    </div>
-                  )}
                   {visibleColumns.addedBy && (
                     <div>
                        <span className="text-gray-500 block text-[10px] uppercase tracking-wide">Added By</span>
@@ -1074,6 +1335,28 @@ export default function SampleManagement() {
                     <div>
                       <span className="text-gray-500 block text-[10px] uppercase tracking-wide">Dispatch Date</span>
                       <span className="font-medium text-gray-800">{formatDate(lead.dispatchSentDate)}</span>
+                    </div>
+                  )}
+                  {visibleColumns.tatPlanned && (
+                    <div>
+                       <span className="text-gray-500 block text-[10px] uppercase tracking-wide">TAT Planned</span>
+                       <TatPlannedCell
+                         tatDays={sampleTatDays}
+                         startDate={lead.receiptDate || lead.sampleWODate || lead.timestamp}
+                       />
+                    </div>
+                  )}
+                  {visibleColumns.tatDelay && (
+                    <div>
+                       <span className="text-gray-500 block text-[10px] uppercase tracking-wide">TAT Delay</span>
+                       <TatDelayCell
+                         status={calculateTatStatus({
+                           tatDays: sampleTatDays,
+                           startDate: lead.receiptDate || lead.sampleWODate || lead.timestamp,
+                           endDate: lead.dispatchSentDate || lead.actualCompletionDate || lead.completionDate,
+                           isCompleted: activeTab === 'history' || Boolean(lead.dispatchSentDate)
+                         })}
+                       />
                     </div>
                   )}
                 </div>
@@ -1135,16 +1418,6 @@ export default function SampleManagement() {
                           {sortConfig.key === 'receiptDate' ? (sortConfig.direction === 'asc' ? ' ▲' : ' ▼') : ' ↕'}
                         </span>
                       </div>
-                    </th>
-                  )}
-                  {visibleColumns.tatPlanned && (
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-purple-900 bg-purple-50/50 whitespace-nowrap">
-                      TAT Planned
-                    </th>
-                  )}
-                  {visibleColumns.tatDelay && (
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-purple-900 bg-purple-50/50 whitespace-nowrap">
-                      TAT Delay
                     </th>
                   )}
                   {visibleColumns.productName && (
@@ -1305,6 +1578,16 @@ export default function SampleManagement() {
                       </div>
                     </th>
                   )}
+                  {visibleColumns.tatPlanned && (
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-purple-900 bg-purple-50/50 whitespace-nowrap">
+                      TAT Planned
+                    </th>
+                  )}
+                  {visibleColumns.tatDelay && (
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-purple-900 bg-purple-50/50 whitespace-nowrap">
+                      TAT Delay
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -1322,6 +1605,20 @@ export default function SampleManagement() {
                     )}
                     {visibleColumns.buyerCoder && <td className="px-4 py-3 text-left text-sm text-gray-900 font-medium">{lead.buyerCoder}</td>}
                     {visibleColumns.receiptDate && <td className="px-4 py-3 text-left text-sm text-gray-700 whitespace-nowrap">{formatDate(lead.receiptDate)}</td>}
+                    {visibleColumns.productName && <td className="px-4 py-3 text-left text-sm text-gray-900">{lead.productName || '-'}</td>}
+                    {visibleColumns.type && <td className="px-4 py-3 text-left text-sm text-gray-700">{lead.type}</td>}
+                    {visibleColumns.requirementDate && <td className="px-4 py-3 text-left text-sm text-gray-700">{formatDate(lead.requirementDate)}</td>}
+                    {visibleColumns.sampleWONo && <td className="px-4 py-3 text-left text-sm text-indigo-600 font-bold">{lead.sampleWONo}</td>}
+                    {visibleColumns.sampleWODate && <td className="px-4 py-3 text-left text-sm text-gray-700 whitespace-nowrap">{lead.sampleWODate ? formatDate(lead.sampleWODate) : '-'}</td>}
+                    {visibleColumns.qty && <td className="px-4 py-3 text-center text-sm font-semibold text-sky-700 bg-sky-50">{lead.qty}</td>}
+
+                    {visibleColumns.sampleWOHandoverDate && <td className="px-4 py-3 text-left text-sm text-gray-700 whitespace-nowrap">{formatDate(lead.sampleWOHandoverDate)}</td>}
+                    {visibleColumns.expectedCompletionDate && <td className="px-4 py-3 text-left text-sm text-gray-700 whitespace-nowrap">{formatDate(lead.expectedCompletionDate)}</td>}
+                    {visibleColumns.actualCompletionDate && <td className="px-4 py-3 text-left text-sm text-gray-700 whitespace-nowrap">{formatDate(lead.actualCompletionDate)}</td>}
+                    {visibleColumns.dispatchSentDate && <td className="px-4 py-3 text-left text-sm text-gray-700 whitespace-nowrap">{formatDate(lead.dispatchSentDate)}</td>}
+
+                    {visibleColumns.remarks && <td className="px-4 py-3 text-left text-sm text-gray-500 max-w-[200px] truncate">{lead.remarks || '-'}</td>}
+                    {visibleColumns.addedBy && <td className="px-4 py-3 text-left text-sm text-gray-700 font-semibold">{lead.addedBy || '-'}</td>}
                     {visibleColumns.tatPlanned && (
                       <td className="px-4 py-3 text-left text-sm whitespace-nowrap">
                         <TatPlannedCell
@@ -1342,20 +1639,6 @@ export default function SampleManagement() {
                         />
                       </td>
                     )}
-                    {visibleColumns.productName && <td className="px-4 py-3 text-left text-sm text-gray-900">{lead.productName || '-'}</td>}
-                    {visibleColumns.type && <td className="px-4 py-3 text-left text-sm text-gray-700">{lead.type}</td>}
-                    {visibleColumns.requirementDate && <td className="px-4 py-3 text-left text-sm text-gray-700">{formatDate(lead.requirementDate)}</td>}
-                    {visibleColumns.sampleWONo && <td className="px-4 py-3 text-left text-sm text-indigo-600 font-bold">{lead.sampleWONo}</td>}
-                    {visibleColumns.sampleWODate && <td className="px-4 py-3 text-left text-sm text-gray-700 whitespace-nowrap">{lead.sampleWODate ? formatDate(lead.sampleWODate) : '-'}</td>}
-                    {visibleColumns.qty && <td className="px-4 py-3 text-center text-sm font-semibold text-sky-700 bg-sky-50">{lead.qty}</td>}
-
-                    {visibleColumns.sampleWOHandoverDate && <td className="px-4 py-3 text-left text-sm text-gray-700 whitespace-nowrap">{formatDate(lead.sampleWOHandoverDate)}</td>}
-                    {visibleColumns.expectedCompletionDate && <td className="px-4 py-3 text-left text-sm text-gray-700 whitespace-nowrap">{formatDate(lead.expectedCompletionDate)}</td>}
-                    {visibleColumns.actualCompletionDate && <td className="px-4 py-3 text-left text-sm text-gray-700 whitespace-nowrap">{formatDate(lead.actualCompletionDate)}</td>}
-                    {visibleColumns.dispatchSentDate && <td className="px-4 py-3 text-left text-sm text-gray-700 whitespace-nowrap">{formatDate(lead.dispatchSentDate)}</td>}
-
-                    {visibleColumns.remarks && <td className="px-4 py-3 text-left text-sm text-gray-500 max-w-[200px] truncate">{lead.remarks || '-'}</td>}
-                    {visibleColumns.addedBy && <td className="px-4 py-3 text-left text-sm text-gray-700 font-semibold">{lead.addedBy || '-'}</td>}
                   </tr>
                 ))}
               </tbody>
@@ -1367,6 +1650,8 @@ export default function SampleManagement() {
               </div>
             )}
           </DraggableScroll>
+        </>
+      )}
 
           {/* Footer & Pagination Controls */}
           <div className="px-2 md:px-4 py-2 border-t border-gray-200 bg-gray-50 flex items-center justify-between gap-2 md:gap-4 rounded-b-lg pb-2 md:pb-3">

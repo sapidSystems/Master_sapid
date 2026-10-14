@@ -251,6 +251,7 @@ export const updateProductionPlan = async (id, updates) => {
   if (updates.planDate !== undefined) cleanUpdates.plan_date = updates.planDate || null;
   if (updates.approvalStatus !== undefined) cleanUpdates.approval_status = updates.approvalStatus;
   if (updates.approvalNote !== undefined) cleanUpdates.approval_note = updates.approvalNote;
+  if (updates.procurementPushed !== undefined) cleanUpdates.procurement_pushed = updates.procurementPushed;
 
   const { error } = await supabase
     .from('sample_system_product_planning')
@@ -317,48 +318,30 @@ export const submitForApproval = async (id, planDate, stageUpdates = null) => {
   return true;
 };
 
-export const approveProductionPlan = async ({ lead, note = '', currentUser }) => {
+/**
+ * Push records to Procurement modules (Daily Leather, Material, Packaging)
+ * Called once the Handover Actual Date is filled and saved (Task 7)
+ */
+export const pushProcurementForPlan = async (lead, currentUser = null) => {
   const nowIso = new Date().toISOString();
   const userName = currentUser?.name || 'Admin User';
-
-  // 1. Update sample_system_product_planning
-  const updatePayload = {
-    approval_status: 'approved',
-    approval_note: note || 'Approved for procurement',
-    approved_by: userName,
-    approved_at: nowIso,
-    procurement_pushed: true,
-  };
-  if (lead.planDate) {
-    updatePayload.plan_date = lead.planDate;
-  }
-  if (lead.stages && Array.isArray(lead.stages)) {
-    updatePayload.stages = lead.stages;
-  }
-
-  const { error: planError } = await supabase
-    .from('sample_system_product_planning')
-    .update(updatePayload)
-    .eq('id', lead.id);
-  if (planError) throw planError;
-
-  // 2. Add entry to approval history
-  try {
-    await supabase
-      .from('production_planning_approval_history')
-      .insert([{
-        planning_id: lead.id,
-        action: 'approved',
-        note: note || 'Plan approved and dispatched to procurement modules',
-        acted_by: userName,
-        acted_at: nowIso
-      }]);
-  } catch (histErr) {
-    console.warn('[productionService] Approval history insert warning:', histErr);
-  }
-
-  // 3. Push records to Procurement modules (Daily Leather, Material, Packaging)
   const effectiveDate = lead.planDate || lead.woDate || getTodayDate();
+
+  // Find planned dates for procurement stages from lead.stages if available
+  const stages = lead.stages || [];
+  const dlStage = stages.find(s => {
+    const n = String(s.name).toUpperCase();
+    return n.includes('LEATHER') && n.includes('HOUSE');
+  });
+  const matStage = stages.find(s => {
+    const n = String(s.name).toUpperCase();
+    return n.includes('MATERIAL') && n.includes('HOUSE');
+  });
+  const pkgStage = stages.find(s => {
+    const n = String(s.name).toUpperCase();
+    return n.includes('PACK') && n.includes('HOUSE');
+  });
+
   const baseProcurementRow = {
     wo_no: lead.woNo,
     buyer_code: lead.buyer,
@@ -401,6 +384,8 @@ export const approveProductionPlan = async ({ lead, note = '', currentUser }) =>
     quantity: null,
     tannery: '',
     po_release_target_date: dlPoRelease,
+    target_receipt_date: dlStage?.plannedDate || baseProcurementRow.target_receipt_date,
+    planned_delivery_date: dlStage?.plannedDate || null,
   };
 
   // 3b. Daily Material
@@ -415,6 +400,8 @@ export const approveProductionPlan = async ({ lead, note = '', currentUser }) =>
     supplier: '',
     target_stock_check_date: matStockCheck,
     po_release_target_date: matPoRelease,
+    target_receipt_date: matStage?.plannedDate || baseProcurementRow.target_receipt_date,
+    expected_material_receipt_date: matStage?.plannedDate || null,
   };
 
   // 3c. Daily Packaging
@@ -429,14 +416,90 @@ export const approveProductionPlan = async ({ lead, note = '', currentUser }) =>
     supplier: '',
     target_stock_check_date: pkgStockCheck,
     po_release_target_date: pkgPoRelease,
+    target_receipt_date: pkgStage?.plannedDate || baseProcurementRow.target_receipt_date,
+    expected_material_receipt_date: pkgStage?.plannedDate || null,
   };
 
-  // Insert into all 3 procurement tables
-  await Promise.allSettled([
-    supabase.from('procurement_daily_leather').insert([dlRow]),
-    supabase.from('procurement_material').insert([matRow]),
-    supabase.from('procurement_packaging').insert([pkgRow]),
+  // Check if rows already exist to avoid duplicate inserts
+  const [existingDl, existingMat, existingPkg] = await Promise.all([
+    supabase.from('procurement_daily_leather').select('id').eq('production_planning_id', lead.id),
+    supabase.from('procurement_material').select('id').eq('production_planning_id', lead.id),
+    supabase.from('procurement_packaging').select('id').eq('production_planning_id', lead.id),
   ]);
+
+  const insertPromises = [];
+  if (!existingDl.data || existingDl.data.length === 0) {
+    insertPromises.push(supabase.from('procurement_daily_leather').insert([dlRow]));
+  }
+  if (!existingMat.data || existingMat.data.length === 0) {
+    insertPromises.push(supabase.from('procurement_material').insert([matRow]));
+  }
+  if (!existingPkg.data || existingPkg.data.length === 0) {
+    insertPromises.push(supabase.from('procurement_packaging').insert([pkgRow]));
+  }
+
+  if (insertPromises.length > 0) {
+    await Promise.allSettled(insertPromises);
+  }
+
+  // Update procurement_pushed = true on the production plan
+  await supabase
+    .from('sample_system_product_planning')
+    .update({ procurement_pushed: true })
+    .eq('id', lead.id);
+
+  notifyProductionUpdated();
+  return true;
+};
+
+export const approveProductionPlan = async ({ lead, note = '', currentUser }) => {
+  const nowIso = new Date().toISOString();
+  const userName = currentUser?.name || 'Admin User';
+
+  // Task 7: Hold back procurement stage data until Handover actual date is filled
+  const handoverStage = (lead.stages || []).find(s => String(s.name).toUpperCase().includes('HANDOVER'));
+  const isHandoverCompleted = Boolean(handoverStage?.actualDate && String(handoverStage.actualDate).trim());
+
+  // 1. Update sample_system_product_planning
+  const updatePayload = {
+    approval_status: 'approved',
+    approval_note: note || (isHandoverCompleted ? 'Approved and dispatched to procurement' : 'Approved (procurement held pending handover date)'),
+    approved_by: userName,
+    approved_at: nowIso,
+    procurement_pushed: isHandoverCompleted,
+  };
+  if (lead.planDate) {
+    updatePayload.plan_date = lead.planDate;
+  }
+  if (lead.stages && Array.isArray(lead.stages)) {
+    updatePayload.stages = lead.stages;
+  }
+
+  const { error: planError } = await supabase
+    .from('sample_system_product_planning')
+    .update(updatePayload)
+    .eq('id', lead.id);
+  if (planError) throw planError;
+
+  // 2. Add entry to approval history
+  try {
+    await supabase
+      .from('production_planning_approval_history')
+      .insert([{
+        planning_id: lead.id,
+        action: 'approved',
+        note: updatePayload.approval_note,
+        acted_by: userName,
+        acted_at: nowIso
+      }]);
+  } catch (histErr) {
+    console.warn('[productionService] Approval history insert warning:', histErr);
+  }
+
+  // 3. Only push records to Procurement modules if Handover Actual Date is filled
+  if (isHandoverCompleted) {
+    await pushProcurementForPlan({ ...lead, ...updatePayload }, currentUser);
+  }
 
   notifyProductionUpdated();
   return true;

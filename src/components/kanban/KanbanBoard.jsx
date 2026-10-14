@@ -565,77 +565,7 @@ export default function KanbanBoard({
                   </div>
                 </div>
 
-                {/* Section 2: Vendor / Supplier Multi-Select */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between px-1">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                      Vendor / Supplier / Tannery
-                    </span>
-                    {filters.vendors.length > 0 && (
-                      <span className="text-[10px] text-brand-600 font-semibold">
-                        {filters.vendors.length} selected
-                      </span>
-                    )}
-                  </div>
 
-                  {availableVendors.length > 5 && (
-                    <div className="relative">
-                      <Search className="w-3 h-3 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                      <input
-                        type="text"
-                        value={vendorSearch}
-                        onChange={(e) => setVendorSearch(e.target.value)}
-                        placeholder="Search vendors..."
-                        className="w-full pl-7 pr-6 py-1 text-[11px] bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-brand-500 text-slate-800"
-                      />
-                      {vendorSearch && (
-                        <button
-                          onClick={() => setVendorSearch("")}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="max-h-32 overflow-y-auto space-y-0.5 py-1 thin-scrollbar border border-slate-100 rounded-xl p-1 bg-slate-50/50">
-                    {filteredVendorOptions.length === 0 ? (
-                      <div className="text-[11px] text-slate-400 text-center py-2">
-                        {availableVendors.length === 0
-                          ? "No vendor data in current pipeline"
-                          : "No matching vendors"}
-                      </div>
-                    ) : (
-                      filteredVendorOptions.map((vendor) => {
-                        const isChecked = filters.vendors.includes(vendor);
-                        return (
-                          <label
-                            key={vendor}
-                            className={`flex items-center justify-between px-2 py-1.5 rounded-lg text-xs cursor-pointer select-none transition-colors ${
-                              isChecked
-                                ? "bg-white text-slate-900 font-medium shadow-2xs"
-                                : "hover:bg-white text-slate-700"
-                            }`}
-                          >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={() => toggleVendor(vendor)}
-                                className="w-3.5 h-3.5 rounded text-brand-600 focus:ring-brand-500/20 border-slate-300 cursor-pointer accent-brand-600"
-                              />
-                              <span className="truncate">{vendor}</span>
-                            </div>
-                            <span className="text-[10px] text-slate-400 font-semibold bg-slate-100 px-1.5 py-0.2 rounded ml-2">
-                              {vendorItemCounts[vendor] || 0}
-                            </span>
-                          </label>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
 
                 {/* Section 3: Date Sort (Asc / Desc / Reset) */}
                 <div className="space-y-1.5 border-t border-slate-100 pt-2">

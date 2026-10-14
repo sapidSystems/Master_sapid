@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit3, X, CheckCircle2, AlertTriangle, Clock, Plus, Trash2 } from 'lucide-react';
+import { Edit3, X, CheckCircle2, AlertTriangle, Clock, Plus, Trash2, Pencil } from 'lucide-react';
 import {
   ModuleType,
   AnyProcurementItem,
@@ -83,6 +83,7 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
   // Material / Packaging Specific Tracking Fields
   const [actualStockUpdateDate, setActualStockUpdateDate] = useState('');
   const [expectedMaterialReceiptDate, setExpectedMaterialReceiptDate] = useState('');
+  const [isPlannedDateUnlocked, setIsPlannedDateUnlocked] = useState(false);
 
   const [materialName, setMaterialName] = useState('');
   const [materialSpec, setMaterialSpec] = useState('');
@@ -106,6 +107,7 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
       setActualReceiptDate(item.actualReceiptDate || '');
       setNewRemark('');
       setShowCompletionNotice(false);
+      setIsPlannedDateUnlocked(false);
 
       if (module === 'new-leather') {
         const nl = item as NewLeatherItem;
@@ -150,7 +152,7 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
           ? dailyLeather.filter(i => (i.woNo || '').trim().toUpperCase() === targetWoNo)
           : [];
 
-        const sanitizeLeatherItem = (s: any) => {
+        const sanitizeLeatherItem = (s: any): EditableLeatherItem => {
           const isDummyName = isPlaceholderLeather(s.leatherName);
           const isDummyTan = isPlaceholderTannery(s.tannery);
           const isDummyCol = isPlaceholderColour(s.colour);
@@ -1111,17 +1113,34 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
                         <label className="block text-xs font-semibold text-slate-700 mb-1">
                           Planned Material Receipt Date
                         </label>
-                        <input
-                          type="date"
-                          disabled={updateSectionLocked}
-                          value={expectedMaterialReceiptDate}
-                          onChange={(e) => setExpectedMaterialReceiptDate(e.target.value)}
-                          className={`w-full min-h-[42px] px-3 py-2 rounded-xl border text-xs sm:text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none ${
-                            updateSectionLocked
-                              ? 'border-slate-200 bg-slate-100 text-slate-700 cursor-not-allowed'
-                              : 'border-slate-300 bg-white text-slate-900'
-                          }`}
-                        />
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="date"
+                            disabled={updateSectionLocked || !isPlannedDateUnlocked}
+                            value={expectedMaterialReceiptDate}
+                            onChange={(e) => setExpectedMaterialReceiptDate(e.target.value)}
+                            className={`flex-1 min-w-0 min-h-[42px] px-3 py-2 rounded-xl border text-xs sm:text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none transition-all ${
+                              updateSectionLocked || !isPlannedDateUnlocked
+                                ? 'border-slate-200 bg-slate-100 text-slate-500 cursor-not-allowed'
+                                : 'border-indigo-400 bg-white text-slate-900 ring-1 ring-indigo-500/20'
+                            }`}
+                            title={!isPlannedDateUnlocked ? "Field is read-only. Click the edit button to unlock." : undefined}
+                          />
+                          {!updateSectionLocked && (
+                            <button
+                              type="button"
+                              onClick={() => setIsPlannedDateUnlocked(prev => !prev)}
+                              className={`min-h-[42px] px-2.5 rounded-xl border flex items-center justify-center transition-all cursor-pointer shrink-0 ${
+                                isPlannedDateUnlocked
+                                  ? 'bg-indigo-50 text-indigo-700 border-indigo-300 hover:bg-indigo-100'
+                                  : 'bg-white text-slate-600 border-slate-200 hover:text-slate-900 hover:bg-slate-50 shadow-2xs'
+                              }`}
+                              title={isPlannedDateUnlocked ? "Lock Planned Date" : "Unlock to edit Planned Date"}
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
                       </div>
 
                       <div>

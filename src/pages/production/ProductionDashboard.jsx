@@ -16,10 +16,12 @@ import {
   Boxes,
   Zap,
   ChevronRight,
-  Sliders,
-  MessageSquare
+  MessageSquare,
+  List,
+  LayoutGrid
 } from 'lucide-react';
 import AdminLayout from '../../components/layout/AdminLayout';
+import ProductionCardView from '../../components/common/ProductionCardView';
 import { fetchProductionPlans, STAGES_LIST, formatDate, extractRemarkRecords } from './productionService';
 import { useMagicToast } from '../../context/MagicToastContext';
 
@@ -29,6 +31,7 @@ export default function ProductionDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBuyer, setSelectedBuyer] = useState('all');
+  const [viewMode, setViewMode] = useState('table');
 
   const loadData = async () => {
     try {
@@ -475,109 +478,148 @@ export default function ProductionDashboard() {
             </div>
           </div>
 
-          {/* Recent Production Work Orders Table */}
+          {/* Recent Production Work Orders Table / Card View */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="text-base font-bold text-slate-900">Recent Work Orders</h3>
                 <p className="text-xs text-slate-500">Latest active production orders across the pipeline</p>
               </div>
-              <Link
-                to="/dashboard/production/data"
-                className="text-xs font-semibold text-brand-600 hover:text-brand-700 flex items-center gap-1"
-              >
-                <span>View Full Table</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
+
+              <div className="flex items-center gap-3">
+                <div className="inline-flex items-center p-1 bg-slate-100 border border-slate-200/80 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('table')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                      viewMode === 'table'
+                        ? 'bg-white text-slate-900 shadow-xs border border-slate-200/50'
+                        : 'text-slate-500 hover:text-slate-900'
+                    }`}
+                  >
+                    <List className="w-3.5 h-3.5" />
+                    <span>Table View</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('cards')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                      viewMode === 'cards'
+                        ? 'bg-white text-slate-900 shadow-xs border border-slate-200/50'
+                        : 'text-slate-500 hover:text-slate-900'
+                    }`}
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5" />
+                    <span>Card View</span>
+                  </button>
+                </div>
+
+                <Link
+                  to="/dashboard/production/data"
+                  className="text-xs font-semibold text-brand-600 hover:text-brand-700 flex items-center gap-1"
+                >
+                  <span>View Full Table</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
-                    <th className="px-4 py-3">W/O No</th>
-                    <th className="px-4 py-3">Buyer</th>
-                    <th className="px-4 py-3">W/O Date</th>
-                    <th className="px-4 py-3">Shipment Date</th>
-                    <th className="px-4 py-3 text-right">Quantity</th>
-                    <th className="px-4 py-3">Plan Date</th>
-                    <th className="px-4 py-3">Approval Status</th>
-                    <th className="px-4 py-3">Leather Stage</th>
-                    <th className="px-4 py-3">Material Stage</th>
-                    <th className="px-4 py-3">Packaging Stage</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                  {filteredPlans.slice(0, 10).map((p) => {
-                    const lStage = p.stages?.find(s => s.name === 'LEATHER IN-HOUSE');
-                    const mStage = p.stages?.find(s => s.name === 'MATERIALS IN-HOUSE');
-                    const pStage = p.stages?.find(s => s.name === 'PACKING MATERIALS IN-HOUSE');
-
-                    const getStatusBadge = (status) => {
-                      switch (status) {
-                        case 'approved':
-                          return <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold">Approved</span>;
-                        case 'pending_approval':
-                          return <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[11px] font-bold">Pending Approval</span>;
-                        case 'rejected':
-                          return <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 text-[11px] font-bold">Rejected</span>;
-                        default:
-                          return <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[11px] font-bold">Draft</span>;
-                      }
-                    };
-
-                    const getStageStatus = (stage) => {
-                      if (!stage) return <span className="text-slate-300">—</span>;
-                      if (stage.actualDate) {
-                        return (
-                          <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md">
-                            Recd {formatDate(stage.actualDate)}
-                          </span>
-                        );
-                      }
-                      if (stage.plannedDate) {
-                        return <span className="text-slate-600 font-medium">Plan {formatDate(stage.plannedDate)}</span>;
-                      }
-                      return <span className="text-slate-400 text-[11px]">Pending</span>;
-                    };
-
-                    return (
-                      <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="px-4 py-3 font-bold text-slate-900 font-mono">{p.woNo}</td>
-                        <td className="px-4 py-3">
-                          <span className="px-2 py-0.5 bg-slate-100 rounded-md font-mono text-slate-700 text-[11px]">
-                            {p.buyer || '—'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-slate-600">{formatDate(p.woDate)}</td>
-                        <td className="px-4 py-3 text-slate-600">{formatDate(p.woDespatchDate)}</td>
-                        <td className="px-4 py-3 text-right font-mono font-bold text-slate-900">
-                          {Number(p.qty || 0).toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3 font-medium">
-                          {p.planDate ? (
-                            <span className="font-semibold text-brand-700">{formatDate(p.planDate)}</span>
-                          ) : (
-                            <span className="text-slate-400 italic">Not set</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">{getStatusBadge(p.approvalStatus)}</td>
-                        <td className="px-4 py-3">{getStageStatus(lStage)}</td>
-                        <td className="px-4 py-3">{getStageStatus(mStage)}</td>
-                        <td className="px-4 py-3">{getStageStatus(pStage)}</td>
-                      </tr>
-                    );
-                  })}
-                  {filteredPlans.length === 0 && (
-                    <tr>
-                      <td colSpan={10} className="px-4 py-8 text-center text-slate-400">
-                        No production plans found matching the filters.
-                      </td>
+            {viewMode === 'cards' ? (
+              <div className="p-5">
+                <ProductionCardView
+                  plans={filteredPlans.slice(0, 12)}
+                  emptyMessage="No recent work orders found matching the filters."
+                />
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+                      <th className="px-4 py-3">W/O No</th>
+                      <th className="px-4 py-3">Buyer</th>
+                      <th className="px-4 py-3">W/O Date</th>
+                      <th className="px-4 py-3">Shipment Date</th>
+                      <th className="px-4 py-3 text-right">Quantity</th>
+                      <th className="px-4 py-3">Plan Date</th>
+                      <th className="px-4 py-3">Approval Status</th>
+                      <th className="px-4 py-3">Leather Stage</th>
+                      <th className="px-4 py-3">Material Stage</th>
+                      <th className="px-4 py-3">Packaging Stage</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                    {filteredPlans.slice(0, 10).map((p) => {
+                      const lStage = p.stages?.find(s => s.name === 'LEATHER IN-HOUSE');
+                      const mStage = p.stages?.find(s => s.name === 'MATERIALS IN-HOUSE');
+                      const pStage = p.stages?.find(s => s.name === 'PACKING MATERIALS IN-HOUSE');
+
+                      const getStatusBadge = (status) => {
+                        switch (status) {
+                          case 'approved':
+                            return <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold">Approved</span>;
+                          case 'pending_approval':
+                            return <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[11px] font-bold">Pending Approval</span>;
+                          case 'rejected':
+                            return <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 text-[11px] font-bold">Rejected</span>;
+                          default:
+                            return <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[11px] font-bold">Draft</span>;
+                        }
+                      };
+
+                      const getStageStatus = (stage) => {
+                        if (!stage) return <span className="text-slate-300">—</span>;
+                        if (stage.actualDate) {
+                          return (
+                            <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md">
+                              Recd {formatDate(stage.actualDate)}
+                            </span>
+                          );
+                        }
+                        if (stage.plannedDate) {
+                          return <span className="text-slate-600 font-medium">Plan {formatDate(stage.plannedDate)}</span>;
+                        }
+                        return <span className="text-slate-400 text-[11px]">Pending</span>;
+                      };
+
+                      return (
+                        <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="px-4 py-3 font-bold text-slate-900 font-mono">{p.woNo}</td>
+                          <td className="px-4 py-3">
+                            <span className="px-2 py-0.5 bg-slate-100 rounded-md font-mono text-slate-700 text-[11px]">
+                              {p.buyer || '—'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-slate-600">{formatDate(p.woDate)}</td>
+                          <td className="px-4 py-3 text-slate-600">{formatDate(p.woDespatchDate)}</td>
+                          <td className="px-4 py-3 text-right font-mono font-bold text-slate-900">
+                            {Number(p.qty || 0).toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3 font-medium">
+                            {p.planDate ? (
+                              <span className="font-semibold text-brand-700">{formatDate(p.planDate)}</span>
+                            ) : (
+                              <span className="text-slate-400 italic">Not set</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">{getStatusBadge(p.approvalStatus)}</td>
+                          <td className="px-4 py-3">{getStageStatus(lStage)}</td>
+                          <td className="px-4 py-3">{getStageStatus(mStage)}</td>
+                          <td className="px-4 py-3">{getStageStatus(pStage)}</td>
+                        </tr>
+                      );
+                    })}
+                    {filteredPlans.length === 0 && (
+                      <tr>
+                        <td colSpan={10} className="px-4 py-8 text-center text-slate-400">
+                          No production plans found matching the filters.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
           {/* Production Remarks & Activity Log */}

@@ -18,9 +18,12 @@ import {
   TrendingUp,
   FileSpreadsheet,
   MessageSquare,
-  Lock
+  Lock,
+  List,
+  LayoutGrid
 } from 'lucide-react';
 import AdminLayout from '../../components/layout/AdminLayout';
+import ProductionCardView from '../../components/common/ProductionCardView';
 import {
   fetchProductionPlans,
   updateProductionPlan,
@@ -32,7 +35,8 @@ import {
   fetchProcurementDataForOrders,
   fetchProcurementForSinglePlan,
   mergeProcurementIntoStages,
-  isSystemRemark
+  isSystemRemark,
+  pushProcurementForPlan
 } from './productionService';
 import { useBuyerCodes } from '../../services/buyerCodeService';
 import { useMagicToast } from '../../context/MagicToastContext';
@@ -67,6 +71,7 @@ export default function ProductionMonitoring() {
   const [selectedBuyer, setSelectedBuyer] = useState('all');
   const { buyerCodes } = useBuyerCodes();
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'delayed' | 'ontime'
+  const [viewMode, setViewMode] = useState('table'); // 'table' | 'cards'
 
   // Update Modal State
   const [selectedPlan, setSelectedPlan] = useState(null);
@@ -75,6 +80,7 @@ export default function ProductionMonitoring() {
   const [modalDespatchDate, setModalDespatchDate] = useState('');
   const [modalRemarks, setModalRemarks] = useState('');
   const [isEditingDespatch, setIsEditingDespatch] = useState(false);
+  const [unlockedPlannedStages, setUnlockedPlannedStages] = useState({});
   const [isSaving, setIsSaving] = useState(false);
 
   const loadData = async () => {
@@ -281,6 +287,7 @@ export default function ProductionMonitoring() {
     };
 
     setModalStages(buildStagesArr(procInfo));
+    setUnlockedPlannedStages({});
     setIsUpdateModalOpen(true);
 
     // Refresh procurement data asynchronously for this plan to ensure freshness
@@ -378,13 +385,34 @@ export default function ProductionMonitoring() {
 
       const willMoveToHistory = allStagesComplete;
 
+      // Task 7: Hold back procurement stage data until the Handover actual date is filled.
+      // Once the Handover Actual Date is filled and saved, send the data of these 3 stages to their respective Procurement pages as usual.
+      const handoverStage = updatedStages.find(s => String(s.name).toUpperCase().includes('HANDOVER'));
+      const isHandoverCompleted = Boolean(handoverStage?.actualDate && String(handoverStage.actualDate).trim());
+
+      let procurementPushed = selectedPlan.procurementPushed;
+      if (isHandoverCompleted && !selectedPlan.procurementPushed) {
+        try {
+          await pushProcurementForPlan({
+            ...selectedPlan,
+            stages: updatedStages,
+            remarks: modalRemarks || selectedPlan.remarks
+          }, { name: currentUserName });
+          procurementPushed = true;
+          showToast(`Handover date recorded: Pushed stages to Procurement System!`, 'info');
+        } catch (procErr) {
+          console.error('Error pushing procurement records on Handover save:', procErr);
+        }
+      }
+
       await updateProductionPlan(selectedPlan.id, {
         stages: updatedStages,
         remarks: modalRemarks || null,
         isHistory: willMoveToHistory,
         historyTimestamp: willMoveToHistory
           ? (selectedPlan.historyTimestamp || nowIso)
-          : null
+          : null,
+        procurementPushed
       });
 
       if (willMoveToHistory && !selectedPlan.isHistory) {
@@ -656,11 +684,42 @@ export default function ProductionMonitoring() {
               )}
             </div>
 
-            <div className="text-xs text-slate-500 font-medium">
-              {activeTab === 'history' && historySubTab === 'remarks' ? (
-                <span>Showing {filteredRemarkRecords.length} remark record{filteredRemarkRecords.length === 1 ? '' : 's'}</span>
-              ) : (
-                <span>Showing {filteredPlans.length} {activeTab === 'history' ? 'completed' : 'active'} work order{filteredPlans.length === 1 ? '' : 's'}</span>
+            <div className="flex items-center gap-3">
+              <div className="text-xs text-slate-500 font-medium">
+                {activeTab === 'history' && historySubTab === 'remarks' ? (
+                  <span>Showing {filteredRemarkRecords.length} remark record{filteredRemarkRecords.length === 1 ? '' : 's'}</span>
+                ) : (
+                  <span>Showing {filteredPlans.length} {activeTab === 'history' ? 'completed' : 'active'} work order{filteredPlans.length === 1 ? '' : 's'}</span>
+                )}
+              </div>
+
+              {!(activeTab === 'history' && historySubTab === 'remarks') && (
+                <div className="inline-flex items-center p-1 bg-slate-100 border border-slate-200/80 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('table')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                      viewMode === 'table'
+                        ? 'bg-white text-slate-900 shadow-xs border border-slate-200/50'
+                        : 'text-slate-500 hover:text-slate-900'
+                    }`}
+                  >
+                    <List className="w-3.5 h-3.5" />
+                    <span>Table View</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('cards')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                      viewMode === 'cards'
+                        ? 'bg-white text-slate-900 shadow-xs border border-slate-200/50'
+                        : 'text-slate-500 hover:text-slate-900'
+                    }`}
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5" />
+                    <span>Card View</span>
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -767,6 +826,16 @@ export default function ProductionMonitoring() {
                 </table>
               </div>
             </div>
+          ) : viewMode === 'cards' ? (
+            /* Work Orders Card View */
+            <ProductionCardView
+              plans={filteredPlans}
+              onAction={activeTab === 'active' ? openUpdateModal : undefined}
+              actionLabel="Update"
+              actionIcon={<Pencil className="w-3 h-3" />}
+              onCardClick={(p) => openUpdateModal(p)}
+              emptyMessage={activeTab === 'history' ? 'No completed orders in history' : 'No active work orders found'}
+            />
           ) : (
             /* Work Orders Table (Active or Completed) */
             <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
@@ -1086,18 +1155,47 @@ export default function ProductionMonitoring() {
 
                               {/* Planned Date */}
                               <td className="px-3 py-3">
-                                <input
-                                  type="date"
-                                  disabled={isProcLocked}
-                                  value={stage.plannedDate || ''}
-                                  onChange={(e) => handleStageChange(idx, 'plannedDate', e.target.value)}
-                                  className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-medium outline-hidden transition-all ${
-                                    isProcLocked
-                                      ? 'bg-slate-100/90 text-slate-600 border border-slate-200 cursor-not-allowed'
-                                      : 'bg-white border border-slate-300 text-slate-700 focus:border-indigo-500'
-                                  }`}
-                                  title={isProcLocked ? "Planned date is fixed by planning schedule" : undefined}
-                                />
+                                {isProcLocked ? (
+                                  <input
+                                    type="date"
+                                    disabled={true}
+                                    value={stage.plannedDate || ''}
+                                    className="w-full px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-100/90 text-slate-500 border border-slate-200 cursor-not-allowed outline-hidden"
+                                    title="Procurement-linked stage: Planned date is locked"
+                                  />
+                                ) : (
+                                  <div className="flex items-center gap-1.5">
+                                    <input
+                                      type="date"
+                                      disabled={!unlockedPlannedStages[idx]}
+                                      value={stage.plannedDate || ''}
+                                      onChange={(e) => handleStageChange(idx, 'plannedDate', e.target.value)}
+                                      className={`flex-1 min-w-0 px-2.5 py-1.5 rounded-lg text-xs font-medium outline-hidden transition-all ${
+                                        !unlockedPlannedStages[idx]
+                                          ? 'bg-slate-100 text-slate-500 border border-slate-200 cursor-not-allowed'
+                                          : 'bg-white border border-indigo-400 text-slate-900 focus:border-indigo-600 ring-1 ring-indigo-500/20'
+                                      }`}
+                                      title={!unlockedPlannedStages[idx] ? "Planned Date is locked. Click edit button to modify." : undefined}
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setUnlockedPlannedStages(prev => ({
+                                          ...prev,
+                                          [idx]: !prev[idx]
+                                        }));
+                                      }}
+                                      className={`p-1.5 rounded-lg border transition-all cursor-pointer shrink-0 ${
+                                        unlockedPlannedStages[idx]
+                                          ? 'bg-indigo-50 text-indigo-700 border-indigo-300 hover:bg-indigo-100'
+                                          : 'bg-white text-slate-500 border-slate-200 hover:text-slate-800 hover:bg-slate-50 shadow-2xs'
+                                      }`}
+                                      title={unlockedPlannedStages[idx] ? "Lock Planned Date" : "Unlock Planned Date to edit"}
+                                    >
+                                      <Pencil className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                )}
                               </td>
 
                               {/* Actual Date */}

@@ -12,9 +12,12 @@ import {
   RefreshCw,
   Sliders,
   AlertCircle,
-  X
+  X,
+  List,
+  LayoutGrid
 } from 'lucide-react';
 import AdminLayout from '../../components/layout/AdminLayout';
+import ProductionCardView from '../../components/common/ProductionCardView';
 import {
   fetchProductionPlans,
   submitForApproval,
@@ -33,6 +36,7 @@ export default function ProductionPlanningNew() {
   const [activeTab, setActiveTab] = useState('pending'); // 'pending' | 'submitted' | 'approved'
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBuyer, setSelectedBuyer] = useState('all');
+  const [viewMode, setViewMode] = useState('table');
   const { buyerCodes } = useBuyerCodes();
 
   // Modal for scheduling / submitting plan
@@ -268,15 +272,60 @@ export default function ProductionPlanningNew() {
               </select>
             </div>
 
-            <div className="text-xs text-slate-500 font-medium">
-              Showing <strong>{currentTabList.length}</strong> work orders
+            <div className="flex items-center gap-3">
+              <div className="text-xs text-slate-500 font-medium">
+                Showing <strong>{currentTabList.length}</strong> work orders
+              </div>
+
+              <div className="inline-flex items-center p-1 bg-slate-100 border border-slate-200/80 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('table')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    viewMode === 'table'
+                      ? 'bg-white text-slate-900 shadow-xs border border-slate-200/50'
+                      : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  <List className="w-3.5 h-3.5" />
+                  <span>Table View</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('cards')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    viewMode === 'cards'
+                      ? 'bg-white text-slate-900 shadow-xs border border-slate-200/50'
+                      : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span>Card View</span>
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Work Orders Table */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
+          {/* Work Orders Table / Card View */}
+          {viewMode === 'cards' ? (
+            <ProductionCardView
+              plans={currentTabList}
+              onAction={activeTab === 'pending' ? (plan) => handleOpenScheduleModal(plan) : undefined}
+              actionLabel="Planning"
+              actionIcon={<Sliders className="w-3 h-3" />}
+              onCardClick={(plan) => activeTab === 'pending' ? handleOpenScheduleModal(plan) : undefined}
+              emptyMessage={
+                activeTab === 'pending'
+                  ? 'No work orders currently awaiting planning.'
+                  : activeTab === 'submitted'
+                  ? 'No work orders currently in the approval queue.'
+                  : 'No approved work orders found.'
+              }
+            />
+          ) : (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
                     {activeTab === 'pending' && <th className="px-4 py-3.5 text-center">Action</th>}
@@ -392,6 +441,7 @@ export default function ProductionPlanningNew() {
               </table>
             </div>
           </div>
+          )}
         </div>
 
         {/* Schedule Stages Modal */}
