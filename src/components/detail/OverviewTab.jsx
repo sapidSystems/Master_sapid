@@ -16,7 +16,7 @@ export default function OverviewTab({
   onToggleMilestone,
   systemConfig,
 }) {
-  const [scheduleFilter, setScheduleFilter] = useState("upcoming"); // 'upcoming' | 'overdue' | 'all'
+  const [scheduleFilter, setScheduleFilter] = useState("all"); // 'all' | 'upcoming' | 'overdue'
 
   const completedCount = milestones.filter((m) => m.isCompleted).length;
   const totalCount = milestones.length;
@@ -200,8 +200,18 @@ export default function OverviewTab({
             </span>
           </div>
 
-          {/* Sub-tabs: Upcoming vs Overdue vs All */}
+          {/* Sub-tabs: All vs Upcoming vs Overdue */}
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+            <button
+              onClick={() => setScheduleFilter("all")}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                scheduleFilter === "all"
+                  ? "bg-white text-slate-900 shadow-xs"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              All ({milestones.length})
+            </button>
             <button
               onClick={() => setScheduleFilter("upcoming")}
               className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
@@ -222,16 +232,6 @@ export default function OverviewTab({
             >
               Overdue ({overdueMilestones.length})
             </button>
-            <button
-              onClick={() => setScheduleFilter("all")}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                scheduleFilter === "all"
-                  ? "bg-white text-slate-900 shadow-xs"
-                  : "text-slate-500 hover:text-slate-800"
-              }`}
-            >
-              All ({milestones.length})
-            </button>
           </div>
         </div>
 
@@ -250,7 +250,7 @@ export default function OverviewTab({
             <div className="py-8 text-center text-slate-400 text-xs">
               <CheckCircle2 className="w-8 h-8 text-slate-300 mx-auto mb-2" />
               <p className="font-semibold text-slate-600">
-                No {scheduleFilter} tasks right now
+                {scheduleFilter === "all" ? "No tasks found" : `No ${scheduleFilter} tasks right now`}
               </p>
               <p className="text-[11px] text-slate-400 mt-0.5">
                 All milestones in this category have been attended to.

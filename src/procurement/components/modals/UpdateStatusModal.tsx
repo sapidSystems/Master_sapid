@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit3, X, CheckCircle2, AlertTriangle, Clock, Plus, Trash2, Pencil } from 'lucide-react';
+import { X, CheckCircle2, AlertTriangle, Clock, Plus, Trash2, Pencil } from 'lucide-react';
 import {
   ModuleType,
   AnyProcurementItem,
@@ -465,25 +465,7 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-brand-50 text-brand-600">
-              <Edit3 className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
-                  {canWrite ? `Update Entry #${item.id}` : `View Entry #${item.id}`}
-                </h3>
-                <span className="px-2 py-0.5 rounded-md bg-brand-100 text-brand-700 font-mono text-xs font-semibold">
-                  {(item as any).woNo || item.id}
-                </span>
-              </div>
-              <p className="text-xs text-slate-500">
-                {canWrite ? 'Prefilled with existing order details. Modify any parameters and save changes.' : 'Viewing existing order details and parameters (read-only mode).'}
-              </p>
-            </div>
-          </div>
+        <div className="p-3 sm:p-4 border-b border-slate-100 flex items-center justify-end">
           <button
             type="button"
             onClick={onClose}
