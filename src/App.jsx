@@ -419,7 +419,7 @@ function App() {
                         element={<Navigate to="/dashboard/production/planning" replace />}
                     />
 
-                    {/* --- Procurement System (Sapid Design's) Routes --- */}
+                    {/* --- Procurement System (Sapid Design) Routes --- */}
                     <Route
                         path="/dashboard/procurement"
                         element={

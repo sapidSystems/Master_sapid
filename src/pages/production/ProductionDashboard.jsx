@@ -18,7 +18,8 @@ import {
   ChevronRight,
   MessageSquare,
   List,
-  LayoutGrid
+  LayoutGrid,
+  Sliders
 } from 'lucide-react';
 import AdminLayout from '../../components/layout/AdminLayout';
 import ProductionCardView from '../../components/common/ProductionCardView';

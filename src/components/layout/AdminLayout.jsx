@@ -1075,14 +1075,14 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
             <Link
               to="/dashboard"
               className="flex items-center gap-2.5 font-bold text-cream-100 min-w-0"
-              title="Sapid Design's"
+              title="Sapid Design"
             >
               <img
                 src={aceLogo}
-                alt="Sapid Design's Logo"
+                alt="Sapid Design Logo"
                 className="h-8 w-8 rounded-full object-cover border border-gold-400/50 ring-1 ring-gold-400/30 shrink-0"
               />
-              <span className="tracking-wide font-serif truncate text-sm">Sapid Design's</span>
+              <span className="tracking-wide font-serif truncate text-sm">Sapid Design</span>
             </Link>
             <button
               type="button"
@@ -1401,9 +1401,9 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
                 className="flex items-center gap-2.5 font-bold text-leather-900"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                <img src={aceLogo} alt="Sapid Design's Logo" className="h-8 w-8 rounded-full object-cover border border-gold-400/40" />
+                <img src={aceLogo} alt="Sapid Design Logo" className="h-8 w-8 rounded-full object-cover border border-gold-400/40" />
                 <div className="flex flex-col">
-                  <span className="text-sm font-extrabold tracking-tight font-serif">Sapid Design's</span>
+                  <span className="text-sm font-extrabold tracking-tight font-serif">Sapid Design</span>
                   <span className="text-[10px] font-medium text-leather-500 -mt-0.5">Systems Launcher</span>
                 </div>
               </Link>
@@ -1469,10 +1469,10 @@ export default function AdminLayout({ children, darkMode = false, toggleDarkMode
           <div className="flex md:hidden w-8"></div>
           <div className="flex flex-col items-center">
             <h1 className="text-xl font-bold bg-gradient-to-r from-leather-900 via-leather-700 to-gold-600 bg-clip-text text-transparent font-serif tracking-wide">
-              Sapid Design's
+              Sapid Design
             </h1>
             <p className="text-[10px] text-leather-600 font-semibold uppercase tracking-[0.25em] -mt-0.5 hidden xs:block">
-              Sapid Design's
+              Sapid Design
             </p>
           </div>
           <div className="flex items-center gap-3">
