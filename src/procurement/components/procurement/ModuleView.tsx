@@ -11,6 +11,13 @@ import { UpdateStatusModal } from '../modals/UpdateStatusModal';
 import { RemarksHistoryModal } from '../modals/RemarksHistoryModal';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { useBuyerCodes } from '../../../services/buyerCodeService';
+import { ColumnVisibilityDropdown } from '../common/ColumnVisibilityDropdown';
+import {
+  getColumnsForModule,
+  loadVisibleColumns,
+  saveVisibleColumns,
+  getDefaultVisibleColumns
+} from '../../utils/procurementColumns';
 
 interface ModuleViewProps {
   module: ModuleType;
@@ -255,6 +262,31 @@ export const ModuleView: React.FC<ModuleViewProps> = ({ module }) => {
   // Module configuration
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
 
+  // Visible columns state per module with localStorage persistence
+  const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>(() => {
+    return loadVisibleColumns(currentActiveModule);
+  });
+
+  // Sync visible columns when active module changes
+  useEffect(() => {
+    setVisibleColumns(loadVisibleColumns(currentActiveModule));
+  }, [currentActiveModule]);
+
+  const handleColumnChange = (newColumns: Record<string, boolean>) => {
+    setVisibleColumns(newColumns);
+    saveVisibleColumns(currentActiveModule, newColumns);
+  };
+
+  const handleColumnReset = () => {
+    const defaults = getDefaultVisibleColumns(currentActiveModule);
+    setVisibleColumns(defaults);
+    saveVisibleColumns(currentActiveModule, defaults);
+  };
+
+  const availableColumns = useMemo(() => {
+    return getColumnsForModule(currentActiveModule, activeTab === 'history');
+  }, [currentActiveModule, activeTab]);
+
   const config = {
     'new-leather': {
       title: 'New Leather Development',
@@ -442,37 +474,47 @@ export const ModuleView: React.FC<ModuleViewProps> = ({ module }) => {
         leatherNameOptions={leatherNameOptions}
       />
 
-      {/* Table View / Card View Toggle Bar */}
-      <div className="flex items-center justify-between gap-3 pt-1">
+      {/* Table View / Card View Toggle Bar with Column Visibility Dropdown */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
         <div className="text-xs text-slate-500 font-medium">
           Showing <strong>{filteredItems.length}</strong> items
         </div>
 
-        <div className="inline-flex items-center p-1 bg-slate-100 border border-slate-200/80 rounded-xl">
-          <button
-            type="button"
-            onClick={() => setViewMode('table')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-              viewMode === 'table'
-                ? 'bg-white text-slate-900 shadow-xs border border-slate-200/50'
-                : 'text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            <List className="w-3.5 h-3.5" />
-            <span>Table View</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('cards')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-              viewMode === 'cards'
-                ? 'bg-white text-slate-900 shadow-xs border border-slate-200/50'
-                : 'text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            <LayoutGrid className="w-3.5 h-3.5" />
-            <span>Card View</span>
-          </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Dropdown for selecting visible columns in both table & card view */}
+          <ColumnVisibilityDropdown
+            columns={availableColumns}
+            visibleColumns={visibleColumns}
+            onChange={handleColumnChange}
+            onReset={handleColumnReset}
+          />
+
+          <div className="inline-flex items-center p-1 bg-slate-100 border border-slate-200/80 rounded-xl">
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                viewMode === 'table'
+                  ? 'bg-white text-slate-900 shadow-xs border border-slate-200/50'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              <List className="w-3.5 h-3.5" />
+              <span>Table View</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('cards')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                viewMode === 'cards'
+                  ? 'bg-white text-slate-900 shadow-xs border border-slate-200/50'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>Card View</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -482,6 +524,7 @@ export const ModuleView: React.FC<ModuleViewProps> = ({ module }) => {
           module={currentActiveModule}
           items={filteredItems}
           isHistory={activeTab === 'history'}
+          visibleColumns={visibleColumns}
           onUpdate={handleOpenUpdate}
           onQuickComplete={(item, actualDate) => updateRecord(currentActiveModule, item.id, { actualReceiptDate: actualDate })}
           onViewRemarks={handleOpenRemarks}
@@ -497,6 +540,7 @@ export const ModuleView: React.FC<ModuleViewProps> = ({ module }) => {
           items={filteredItems}
           isHistory={activeTab === 'history'}
           canWrite={canWrite}
+          visibleColumns={visibleColumns}
           onUpdate={handleOpenUpdate}
           onViewRemarks={handleOpenRemarks}
           onDelete={handleOpenDelete}
