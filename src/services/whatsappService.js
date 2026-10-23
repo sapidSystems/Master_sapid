@@ -16,7 +16,7 @@ const WHATSAPP_WABA_ID = import.meta.env.VITE_WHATSAPP_WABA_ID;
 // Toggle to enable/disable WhatsApp service
 const ENABLE_WHATSAPP = false; // Set to true to enable WhatsApp notifications
 
-const APP_LINK = "https://checklist-delegation-three.vercel.app/login";
+const APP_LINK = "https://master-sapid.vercel.app/login";
 
 
 /**
@@ -426,7 +426,7 @@ export const sendTaskAssignmentNotification = async (taskDetails) => {
                     `🧑 Allocated By: ${givenBy}\n` +
                     `📝 Task Description: ${displayDescription}\n\n\n` +
                     `⏳ Deadline: ${startDate}\n` +
-                    `✅ Closure Link: https://checklist-delegation-supabase-five.vercel.app/login\n` +
+                    `✅ Closure Link: ${APP_LINK}\n` +
                     `Please make sure the task is completed before the deadline. For any assistance, feel free to reach out.\n\n` +
                     `Best regards,\n` +
                     `Acemark Stationers.`;
@@ -616,7 +616,7 @@ export const sendAdminExtensionRemarkNotification = async (taskDetails) => {
             `📌 Task ID: ${taskId}\n` +
             `📋 Task: ${description || 'N/A'}\n` +
             `💬 Remark: *${remark}*\n\n` +
-            `🔗 App Link: https://checklist-delegation-supabase-five.vercel.app/login\n\n` +
+            `🔗 App Link: ${APP_LINK}\n\n` +
             `Best regards,\nAcemark Stationers.`;
 
         return await sendWhatsAppMessage(phoneNumber, message);

@@ -1,6 +1,6 @@
 import supabase from "../SupabaseClient.js";
 
-const APP_LINK = "https://checklist-delegation-three.vercel.app/login";
+const APP_LINK = "https://master-sapid.vercel.app/login";
 
 /**
  * Get user email from database
